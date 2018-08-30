@@ -1,0 +1,13 @@
+cargo-features = ["edition"]
+
+[package]
+name = "lua51"
+version = "0.1.0"
+authors = ["Markus Ast <m@rkusa.st>"]
+edition = "2018"
+
+[dependencies]
+
+[build-dependencies]
+bindgen = "0.39"
+cc = "1.0"
