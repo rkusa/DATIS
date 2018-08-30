@@ -1,10 +1,9 @@
 use std::ffi::{CStr, CString};
-use std::os::raw::c_void;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::{ptr, thread};
 
 use crate::error::{assert_argument_count, LuaError};
-use libc::c_char;
+use libc::{self, c_char, c_void};
 use lua51::{
     luaL_loadbuffer, luaL_openlibs, lua_State, lua_call, lua_getfield, lua_isstring, lua_newstate,
     lua_pcall, lua_pop, lua_pushnumber, lua_pushstring, lua_setfield, lua_toboolean, lua_tolstring,
@@ -108,20 +107,10 @@ unsafe fn create_lua_state(cpath: &str) -> *mut lua_State {
         nsize: usize,
     ) -> *mut c_void {
         if nsize == 0 {
-            libc::free(ptr as *mut libc::c_void);
-            ptr::null_mut()
+            libc::free(ptr);
+            std::ptr::null_mut()
         } else {
-            let p = libc::realloc(ptr as *mut libc::c_void, nsize);
-            if p.is_null() {
-                // We require that OOM results in an abort, and that the lua allocator function
-                // never errors.  Since this is what rust itself normally does on OOM, this is
-                // not really a huge loss.  Importantly, this allows us to turn off the gc, and
-                // then know that calling Lua API functions marked as 'm' will not result in a
-                // 'longjmp' error while the gc is off.
-                panic!("out of memory in Lua allocation, aborting!");
-            } else {
-                p as *mut c_void
-            }
+            libc::realloc(ptr, nsize)
         }
     }
 

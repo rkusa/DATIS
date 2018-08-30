@@ -14,6 +14,7 @@ fn main() {
         .whitelist_type("luaL?_.*")
         .whitelist_function("luaL?_.*")
         .whitelist_var("LUA_.*")
+        .ctypes_prefix("libc")
         .generate()
         .expect("Unable to generate bindings");
 

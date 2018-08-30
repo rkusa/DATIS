@@ -1,7 +1,7 @@
-use libc::c_int;
 use std::ffi::CString;
 use std::{error, fmt};
 
+use libc::c_int;
 use lua51::{lua_State, lua_error, lua_gettop, lua_pushstring};
 
 #[derive(Debug)]
