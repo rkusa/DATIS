@@ -33,7 +33,7 @@ fn main() {
         .file("lua-5.1.5/src/ltablib.c")
         .file("lua-5.1.5/src/ltm.c")
         .file("lua-5.1.5/src/lua.c")
-        .file("lua-5.1.5/src/luac.c")
+        // .file("lua-5.1.5/src/luac.c")
         .file("lua-5.1.5/src/lundump.c")
         .file("lua-5.1.5/src/lvm.c")
         .file("lua-5.1.5/src/lzio.c")
