@@ -1,7 +1,8 @@
 -- package.path = [[]]
-package.cpath = [[./target/debug/lib?.dylib;./target/debug/liblua_?_mock.dylib;]]
+package.cpath = [[./target/debug/lib?.dylib;./target/debug/liblua_?_mock.dylib;]] ..
+        [[./target/debug/?.dll;./target/debug/lua_?_mock.dll;]]
 
-local dewr = require 'terrain'
+require 'terrain'
 local dewr = require 'dewr'
 
 dewr.init(package.cpath)

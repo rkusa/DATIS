@@ -7,7 +7,7 @@ authors = ["Markus Ast <m@rkusa.st>"]
 edition = "2018"
 
 [lib]
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 lua51 = { path = "../lua51" }
