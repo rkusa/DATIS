@@ -6,7 +6,7 @@ use lua51::{lua_State, lua_error, lua_gettop, lua_pushstring};
 
 #[derive(Debug)]
 pub enum LuaError {
-    ArgumentCount {
+    StackSize {
         expected: c_int,
         received: c_int,
     },
@@ -16,10 +16,10 @@ pub enum LuaError {
     Uninitialized,
 }
 
-pub fn assert_argument_count(state: *mut lua_State, expected: c_int) -> Result<(), LuaError> {
+pub fn assert_stacksize(state: *mut lua_State, expected: c_int) -> Result<(), LuaError> {
     let received = unsafe { lua_gettop(state) };
     if received != expected {
-        return Err(LuaError::ArgumentCount { expected, received });
+        return Err(LuaError::StackSize { expected, received });
     }
 
     Ok(())
@@ -42,8 +42,8 @@ impl LuaError {
 impl fmt::Display for LuaError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            LuaError::ArgumentCount { expected, received } => {
-                write!(f, "Expected {} arguments, got {}", expected, received)
+            LuaError::StackSize { expected, received } => {
+                write!(f, "Expected stack size of {}, got {}", expected, received)
             }
             LuaError::InvalidArgument(pos) => write!(f, "Invalid argument type at {}", pos),
             LuaError::Custom(ref s) => write!(f, "{}", s),
@@ -55,7 +55,7 @@ impl fmt::Display for LuaError {
 impl error::Error for LuaError {
     fn description(&self) -> &str {
         match *self {
-            LuaError::ArgumentCount { .. } => "invalid argument count",
+            LuaError::StackSize { .. } => "invalid stack size",
             LuaError::InvalidArgument(_) => "invalid argument type",
             LuaError::Custom(_) => "custom error",
             LuaError::Uninitialized => "DEWR has not been initialized",

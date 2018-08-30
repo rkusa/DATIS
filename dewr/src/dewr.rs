@@ -2,12 +2,13 @@ use std::ffi::{CStr, CString};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::{ptr, thread};
 
-use crate::error::{assert_argument_count, LuaError};
+use crate::error::{assert_stacksize, LuaError};
 use libc::{self, c_char, c_void};
 use lua51::{
-    luaL_loadbuffer, luaL_openlibs, lua_State, lua_call, lua_getfield, lua_isstring, lua_newstate,
-    lua_pcall, lua_pop, lua_pushnumber, lua_pushstring, lua_setfield, lua_toboolean, lua_tolstring,
-    lua_tostring, LUA_GLOBALSINDEX, LUA_MULTRET, LUA_OK,
+    luaL_loadbuffer, luaL_openlibs, lua_State, lua_call, lua_getfield, lua_isboolean, lua_isstring,
+    lua_newstate, lua_pcall, lua_pop, lua_pushnumber, lua_pushstring, lua_setfield, lua_toboolean,
+    lua_tostring, LUA_ERRERR, LUA_ERRMEM, LUA_ERRRUN, LUA_ERRSYNTAX, LUA_GLOBALSINDEX, LUA_MULTRET,
+    LUA_OK,
 };
 
 static LUA_SOURCE: &str = r#"
@@ -22,7 +23,7 @@ pub struct Dewr {
 
 impl Dewr {
     pub fn create(state: *mut lua_State) -> Result<Self, LuaError> {
-        assert_argument_count(state, 1)?;
+        assert_stacksize(state, 1)?;
 
         let (in_tx, in_rx) = mpsc::channel();
         let (out_tx, out_rx) = mpsc::channel();
@@ -38,13 +39,28 @@ impl Dewr {
 
             lua_pop(state, 1);
 
+            assert_stacksize(state, 0)?;
+
             thread::spawn(move || {
-                let state = create_lua_state(&cpath);
+                let state = match create_lua_state(&cpath) {
+                    Ok(state) => state,
+                    Err(err) => {
+                        // TODO: log instead of panic
+                        panic!(format!("{}", err));
+                    }
+                };
 
                 loop {
                     in_rx.recv().unwrap();
-                    let visibility = lua_is_visible(state);
-                    out_tx.send(visibility).unwrap();
+                    match lua_is_visible(state) {
+                        Ok(visibility) => {
+                            out_tx.send(visibility).unwrap();
+                        }
+                        Err(err) => {
+                            // TODO: log instead of panic
+                            panic!(format!("{}", err));
+                        }
+                    }
                 }
             });
         }
@@ -56,7 +72,7 @@ impl Dewr {
     }
 
     pub fn is_visible(&self, state: *mut lua_State) -> Result<(), LuaError> {
-        assert_argument_count(state, 0)?;
+        assert_stacksize(state, 0)?;
 
         self.tx.send(()).unwrap();
 
@@ -64,7 +80,7 @@ impl Dewr {
     }
 
     pub fn collect_result(&self, state: *mut lua_State) -> Result<(bool, bool), LuaError> {
-        assert_argument_count(state, 0)?;
+        assert_stacksize(state, 0)?;
 
         if let Some(result) = self.rx.try_recv().ok() {
             Ok((true, result))
@@ -74,10 +90,14 @@ impl Dewr {
     }
 }
 
-unsafe fn lua_is_visible(state: *mut lua_State) -> bool {
+unsafe fn lua_is_visible(state: *mut lua_State) -> Result<bool, LuaError> {
+    assert_stacksize(state, 0)?;
+
+    // move global isVisible function onto the stack
     let is_visible_name = CString::new("isVisible").unwrap();
     lua_getfield(state, LUA_GLOBALSINDEX, is_visible_name.as_ptr());
 
+    // push arguments onto the stack
     let x1 = 1.0;
     let alt1 = 100.0;
     let y1 = 1.0;
@@ -93,12 +113,23 @@ unsafe fn lua_is_visible(state: *mut lua_State) -> bool {
     lua_pushnumber(state, alt2);
     lua_pushnumber(state, y2);
 
+    // call method with 6 arguments and 1 result
     lua_call(state, 6, 1);
 
-    lua_toboolean(state, -1) == 1
+    // read result from stack
+    if lua_isboolean(state, -1) == 0 {
+        return Err(LuaError::InvalidArgument(1));
+    }
+    let visibility = lua_toboolean(state, -1) == 1;
+    lua_pop(state, 1); // cleanup stack
+
+    // make sure we have a clean stack
+    assert_stacksize(state, 0)?;
+
+    Ok(visibility)
 }
 
-unsafe fn create_lua_state(cpath: &str) -> *mut lua_State {
+unsafe fn create_lua_state(cpath: &str) -> Result<*mut lua_State, LuaError> {
     // thx to https://github.com/kyren/rlua
     unsafe extern "C" fn allocator(
         _: *mut c_void,
@@ -114,46 +145,68 @@ unsafe fn create_lua_state(cpath: &str) -> *mut lua_State {
         }
     }
 
+    // create new lua state and load all standard lua libraries
     let state = lua_newstate(Some(allocator), ptr::null_mut());
     luaL_openlibs(state);
 
+    // load global `package` ontp the stack
     let package_name = CString::new("package").unwrap();
     lua_getfield(state, LUA_GLOBALSINDEX, package_name.as_ptr());
 
+    // load new value for `cpath` onto the stack
     let cpath_value = CString::new(cpath).unwrap();
     lua_pushstring(state, cpath_value.as_ptr());
 
+    // set property `cpath` of `package` to new value
     let cpath_name = CString::new("cpath").unwrap();
     lua_setfield(state, -2, cpath_name.as_ptr());
 
-    // pop package
+    // cleanup stack (pop `package`)
     lua_pop(state, 1);
+    assert_stacksize(state, 0)?;
 
+    // load lua chunk from string onto the stack
     let name = CString::new("init").unwrap();
     match luaL_loadbuffer(
         state,
         LUA_SOURCE.as_ptr() as *const c_char,
         LUA_SOURCE.len(),
         name.as_ptr(),
-    ) {
-        LUA_OK => {
-            //Ok(Function(self.pop_ref()))
+    ) as u32
+    {
+        LUA_OK => {}
+        LUA_ERRSYNTAX => {
+            let err_msg = CStr::from_ptr(lua_tostring(state, -1).as_ref().unwrap())
+                .to_string_lossy()
+                .to_owned();
+            lua_pop(state, 1);
+            return Err(LuaError::Custom(format!("Syntax Error: {}", err_msg)));
         }
-        _err => panic!("LUA ERROR"),
+        LUA_ERRMEM => return Err(LuaError::Custom(format!("memory allocation failed"))),
+        _ => unreachable!(),
     }
 
-    match lua_pcall(state, 0, LUA_MULTRET, 0) {
-        LUA_OK => {
-            //Ok(Function(self.pop_ref()))
+    // execute lua chunk
+    match lua_pcall(state, 0, LUA_MULTRET, 0) as u32 {
+        LUA_OK => {}
+        LUA_ERRRUN => {
+            let err_msg = CStr::from_ptr(lua_tostring(state, -1).as_ref().unwrap())
+                .to_string_lossy()
+                .to_owned();
+            lua_pop(state, 1);
+            return Err(LuaError::Custom(format!("Runtime Error: {}", err_msg)));
         }
-        err => {
-            if let Some(s) = lua_tolstring(state, -1, ptr::null_mut()).as_ref() {
-                let err_msg = CStr::from_ptr(s).to_string_lossy().into_owned();
-                panic!(err_msg);
-            }
-            panic!(format!("LUA ERROR 2 {}", err));
+        LUA_ERRMEM => return Err(LuaError::Custom(format!("memory allocation failed"))),
+        LUA_ERRERR => {
+            return Err(LuaError::Custom(format!(
+                "error while running the error handler"
+            )))
         }
+        _ => unreachable!(),
     }
 
-    state
+    // make sure stack is clean
+    assert_stacksize(state, 0)?;
+
+    Ok(state)
 }
