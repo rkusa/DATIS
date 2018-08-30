@@ -38,6 +38,7 @@ fn main() {
         .file("lua-5.1.5/src/lvm.c")
         .file("lua-5.1.5/src/lzio.c")
         .file("lua-5.1.5/src/print.c")
+        .flag_if_supported("-Wno-deprecated")
         .include("lua-5.1.5/src")
         .compile("liblua.a");
 
