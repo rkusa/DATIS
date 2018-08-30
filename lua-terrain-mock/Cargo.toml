@@ -1,12 +1,14 @@
 cargo-features = ["edition"]
 
 [package]
-name = "lua51"
+name = "lua-terrain-mock"
 version = "0.1.0"
 authors = ["Markus Ast <m@rkusa.st>"]
 edition = "2018"
 
-[dependencies]
+[lib]
+crate-type = ["dylib"]
 
-[build-dependencies]
-bindgen = "0.39"
+[dependencies]
+lua51 = { path = "../lua51" }
+libc = "0.2"
