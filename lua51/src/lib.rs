@@ -20,6 +20,14 @@ pub unsafe extern "C" fn lua_pop(L: *mut lua_State, n: c_int) {
     lua_settop(L, -(n) - 1);
 }
 
-pub unsafe extern "C" fn lua_isboolean(L: *mut lua_State, idx: c_int) -> c_int {
-    (lua_type(L, idx) == LUA_TBOOLEAN as i32) as c_int
+pub unsafe extern "C" fn lua_isboolean(L: *mut lua_State, idx: c_int) -> bool {
+    (lua_type(L, idx) == LUA_TBOOLEAN as i32) as bool
+}
+
+pub unsafe extern "C" fn lua_isnil(L: *mut lua_State, idx: c_int) -> bool {
+    (lua_type(L, idx) == LUA_TNIL as i32) as bool
+}
+
+pub unsafe extern "C" fn lua_istable(L: *mut lua_State, idx: c_int) -> bool {
+    (lua_type(L, idx) == LUA_TTABLE as i32) as bool
 }

@@ -1,6 +1,5 @@
 [workspace]
 members = [
     "lua51",
-    "lua-terrain-mock",
-    "dewr",
+    "datis",
 ]

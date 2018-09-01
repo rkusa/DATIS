@@ -1,7 +1,7 @@
 cargo-features = ["edition"]
 
 [package]
-name = "dewr"
+name = "datis"
 version = "0.1.0"
 authors = ["Markus Ast <m@rkusa.st>"]
 edition = "2018"
@@ -12,3 +12,6 @@ crate-type = ["cdylib"]
 [dependencies]
 lua51 = { path = "../lua51" }
 libc = "0.2"
+regex = "1"
+log = "0.4"
+simplelog = "0.5"
