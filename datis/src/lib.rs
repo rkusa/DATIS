@@ -4,41 +4,35 @@ extern crate regex;
 #[macro_use]
 extern crate log;
 extern crate simplelog;
+#[macro_use] extern crate const_cstr;
+extern crate byteorder;
+extern crate uuid;
+extern crate serde;
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
+extern crate ogg;
+extern crate base64;
+extern crate reqwest;
+
 
 #[macro_use]
 mod macros;
 mod datis;
 mod error;
+mod station;
+mod utils;
+mod srs;
 
-use std::ffi::CString;
 use std::fs::File;
 use std::ptr;
 
 use crate::datis::Datis;
-use crate::error::LuaError;
 use libc::c_int;
-use lua51::{luaL_Reg, luaL_openlib, lua_State, lua_pushnumber};
+use lua51::{luaL_Reg, luaL_openlib, lua_State};
 use simplelog::*;
 
 static mut DATIS: Option<Datis> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn get_pressure(state: *mut lua_State) -> c_int {
-    let datis = match DATIS.as_ref() {
-        Some(datis) => datis,
-        None => {
-            return LuaError::Uninitialized.report_to(state);
-        }
-    };
-
-    match datis.get_pressure() {
-        Ok(pressure) => {
-            lua_pushnumber(state, pressure);
-            1
-        }
-        Err(err) => err.report_to(state),
-    }
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn init(state: *mut lua_State) -> c_int {
@@ -52,6 +46,9 @@ pub unsafe extern "C" fn init(state: *mut lua_State) -> c_int {
 
     match Datis::create(state) {
         Ok(datis) => {
+//            for station in &datis.stations {
+//                station.start();
+//            }
             DATIS = Some(datis);
         }
         Err(err) => {
@@ -66,18 +63,10 @@ pub unsafe extern "C" fn init(state: *mut lua_State) -> c_int {
 #[no_mangle]
 #[allow(non_snake_case)]
 pub unsafe extern "C" fn luaopen_datis(state: *mut lua_State) -> c_int {
-    let library_name = CString::new("datis").unwrap();
-    let init_name = CString::new("init").unwrap();
-    let get_pressure_name = CString::new("getPressure").unwrap();
-
     let registration = &[
         luaL_Reg {
-            name: init_name.as_ptr(),
+            name: cstr!("init"),
             func: Some(init),
-        },
-        luaL_Reg {
-            name: get_pressure_name.as_ptr(),
-            func: Some(get_pressure),
         },
         luaL_Reg {
             name: ptr::null(),
@@ -85,7 +74,7 @@ pub unsafe extern "C" fn luaopen_datis(state: *mut lua_State) -> c_int {
         },
     ];
 
-    luaL_openlib(state, library_name.as_ptr(), registration.as_ptr(), 0);
+    luaL_openlib(state, cstr!("datis"), registration.as_ptr(), 0);
 
     1
 }

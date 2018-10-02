@@ -1,22 +1,19 @@
-use std::ffi::{CStr, CString};
-//use std::sync::mpsc::{self, Receiver, Sender};
-use std::ptr;
 use std::str::FromStr;
+use std::thread;
 
 use crate::error::{assert_stacksize, assert_type, LuaError, LuaType};
-use libc::{self, c_char, c_void};
 use lua51::{
-    luaL_loadbuffer, luaL_openlibs, lua_State, lua_call, lua_getfield, lua_isnumber, lua_isstring,
-    lua_newstate, lua_next, lua_pcall, lua_pop, lua_pushnil, lua_pushnumber, lua_pushstring,
-    lua_setfield, lua_tonumber, lua_tostring, LUA_ERRERR, LUA_ERRMEM, LUA_ERRRUN, LUA_ERRSYNTAX,
-    LUA_GLOBALSINDEX, LUA_MULTRET, LUA_OK,
+     lua_State, lua_call, lua_getfield,  lua_isstring,
+     lua_next,  lua_pop, lua_pushnil, lua_pushnumber, lua_pushstring,
+     lua_tonumber, lua_tostring,
+    LUA_GLOBALSINDEX,
 };
 use regex::Regex;
-
-static LUA_SOURCE: &str = include_str!("lua_env.lua");
+use crate::station::{AtisStation, FinalStation, Position, Airfield, StaticWind};
+use crate::utils::create_lua_state;
 
 pub struct Datis {
-    state: *mut lua_State,
+    pub stations: Vec<AtisStation>,
 }
 
 impl Datis {
@@ -160,140 +157,119 @@ impl Datis {
 
         stations.retain(|s| s.airfield.is_some());
 
+        // get _current_mission.mission.weather
+        lua_getfield(state, LUA_GLOBALSINDEX, cstr!("_current_mission"));
+        assert_type(state, LuaType::Table)?;
+        lua_getfield(state, -1, cstr!("mission"));
+        assert_type(state, LuaType::Table)?;
+        lua_getfield(state, -1, cstr!("weather"));
+        assert_type(state, LuaType::Table)?;
+
+        // get atmosphere_type
+        lua_getfield(state, -1, cstr!("atmosphere_type"));
+        assert_type(state, LuaType::Number)?;
+        let atmosphere_type = lua_tonumber(state, -1);
+        lua_pop(state, 1);
+        if atmosphere_type == 0.0 { // is static DCS weather system
+            // get wind
+            lua_getfield(state, -1, cstr!("wind"));
+            assert_type(state, LuaType::Table)?;
+            // get wind_at_ground
+            lua_getfield(state, -1, cstr!("wind"));
+            assert_type(state, LuaType::Table)?;
+
+            // get wind_at_ground.speed
+            lua_getfield(state, -1, cstr!("speed"));
+            assert_type(state, LuaType::Number)?;
+            let wind_speed = lua_tonumber(state, -1);
+            lua_pop(state, 1);
+
+            // get wind_at_ground.dir
+            lua_getfield(state, -1, cstr!("dir"));
+            assert_type(state, LuaType::Number)?;
+            let mut wind_dir = lua_tonumber(state, -1);
+            lua_pop(state, 1);
+
+            for station in stations.iter_mut() {
+                // rotate dir
+                wind_dir -= 180.0;
+                if wind_dir < 0.0 {
+                    wind_dir += 360.0;
+                }
+
+                station.static_wind = Some(StaticWind{
+                    dir: wind_dir.to_radians(), speed: wind_speed
+                });
+            }
+
+            // pop wind_at_ground, wind
+            lua_pop(state, 2);
+        }
+
+        // pop weather, mission, _current_mission
+        lua_pop(state, 3);
+        assert_stacksize(state, 0)?;
+
         debug!("ATIS Stations:");
         for station in &stations {
             debug!("  - {} (Freq: {})", station.name, station.freq);
         }
 
-        let new_state = create_lua_state(&cpath)?;
+        for station in stations {
+            let cpath = cpath.clone();
+            thread::spawn(move || {
+                let airfield = station.airfield.as_ref().unwrap();
+                let lua = format!(
+                    r#"
+                    local Weather = require 'Weather'
+                    local position = {{
+                        x = {},
+                        y = {},
+                        z = {},
+                    }}
 
-        Ok(Datis { state: new_state })
-    }
+                    getWeather = function()
+                        local wind = Weather.getGroundWindAtPoint({{ position = position }})
+				        local temp, pressure = Weather.getTemperatureAndPressureAtPoint({{
+				            position = position
+				        }})
 
-    pub unsafe fn get_pressure(&self) -> Result<f64, LuaError> {
-        assert_stacksize(self.state, 0)?;
+				        return {{
+				            windSpeed = wind.v,
+				            windDir = wind.a,
+				            temp = temp,
+				            pressure = pressure,
+				        }}
+                    end
+                "#,
+                    airfield.position.x,
+                    airfield.position.alt,
+                    airfield.position.y,
+                );
+                debug!("Loading Lua: {}", lua);
+                let new_state = match create_lua_state(&cpath, &lua) {
+                    Ok(state) => state,
+                    Err(err) => {
+                        error!("{}", err);
+                        return;
+                    }
+                };
+                let station = FinalStation {
+                     name: station.name,
+                     freq: station.freq,
+                     airfield: station.airfield,
+                     static_wind: station.static_wind,
+                     state: new_state,
+                };
 
-        // move global isVisible function onto the stack
-        let get_pressure_name = CString::new("getPressure").unwrap();
-        lua_getfield(self.state, LUA_GLOBALSINDEX, get_pressure_name.as_ptr());
-
-        // call method with 0 arguments and 1 result
-        lua_call(self.state, 0, 1);
-
-        // read result from stack
-        if lua_isnumber(self.state, -1) == 0 {
-            return Err(LuaError::InvalidArgument(1));
+                if let Err(err) = crate::srs::start(station) {
+                    error!("{}", err);
+                }
+            });
         }
-        let pressure = lua_tonumber(self.state, -1);
-        lua_pop(self.state, 1); // cleanup stack
 
-        // make sure we have a clean stack
-        assert_stacksize(self.state, 0)?;
-
-        Ok(pressure)
+        Ok(Datis { stations: Vec::new() })
     }
-}
-
-unsafe fn create_lua_state(cpath: &str) -> Result<*mut lua_State, LuaError> {
-    // thx to https://github.com/kyren/rlua
-    unsafe extern "C" fn allocator(
-        _: *mut c_void,
-        ptr: *mut c_void,
-        _: usize,
-        nsize: usize,
-    ) -> *mut c_void {
-        if nsize == 0 {
-            libc::free(ptr);
-            std::ptr::null_mut()
-        } else {
-            libc::realloc(ptr, nsize)
-        }
-    }
-
-    // create new lua state and load all standard lua libraries
-    let state = lua_newstate(Some(allocator), ptr::null_mut());
-    luaL_openlibs(state);
-
-    // load global `package` onto the stack
-    let package_name = CString::new("package").unwrap();
-    lua_getfield(state, LUA_GLOBALSINDEX, package_name.as_ptr());
-
-    // load new value for `cpath` onto the stack
-    let cpath_value = CString::new(cpath).unwrap();
-    lua_pushstring(state, cpath_value.as_ptr());
-
-    // set property `cpath` of `package` to new value
-    let cpath_name = CString::new("cpath").unwrap();
-    lua_setfield(state, -2, cpath_name.as_ptr());
-
-    // cleanup stack (pop `package`)
-    lua_pop(state, 1);
-    assert_stacksize(state, 0)?;
-
-    // load lua chunk from string onto the stack
-    let name = CString::new("init").unwrap();
-    match luaL_loadbuffer(
-        state,
-        LUA_SOURCE.as_ptr() as *const c_char,
-        LUA_SOURCE.len(),
-        name.as_ptr(),
-    ) as u32
-    {
-        LUA_OK => {}
-        LUA_ERRSYNTAX => {
-            let err_msg = CStr::from_ptr(lua_tostring(state, -1).as_ref().unwrap())
-                .to_string_lossy()
-                .to_owned();
-            lua_pop(state, 1);
-            return Err(LuaError::Custom(format!("Syntax Error: {}", err_msg)));
-        }
-        LUA_ERRMEM => return Err(LuaError::Custom(format!("memory allocation failed"))),
-        _ => unreachable!(),
-    }
-
-    // execute lua chunk
-    match lua_pcall(state, 0, LUA_MULTRET, 0) as u32 {
-        LUA_OK => {}
-        LUA_ERRRUN => {
-            let err_msg = CStr::from_ptr(lua_tostring(state, -1).as_ref().unwrap())
-                .to_string_lossy()
-                .to_owned();
-            lua_pop(state, 1);
-            return Err(LuaError::Custom(format!("Runtime Error: {}", err_msg)));
-        }
-        LUA_ERRMEM => return Err(LuaError::Custom(format!("memory allocation failed"))),
-        LUA_ERRERR => {
-            return Err(LuaError::Custom(format!(
-                "error while running the error handler"
-            )))
-        }
-        _ => unreachable!(),
-    }
-
-    // make sure stack is clean
-    assert_stacksize(state, 0)?;
-
-    Ok(state)
-}
-
-#[derive(Debug, PartialEq)]
-struct AtisStation {
-    name: String,
-    freq: u64,
-    airfield: Option<Airfield>,
-}
-
-#[derive(Debug, PartialEq)]
-struct Position {
-    x: f64,
-    y: f64,
-    alt: f64,
-}
-
-#[derive(Debug, PartialEq)]
-struct Airfield {
-    position: Position,
-    runways: Vec<String>,
 }
 
 fn extract_atis_stations(situation: &str) -> Vec<AtisStation> {
@@ -307,6 +283,7 @@ fn extract_atis_stations(situation: &str) -> Vec<AtisStation> {
                 name,
                 freq,
                 airfield: None,
+                static_wind: None,
             }
         }).collect()
 }
@@ -332,16 +309,19 @@ mod test {
                     name: "Kutaisi".to_string(),
                     freq: 251_000_000,
                     airfield: None,
+                    static_wind: None,
                 },
                 AtisStation {
                     name: "Batumi".to_string(),
                     freq: 131_500_000,
                     airfield: None,
+                    static_wind: None,
                 },
                 AtisStation {
                     name: "Senaki-Kolkhi".to_string(),
                     freq: 145_000_000,
                     airfield: None,
+                    static_wind: None,
                 }
             ]
         );

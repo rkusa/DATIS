@@ -1,6 +1,6 @@
 macro_rules! cstr {
     ($s:expr) => {
-        ::std::ffi::CString::new($s).unwrap().as_ptr()
+        const_cstr!($s).as_ptr()
     };
 }
 
