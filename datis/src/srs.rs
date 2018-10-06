@@ -18,15 +18,14 @@ pub fn start(station: FinalStation<'_>) -> Result<(), io::Error> {
     let sguid = base64::encode_config(sguid.as_bytes(), base64::URL_SAFE_NO_PAD);
     assert_eq!(sguid.len(), 22);
 
-    let airfield = station.airfield.as_ref().unwrap();
     let sync_msg = Message {
         client: Some(Client {
             client_guid: &sguid,
             name: &station.name,
             position: Position {
-                x: airfield.position.x,
-                y: airfield.position.alt,
-                z: airfield.position.y,
+                x: station.airfield.position.x,
+                y: station.airfield.position.alt,
+                z: station.airfield.position.y,
             },
         }),
         msg_type: MsgType::Sync,
@@ -141,7 +140,7 @@ fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), io::
         let mut id: u64 = 1;
         while let Some(pck) = audio.read_packet().unwrap() {
             size += pck.data.len();
-            let frame = pack_frame(&sguid, id, station.freq, &pck.data)?;
+            let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
             stream.write(&frame)?;
             id += 1;
             thread::sleep(Duration::from_millis(20));

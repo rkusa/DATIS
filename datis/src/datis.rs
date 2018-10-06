@@ -31,7 +31,7 @@ impl Datis {
 
         debug!("Detected ATIS Stations:");
         for station in &stations {
-            debug!("  - {} (Freq: {})", station.name, station.freq);
+            debug!("  - {} (Freq: {})", station.name, station.atis_freq);
         }
 
         // FETCH AIRDROMES
@@ -147,7 +147,7 @@ impl Datis {
 
         debug!("Valid ATIS Stations:");
         for station in &stations {
-            debug!("  - {} (Freq: {})", station.name, station.freq);
+            debug!("  - {} (Freq: {})", station.name, station.atis_freq);
         }
 
         for station in stations {
@@ -185,8 +185,9 @@ impl Datis {
                 let new_state = create_lua_state(&cpath, &code).unwrap();
                 let station = FinalStation {
                     name: station.name,
-                    freq: station.freq,
-                    airfield: station.airfield,
+                    atis_freq: station.atis_freq,
+                    traffic_freq: station.traffic_freq,
+                    airfield: station.airfield.unwrap(),
                     static_wind: station.static_wind,
                     state: RefCell::new(new_state),
                 };
@@ -204,20 +205,37 @@ impl Datis {
 }
 
 fn extract_atis_stations(situation: &str) -> Vec<AtisStation> {
+    // extract ATIS stations and frequencies
     let re = Regex::new(r"ATIS ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
-    re.captures_iter(situation)
+    let mut stations: Vec<AtisStation> = re
+        .captures_iter(situation)
         .map(|caps| {
             let name = caps.get(1).unwrap().as_str().to_string();
             let freq = caps.get(2).unwrap().as_str();
             let freq = (f32::from_str(freq).unwrap() * 1_000_000.0) as u64;
             AtisStation {
                 name,
-                freq,
+                atis_freq: freq,
+                traffic_freq: None,
                 airfield: None,
                 static_wind: None,
             }
         })
-        .collect()
+        .collect();
+
+    // extract optional traffic frquencies
+    let re = Regex::new(r"TRAFFIC ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
+    for caps in re.captures_iter(situation) {
+        let name = caps.get(1).unwrap().as_str().to_string();
+        let freq = caps.get(2).unwrap().as_str();
+        let freq = (f32::from_str(freq).unwrap() * 1_000_000.0) as u64;
+
+        if let Some(station) = stations.iter_mut().find(|s| s.name == name) {
+            station.traffic_freq = Some(freq);
+        }
+    }
+
+    stations
 }
 
 #[cfg(test)]
@@ -231,6 +249,8 @@ mod test {
             ATIS Kutaisi 251.000
             ATIS Batumi 131.5
             ATIS Senaki-Kolkhi 145
+
+            TRAFFIC Batumi 255.00
         "#,
         );
 
@@ -239,19 +259,22 @@ mod test {
             vec![
                 AtisStation {
                     name: "Kutaisi".to_string(),
-                    freq: 251_000_000,
+                    atis_freq: 251_000_000,
+                    traffic_freq: None,
                     airfield: None,
                     static_wind: None,
                 },
                 AtisStation {
                     name: "Batumi".to_string(),
-                    freq: 131_500_000,
+                    atis_freq: 131_500_000,
+                    traffic_freq: Some(255_000_000),
                     airfield: None,
                     static_wind: None,
                 },
                 AtisStation {
                     name: "Senaki-Kolkhi".to_string(),
-                    freq: 145_000_000,
+                    atis_freq: 145_000_000,
+                    traffic_freq: None,
                     airfield: None,
                     static_wind: None,
                 }
