@@ -95,72 +95,84 @@ fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), io::
         audio_content: String,
     }
 
-    // TODO: unwrap
-    let report = match station.generate_report() {
-        Ok(report) => report,
-        Err(err) => {
-            error!("{}", err);
-            return Ok(());
-        }
-    };
-    info!("Report: {}", report);
-
-    let payload = TextToSpeechRequest {
-        audio_config: AudioConfig {
-            audio_encoding: "OGG_OPUS",
-            sample_rate_hertz: 16_000,
-            speaking_rate: 0.9,
-        },
-        input: Input { text: &report },
-        voice: Voice {
-            language_code: "en-US",
-            name: "en-US-Standard-C",
-        },
-    };
-
-    let key = "AIzaSyBB9rHqNGlclJTzz6bOA4hjjRmZBpdQ1Gg";
-    let url = format!(
-        "https://texttospeech.googleapis.com/v1/text:synthesize?key={}",
-        key
-    );
-    let client = reqwest::Client::new();
-    let mut res = client.post(&url).json(&payload).send().unwrap();
-    let data: TextToSpeechResponse = res.json().unwrap();
-    let data = base64::decode(&data.audio_content).unwrap();
-    let mut data = Cursor::new(data);
-
-    let mut stream = TcpStream::connect("127.0.0.1:5003")?;
-    stream.set_nodelay(true)?;
-
+    let interval = Duration::from_secs(60 * 20);
+    let mut interval_start = Instant::now();
     loop {
-        data.set_position(0);
-        let start = Instant::now();
-        let mut size = 0;
-        let mut audio = PacketReader::new(data);
-        let mut id: u64 = 1;
-        while let Some(pck) = audio.read_packet().unwrap() {
-            size += pck.data.len();
-            let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
-            stream.write(&frame)?;
-            id += 1;
-            thread::sleep(Duration::from_millis(20));
+        interval_start = Instant::now();
+
+        // TODO: unwrap
+        let report = match station.generate_report() {
+            Ok(report) => report,
+            Err(err) => {
+                error!("{}", err);
+                return Ok(());
+            }
+        };
+        info!("Report: {}", report);
+
+        let payload = TextToSpeechRequest {
+            audio_config: AudioConfig {
+                audio_encoding: "OGG_OPUS",
+                sample_rate_hertz: 16_000,
+                speaking_rate: 0.9,
+            },
+            input: Input { text: &report },
+            voice: Voice {
+                language_code: "en-US",
+                name: "en-US-Standard-C",
+            },
+        };
+
+        let key = "AIzaSyBB9rHqNGlclJTzz6bOA4hjjRmZBpdQ1Gg";
+        let url = format!(
+            "https://texttospeech.googleapis.com/v1/text:synthesize?key={}",
+            key
+        );
+        let client = reqwest::Client::new();
+        let mut res = client.post(&url).json(&payload).send().unwrap();
+        let data: TextToSpeechResponse = res.json().unwrap();
+        let data = base64::decode(&data.audio_content).unwrap();
+        let mut data = Cursor::new(data);
+
+        let mut stream = TcpStream::connect("127.0.0.1:5003")?;
+        stream.set_nodelay(true)?;
+
+        loop {
+            let elapsed = Instant::now() - interval_start;
+            if elapsed > interval {
+                // every 20min, generate a new report
+                break;
+            }
+
+            data.set_position(0);
+            let start = Instant::now();
+            let mut size = 0;
+            let mut audio = PacketReader::new(data);
+            let mut id: u64 = 1;
+            while let Some(pck) = audio.read_packet().unwrap() {
+                size += pck.data.len();
+                let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
+                stream.write(&frame)?;
+                id += 1;
+                thread::sleep(Duration::from_millis(20));
+            }
+
+            info!("TOTAL SIZE: {}", size);
+
+            // 32 kBit/s
+            let secs = (size * 8) as f64 / 1024.0 / 32.0;
+            info!("SECONDS: {}", secs);
+
+            let playtime = Duration::from_millis((secs * 1000.0) as u64);
+            let elapsed = Instant::now() - start;
+            if playtime > elapsed {
+                thread::sleep(playtime - elapsed);
+            }
+
+            thread::sleep(Duration::from_secs(3));
+
+            data = audio.into_inner();
         }
-
-        info!("TOTAL SIZE: {}", size);
-
-        // 32 kBit/s
-        let secs = (size * 8) as f64 / 1024.0 / 32.0;
-        info!("SECONDS: {}", secs);
-
-        let playtime = Duration::from_millis((secs * 1000.0) as u64);
-        let elapsed = Instant::now() - start;
-        if playtime > elapsed {
-            thread::sleep(playtime - elapsed);
-        }
-
-        thread::sleep(Duration::from_secs(3));
-
-        data = audio.into_inner();
     }
 
     //    Ok(())
