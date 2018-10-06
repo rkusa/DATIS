@@ -99,11 +99,4 @@ impl<'a> FinalStation<'a> {
 
         Ok(info)
     }
-
-    pub fn start(&self) -> Result<(), LuaError> {
-        let report = self.generate_report()?;
-        info!("Report: {}", report);
-
-        Ok(())
-    }
 }

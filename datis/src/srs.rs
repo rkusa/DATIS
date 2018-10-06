@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 const MAX_FRAME_LENGTH: usize = 1024;
 
-pub fn start(station: FinalStation) -> Result<(), io::Error> {
+pub fn start(station: FinalStation<'_>) -> Result<(), io::Error> {
     let mut stream = TcpStream::connect("127.0.0.1:5002")?;
     stream.set_nodelay(true)?;
 
@@ -60,7 +60,7 @@ pub fn start(station: FinalStation) -> Result<(), io::Error> {
     return Ok(());
 }
 
-fn audio_broadcast(sguid: String, station: &FinalStation) -> Result<(), io::Error> {
+fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), io::Error> {
     #[derive(Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     struct AudioConfig<'a> {
@@ -144,7 +144,7 @@ fn audio_broadcast(sguid: String, station: &FinalStation) -> Result<(), io::Erro
             let frame = pack_frame(&sguid, id, station.freq, &pck.data)?;
             stream.write(&frame)?;
             id += 1;
-            thread::sleep_ms(20);
+            thread::sleep(Duration::from_millis(20));
         }
 
         info!("TOTAL SIZE: {}", size);
@@ -164,7 +164,7 @@ fn audio_broadcast(sguid: String, station: &FinalStation) -> Result<(), io::Erro
         data = audio.into_inner();
     }
 
-    Ok(())
+    //    Ok(())
 }
 
 fn pack_frame(sguid: &str, id: u64, freq: u64, rd: &Vec<u8>) -> Result<Vec<u8>, io::Error> {
@@ -274,7 +274,7 @@ impl<'de> ::serde::Deserialize<'de> for MsgType {
         impl<'de> ::serde::de::Visitor<'de> for Visitor {
             type Value = MsgType;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                 formatter.write_str("positive integer")
             }
 

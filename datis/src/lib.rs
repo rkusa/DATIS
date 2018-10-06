@@ -1,21 +1,11 @@
-extern crate hlua51;
-extern crate libc;
-extern crate lua51_sys;
-extern crate regex;
+#![warn(rust_2018_idioms)]
+
 #[macro_use]
 extern crate log;
-extern crate simplelog;
 #[macro_use]
 extern crate const_cstr;
-extern crate byteorder;
-extern crate serde;
-extern crate serde_json;
-extern crate uuid;
 #[macro_use]
 extern crate serde_derive;
-extern crate base64;
-extern crate ogg;
-extern crate reqwest;
 
 #[macro_use]
 mod macros;
@@ -71,7 +61,7 @@ pub extern "C" fn init(state: *mut ffi::lua_State) -> c_int {
                 //            }
                 DATIS = Some(datis);
             }
-            Err(err) => {
+            Err(_err) => {
                 //            err.report_to(state);
                 return 0;
             }

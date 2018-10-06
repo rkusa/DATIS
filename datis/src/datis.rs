@@ -14,7 +14,7 @@ pub struct Datis {
 }
 
 impl Datis {
-    pub fn create(mut lua: Lua, cpath: String) -> Result<Self, LuaError> {
+    pub fn create(mut lua: Lua<'_>, cpath: String) -> Result<Self, LuaError> {
         debug!("Extracting ATIS stations from Mission Situation");
 
         let mut stations = {
