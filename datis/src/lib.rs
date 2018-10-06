@@ -1,36 +1,37 @@
-extern crate libc;
 extern crate hlua51;
+extern crate libc;
 extern crate lua51_sys;
 extern crate regex;
 #[macro_use]
 extern crate log;
 extern crate simplelog;
-#[macro_use] extern crate const_cstr;
+#[macro_use]
+extern crate const_cstr;
 extern crate byteorder;
-extern crate uuid;
 extern crate serde;
 extern crate serde_json;
+extern crate uuid;
 #[macro_use]
 extern crate serde_derive;
-extern crate ogg;
 extern crate base64;
+extern crate ogg;
 extern crate reqwest;
 
 #[macro_use]
 mod macros;
 mod datis;
+mod srs;
 mod station;
 mod utils;
-mod srs;
 
+use std::ffi::CString;
 use std::fs::File;
 use std::ptr;
-use std::ffi::CString;
 
 use crate::datis::Datis;
+use hlua51::Lua;
 use libc::c_int;
 use lua51_sys as ffi;
-use hlua51::Lua;
 use simplelog::*;
 
 static mut DATIS: Option<Datis> = None;
@@ -42,14 +43,15 @@ pub extern "C" fn init(state: *mut ffi::lua_State) -> c_int {
         Config::default(),
         // TODO: detect correct path
         File::create("M:/Saved Games/DCS.openbeta/Logs/DATIS-dll.log").unwrap(),
-    )]).unwrap();
+    )])
+    .unwrap();
 
     debug!("Initializing ...");
 
     unsafe {
-
         let received = ffi::lua_gettop(state);
-        if received != 1 { // expect 1 argument
+        if received != 1 {
+            // expect 1 argument
             return report_error(state, "expected 1 argument: cpath");
         }
 
@@ -64,19 +66,18 @@ pub extern "C" fn init(state: *mut ffi::lua_State) -> c_int {
 
         match Datis::create(lua, cpath.into_owned()) {
             Ok(datis) => {
-    //            for station in &datis.stations {
-    //                station.start();
-    //            }
+                //            for station in &datis.stations {
+                //                station.start();
+                //            }
                 DATIS = Some(datis);
             }
             Err(err) => {
-    //            err.report_to(state);
+                //            err.report_to(state);
                 return 0;
             }
         }
 
         0
-
     }
 }
 

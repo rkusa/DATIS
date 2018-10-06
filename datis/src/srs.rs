@@ -1,13 +1,12 @@
-
-use std::{fmt, thread};
-use std::io::{self, Write, BufRead, BufReader, Cursor};
+use std::io::{self, BufRead, BufReader, Cursor, Write};
 use std::net::TcpStream;
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
+use std::{fmt, thread};
 
-use byteorder::{WriteBytesExt, LittleEndian};
-use uuid::Uuid;
-use ogg::reading::PacketReader;
+use byteorder::{LittleEndian, WriteBytesExt};
 use crate::station::FinalStation;
+use ogg::reading::PacketReader;
+use uuid::Uuid;
 
 const MAX_FRAME_LENGTH: usize = 1024;
 
@@ -28,7 +27,7 @@ pub fn start(station: FinalStation) -> Result<(), io::Error> {
                 x: airfield.position.x,
                 y: airfield.position.alt,
                 z: airfield.position.y,
-            }
+            },
         }),
         msg_type: MsgType::Sync,
         version: "1.5.3.5",
@@ -48,19 +47,18 @@ pub fn start(station: FinalStation) -> Result<(), io::Error> {
             return Ok(());
         }
 
-//        println!("RECEIVED: {}", String::from_utf8_lossy(&data));
-//        let msg: Message = serde_json::from_slice(&data).unwrap();
+        //        println!("RECEIVED: {}", String::from_utf8_lossy(&data));
+        //        let msg: Message = serde_json::from_slice(&data).unwrap();
 
-//        thread::spawn(move || {
+        //        thread::spawn(move || {
         audio_broadcast(sguid.clone(), &station)?;
-//        });
+        //        });
 
         break;
     }
 
     return Ok(());
 }
-
 
 fn audio_broadcast(sguid: String, station: &FinalStation) -> Result<(), io::Error> {
     #[derive(Serialize, Debug)]
@@ -103,7 +101,7 @@ fn audio_broadcast(sguid: String, station: &FinalStation) -> Result<(), io::Erro
         Ok(report) => report,
         Err(err) => {
             error!("{}", err);
-            return Ok(())
+            return Ok(());
         }
     };
     info!("Report: {}", report);
@@ -114,21 +112,20 @@ fn audio_broadcast(sguid: String, station: &FinalStation) -> Result<(), io::Erro
             sample_rate_hertz: 16_000,
             speaking_rate: 0.9,
         },
-        input: Input {
-            text: &report,
-        },
-        voice: Voice{
+        input: Input { text: &report },
+        voice: Voice {
             language_code: "en-US",
             name: "en-US-Standard-C",
         },
     };
 
     let key = "AIzaSyBB9rHqNGlclJTzz6bOA4hjjRmZBpdQ1Gg";
-    let url = format!("https://texttospeech.googleapis.com/v1/text:synthesize?key={}", key);
+    let url = format!(
+        "https://texttospeech.googleapis.com/v1/text:synthesize?key={}",
+        key
+    );
     let client = reqwest::Client::new();
-    let mut res = client.post(&url)
-        .json(&payload)
-        .send().unwrap();
+    let mut res = client.post(&url).json(&payload).send().unwrap();
     let data: TextToSpeechResponse = res.json().unwrap();
     let data = base64::decode(&data.audio_content).unwrap();
     let mut data = Cursor::new(data);
@@ -169,7 +166,6 @@ fn audio_broadcast(sguid: String, station: &FinalStation) -> Result<(), io::Erro
 
     Ok(())
 }
-
 
 fn pack_frame(sguid: &str, id: u64, freq: u64, rd: &Vec<u8>) -> Result<Vec<u8>, io::Error> {
     let mut frame = Cursor::new(Vec::with_capacity(MAX_FRAME_LENGTH));
@@ -258,7 +254,8 @@ struct Message<'a> {
 
 impl ::serde::Serialize for MsgType {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: ::serde::Serializer
+    where
+        S: ::serde::Serializer,
     {
         // Serialize the enum as a u64.
         serializer.serialize_u64(match *self {
@@ -269,7 +266,8 @@ impl ::serde::Serialize for MsgType {
 
 impl<'de> ::serde::Deserialize<'de> for MsgType {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: ::serde::Deserializer<'de>
+    where
+        D: ::serde::Deserializer<'de>,
     {
         struct Visitor;
 
@@ -281,15 +279,18 @@ impl<'de> ::serde::Deserialize<'de> for MsgType {
             }
 
             fn visit_u64<E>(self, value: u64) -> Result<MsgType, E>
-                where E: ::serde::de::Error
+            where
+                E: ::serde::de::Error,
             {
                 // Rust does not come with a simple way of converting a
                 // number to an enum, so use a big `match`.
                 match value {
                     2 => Ok(MsgType::Sync),
-                    _ => {
-                        Err(E::custom(format!("unknown {} value: {}", stringify!(MsgType), value)))
-                    }
+                    _ => Err(E::custom(format!(
+                        "unknown {} value: {}",
+                        stringify!(MsgType),
+                        value
+                    ))),
                 }
             }
         }

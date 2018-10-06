@@ -42,16 +42,16 @@ pub struct StaticWind {
 
 #[derive(Debug)]
 struct WeatherInfo {
-    wind_speed: f64, // in m/s
-    wind_dir: f64, // in radians (the direction the wind is coming from)
+    wind_speed: f64,  // in m/s
+    wind_dir: f64,    // in radians (the direction the wind is coming from)
     temperature: f64, // in °C
-    pressure: f64, // in N/m2
+    pressure: f64,    // in N/m2
 }
 
 impl<'a> FinalStation<'a> {
     pub fn generate_report(&self) -> Result<String, LuaError> {
         // TODO: unwrap
-        let weather = unsafe { self.get_current_weather()? };
+        let weather = self.get_current_weather()?;
         let report = format!(
             r#"
                 This is {}.
@@ -70,7 +70,7 @@ impl<'a> FinalStation<'a> {
         Ok(report)
     }
 
-    unsafe fn get_current_weather(&self) -> Result<WeatherInfo, LuaError> {
+    fn get_current_weather(&self) -> Result<WeatherInfo, LuaError> {
         let mut lua = self.state.borrow_mut();
 
         // TODO: unwrap
@@ -85,9 +85,11 @@ impl<'a> FinalStation<'a> {
         let temperature: f64 = weather.get("temp").unwrap();
         let pressure: f64 = weather.get("pressure").unwrap();
 
-
         let mut info = WeatherInfo {
-            wind_speed, wind_dir, temperature, pressure
+            wind_speed,
+            wind_dir,
+            temperature,
+            pressure,
         };
 
         if let Some(ref static_wind) = self.static_wind {

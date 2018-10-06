@@ -1,11 +1,11 @@
+use std::cell::RefCell;
 use std::str::FromStr;
 use std::thread;
-use std::cell::RefCell;
 
-use hlua51::{Lua, LuaTable, LuaFunction};
-use regex::Regex;
-use crate::station::{AtisStation, FinalStation, Position, Airfield, StaticWind};
+use crate::station::{Airfield, AtisStation, FinalStation, Position, StaticWind};
 use crate::utils::create_lua_state;
+use hlua51::{Lua, LuaFunction, LuaTable};
+use regex::Regex;
 
 type LuaError = usize;
 
@@ -22,7 +22,8 @@ impl Datis {
             let mut dcs: LuaTable<_> = lua.get("DCS").unwrap();
 
             // TODO: unwrap
-            let mut get_mission_description: LuaFunction<_> = dcs.get("getMissionDescription").unwrap();
+            let mut get_mission_description: LuaFunction<_> =
+                dcs.get("getMissionDescription").unwrap();
             let mission_situation: String = get_mission_description.call().unwrap();
 
             extract_atis_stations(&mission_situation)
@@ -40,7 +41,8 @@ impl Datis {
 
             // TODO: unwrap
             let mut get_terrain_config: LuaFunction<_> = terrain.get("GetTerrainConfig").unwrap();
-            let mut airdromes: LuaTable<_> = get_terrain_config.call_with_args("Airdromes").unwrap();
+            let mut airdromes: LuaTable<_> =
+                get_terrain_config.call_with_args("Airdromes").unwrap();
 
             let mut i = 12;
             while let Some(mut airdrome) = airdromes.get::<LuaTable<_>, _, _>(i) {
@@ -59,7 +61,8 @@ impl Datis {
 
                     let (x, y) = {
                         // TODO: unwrap
-                        let mut reference_point: LuaTable<_> = airdrome.get("reference_point").unwrap();
+                        let mut reference_point: LuaTable<_> =
+                            airdrome.get("reference_point").unwrap();
                         let x: f64 = reference_point.get("x").unwrap();
                         let y: f64 = reference_point.get("y").unwrap();
                         (x, y)
@@ -67,7 +70,8 @@ impl Datis {
 
                     let alt = {
                         // TODO: unwrap
-                        let mut default_camera_position: LuaTable<_> = airdrome.get("default_camera_position").unwrap();
+                        let mut default_camera_position: LuaTable<_> =
+                            airdrome.get("default_camera_position").unwrap();
                         let mut pnt: LuaTable<_> = default_camera_position.get("pnt").unwrap();
                         let alt: f64 = pnt.get(1).unwrap();
                         // This is only the alt of the camera position of the airfield, which seems to be
@@ -112,7 +116,8 @@ impl Datis {
         // TODO: unwrap
         let atmosphere_type: f64 = weather.get("atmosphere_type").unwrap();
 
-        if atmosphere_type == 0.0 { // is static DCS weather system
+        if atmosphere_type == 0.0 {
+            // is static DCS weather system
             // get wind
             // TODO: unwrap
             let mut wind: LuaTable<_> = weather.get("wind").unwrap();
@@ -133,8 +138,9 @@ impl Datis {
                     wind_dir += 360.0;
                 }
 
-                station.static_wind = Some(StaticWind{
-                    dir: wind_dir.to_radians(), speed: wind_speed
+                station.static_wind = Some(StaticWind {
+                    dir: wind_dir.to_radians(),
+                    speed: wind_speed,
                 });
             }
         }
@@ -171,20 +177,18 @@ impl Datis {
 				        }}
                     end
                 "#,
-                    airfield.position.x,
-                    airfield.position.alt,
-                    airfield.position.y,
+                    airfield.position.x, airfield.position.alt, airfield.position.y,
                 );
                 debug!("Loading Lua: {}", code);
 
                 // TODO: unwrap
                 let new_state = create_lua_state(&cpath, &code).unwrap();
                 let station = FinalStation {
-                     name: station.name,
-                     freq: station.freq,
-                     airfield: station.airfield,
-                     static_wind: station.static_wind,
-                     state: RefCell::new(new_state),
+                    name: station.name,
+                    freq: station.freq,
+                    airfield: station.airfield,
+                    static_wind: station.static_wind,
+                    state: RefCell::new(new_state),
                 };
 
                 if let Err(err) = crate::srs::start(station) {
@@ -193,7 +197,9 @@ impl Datis {
             });
         }
 
-        Ok(Datis { stations: Vec::new() })
+        Ok(Datis {
+            stations: Vec::new(),
+        })
     }
 }
 
@@ -210,7 +216,8 @@ fn extract_atis_stations(situation: &str) -> Vec<AtisStation> {
                 airfield: None,
                 static_wind: None,
             }
-        }).collect()
+        })
+        .collect()
 }
 
 #[cfg(test)]
