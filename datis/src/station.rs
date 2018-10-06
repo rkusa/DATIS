@@ -1,5 +1,8 @@
-use lua51::{lua_State, lua_getfield, LUA_GLOBALSINDEX, lua_tonumber, lua_pop, lua_call};
-use crate::error::{LuaType, assert_stacksize, assert_type, LuaError};
+use std::cell::RefCell;
+
+use hlua51::{Lua, LuaFunction, LuaTable};
+
+type LuaError = usize;
 
 #[derive(Debug, PartialEq)]
 pub struct AtisStation {
@@ -10,12 +13,12 @@ pub struct AtisStation {
 }
 
 #[derive(Debug)]
-pub struct FinalStation {
+pub struct FinalStation<'a> {
     pub name: String,
     pub freq: u64,
     pub airfield: Option<Airfield>,
     pub static_wind: Option<StaticWind>,
-    pub state: *mut lua_State,
+    pub state: RefCell<Lua<'a>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -45,7 +48,7 @@ struct WeatherInfo {
     pressure: f64, // in N/m2
 }
 
-impl FinalStation {
+impl<'a> FinalStation<'a> {
     pub fn generate_report(&self) -> Result<String, LuaError> {
         // TODO: unwrap
         let weather = unsafe { self.get_current_weather()? };
@@ -68,46 +71,20 @@ impl FinalStation {
     }
 
     unsafe fn get_current_weather(&self) -> Result<WeatherInfo, LuaError> {
-        let state = self.state;
+        let mut lua = self.state.borrow_mut();
 
-        assert_stacksize(state, 0)?;
+        // TODO: unwrap
+        let mut get_weather: LuaFunction<_> = lua.get("getWeather").unwrap();
 
-        // get getWeather
-        lua_getfield(state, LUA_GLOBALSINDEX, cstr!("getWeather"));
-        assert_type(state, LuaType::Function)?;
+        // TODO: unwrap
+        let mut weather: LuaTable<_> = get_weather.call().unwrap();
 
-        // call getWeather, with 0 arguments and 1 result
-        lua_call(state, 0, 1);
-        assert_stacksize(state, 1)?;
-        assert_type(state, LuaType::Table)?;
+        // TODO: unwrap
+        let wind_speed: f64 = weather.get("windSpeed").unwrap();
+        let wind_dir: f64 = weather.get("windDir").unwrap();
+        let temperature: f64 = weather.get("temp").unwrap();
+        let pressure: f64 = weather.get("pressure").unwrap();
 
-        // read windSpeed
-        lua_getfield(state, -1, cstr!("windSpeed"));
-        assert_type(state, LuaType::Number)?;
-        let wind_speed = lua_tonumber(state, -1);
-        lua_pop(state, 1);
-
-        // read windDir
-        lua_getfield(state, -1, cstr!("windDir"));
-        assert_type(state, LuaType::Number)?;
-        let wind_dir = lua_tonumber(state, -1);
-        lua_pop(state, 1);
-
-        // read temp
-        lua_getfield(state, -1, cstr!("temp"));
-        assert_type(state, LuaType::Number)?;
-        let temperature = lua_tonumber(state, -1);
-        lua_pop(state, 1);
-
-        // read pressure
-        lua_getfield(state, -1, cstr!("pressure"));
-        assert_type(state, LuaType::Number)?;
-        let pressure = lua_tonumber(state, -1);
-        lua_pop(state, 1);
-
-        // pop weather table
-        lua_pop(state, 1);
-        assert_stacksize(state, 0)?;
 
         let mut info = WeatherInfo {
             wind_speed, wind_dir, temperature, pressure
