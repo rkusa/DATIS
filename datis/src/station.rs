@@ -66,8 +66,8 @@ impl<'a> FinalStation<'a> {
         }
 
         report += &format!(
-            "Surface wind {}, {:.0} knots. ",
-            weather.wind_dir,
+            "Surface wind {:.0}, {:.0} knots. ",
+            weather.wind_dir.to_degrees(),
             weather.wind_speed * 1.94384, // to knots
         );
 
@@ -98,14 +98,14 @@ impl<'a> FinalStation<'a> {
     fn get_current_weather(&self) -> Result<WeatherInfo, Error> {
         let mut lua = self.state.borrow_mut();
 
-        let mut get_weather: LuaFunction<_> = lua.get("getWeather")?;
+        let mut get_weather: LuaFunction<_> = get!(lua, "getWeather")?;
 
         let mut weather: LuaTable<_> = get_weather.call()?;
 
-        let wind_speed: f64 = weather.get("windSpeed")?;
-        let wind_dir: f64 = weather.get("windDir")?;
-        let temperature: f64 = weather.get("temp")?;
-        let pressure: f64 = weather.get("pressure")?;
+        let wind_speed: f64 = get!(weather, "windSpeed")?;
+        let wind_dir: f64 = get!(weather, "windDir")?;
+        let temperature: f64 = get!(weather, "temp")?;
+        let pressure: f64 = get!(weather, "pressure")?;
 
         let mut info = WeatherInfo {
             wind_speed,

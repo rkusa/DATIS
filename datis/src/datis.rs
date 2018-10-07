@@ -15,9 +15,9 @@ impl Datis {
         debug!("Extracting ATIS stations from Mission Situation");
 
         let mut stations = {
-            let mut dcs: LuaTable<_> = lua.get("DCS")?;
+            let mut dcs: LuaTable<_> = get!(lua, "DCS")?;
 
-            let mut get_mission_description: LuaFunction<_> = dcs.get("getMissionDescription")?;
+            let mut get_mission_description: LuaFunction<_> = get!(dcs, "getMissionDescription")?;
             let mission_situation: String = get_mission_description.call()?;
 
             extract_atis_stations(&mission_situation)
@@ -30,17 +30,17 @@ impl Datis {
 
         // FETCH AIRDROMES
         {
-            let mut terrain: LuaTable<_> = lua.get("Terrain")?;
+            let mut terrain: LuaTable<_> = get!(lua, "Terrain")?;
 
-            let mut get_terrain_config: LuaFunction<_> = terrain.get("GetTerrainConfig")?;
+            let mut get_terrain_config: LuaFunction<_> = get!(terrain, "GetTerrainConfig")?;
             let mut airdromes: LuaTable<_> = get_terrain_config.call_with_args("Airdromes")?;
 
             let mut i = 12;
             while let Some(mut airdrome) = airdromes.get::<LuaTable<_>, _, _>(i) {
                 i += 1;
 
-                let id: String = airdrome.get("id")?;
-                let display_name: String = airdrome.get("display_name")?;
+                let id: String = get!(airdrome, "id")?;
+                let display_name: String = get!(airdrome, "display_name")?;
 
                 for station in stations.iter_mut() {
                     if station.name != id && station.name != display_name {
@@ -50,16 +50,16 @@ impl Datis {
                     station.name = display_name.to_string();
 
                     let (x, y) = {
-                        let mut reference_point: LuaTable<_> = airdrome.get("reference_point")?;
-                        let x: f64 = reference_point.get("x")?;
-                        let y: f64 = reference_point.get("y")?;
+                        let mut reference_point: LuaTable<_> = get!(airdrome, "reference_point")?;
+                        let x: f64 = get!(reference_point, "x")?;
+                        let y: f64 = get!(reference_point, "y")?;
                         (x, y)
                     };
 
                     let alt = {
-                        let mut default_camera_position: LuaTable<_> = airdrome.get("default_camera_position")?;
-                        let mut pnt: LuaTable<_> = default_camera_position.get("pnt")?;
-                        let alt: f64 = pnt.get(2)?;
+                        let mut default_camera_position: LuaTable<_> = get!(airdrome, "default_camera_position")?;
+                        let mut pnt: LuaTable<_> = get!(default_camera_position, "pnt")?;
+                        let alt: f64 = get!(pnt, 2)?;
                         // This is only the alt of the camera position of the airfield, which seems to be
                         // usually elevated by about 100. Keep the 100 elevation above the ground
                         // as a sender position (for SRS LOS).
@@ -68,12 +68,12 @@ impl Datis {
 
                     let mut rwys: Vec<String> = Vec::new();
 
-                    let mut runways: LuaTable<_> = airdrome.get("runways")?;
+                    let mut runways: LuaTable<_> = get!(airdrome, "runways")?;
                     let mut j = 0;
                     while let Some(mut runway) = runways.get::<LuaTable<_>, _, _>(j) {
                         j += 1;
-                        let start: String = runway.get("start")?;
-                        let end: String = runway.get("end")?;
+                        let start: String = get!(runway, "start")?;
+                        let end: String = get!(runway, "end")?;
                         rwys.push(start);
                         rwys.push(end);
                     }
@@ -91,24 +91,24 @@ impl Datis {
         stations.retain(|s| s.airfield.is_some());
 
         // get _current_mission.mission.weather
-        let mut current_mission: LuaTable<_> = lua.get("_current_mission")?;
-        let mut mission: LuaTable<_> = current_mission.get("mission")?;
-        let mut weather: LuaTable<_> = mission.get("weather")?;
+        let mut current_mission: LuaTable<_> = get!(lua, "_current_mission")?;
+        let mut mission: LuaTable<_> = get!(current_mission, "mission")?;
+        let mut weather: LuaTable<_> = get!(mission, "weather")?;
 
         // get atmosphere_type
-        let atmosphere_type: f64 = weather.get("atmosphere_type")?;
+        let atmosphere_type: f64 = get!(weather, "atmosphere_type")?;
 
         if atmosphere_type == 0.0 {
             // is static DCS weather system
             // get wind
-            let mut wind: LuaTable<_> = weather.get("wind")?;
-            let mut wind_at_ground: LuaTable<_> = wind.get("wind_at_ground")?;
+            let mut wind: LuaTable<_> = get!(weather, "wind")?;
+            let mut wind_at_ground: LuaTable<_> = get!(wind, "atGround")?;
 
             // get wind_at_ground.speed
-            let wind_speed: f64 = wind_at_ground.get("speed")?;
+            let wind_speed: f64 = get!(wind_at_ground, "speed")?;
 
             // get wind_at_ground.dir
-            let mut wind_dir: f64 = wind_at_ground.get("dir")?;
+            let mut wind_dir: f64 = get!(wind_at_ground, "dir")?;
 
             for station in stations.iter_mut() {
                 // rotate dir

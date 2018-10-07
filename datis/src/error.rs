@@ -5,7 +5,7 @@ pub enum Error {
     Lua(::hlua51::LuaError),
     LuaFunctionCall(::hlua51::LuaFunctionCallError<::hlua51::Void>),
     // TODO: improve by including information about the global/key that was not defined
-    Undefined(std::option::NoneError),
+    Undefined(String),
     Tcp(std::io::Error),
     Json(serde_json::error::Error),
     Request(reqwest::Error),
@@ -16,8 +16,13 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use std::error::Error;
+        use self::Error::*;
 
-        write!(f, "Error: {}", self.description())?;
+        match self {
+            Undefined(key) => write!(f, "Error: Trying to access undefined lua global or table key: {}", key)?,
+            _ => write!(f, "Error: {}", self.description())?
+        }
+
         let mut cause: Option<&dyn error::Error> = self.cause();
         while let Some(err) = cause {
             write!(f, "  -> {}", err)?;
@@ -69,12 +74,6 @@ impl From<::hlua51::LuaError> for Error {
 impl From<::hlua51::LuaFunctionCallError<::hlua51::Void>> for Error {
     fn from(err: ::hlua51::LuaFunctionCallError<::hlua51::Void>) -> Self {
         Error::LuaFunctionCall(err)
-    }
-}
-
-impl From<std::option::NoneError> for Error {
-    fn from(err: std::option::NoneError) -> Self {
-        Error::Undefined(err)
     }
 }
 

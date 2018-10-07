@@ -6,7 +6,7 @@ pub fn create_lua_state(cpath: &str, code: &str) -> Result<Lua<'static>, Error> 
     lua.openlibs();
 
     {
-        let mut package: LuaTable<_> = lua.get("package")?;
+        let mut package: LuaTable<_> = get!(lua, "package")?;
         package.set("cpath", cpath);
     }
 
