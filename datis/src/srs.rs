@@ -231,14 +231,21 @@ fn pack_frame(sguid: &str, id: u64, freq: u64, rd: &Vec<u8>) -> Result<Vec<u8>, 
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum MsgType {
+    Update,
     Sync,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Position {
     x: f64,
     y: f64,
     z: f64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Coalition {
+    Blue,
+    Red,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -247,7 +254,7 @@ struct Client<'a> {
     client_guid: &'a str,
     name: &'a str,
     position: Position,
-    // Coalition
+    coalition: Coalition,
     // RadioInfo
     // ClientChannelId
 }
