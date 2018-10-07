@@ -10,23 +10,26 @@ use uuid::Uuid;
 
 const MAX_FRAME_LENGTH: usize = 1024;
 
-pub fn start(station: FinalStation<'_>) -> Result<(), io::Error> {
+pub fn start(station: FinalStation<'static>) -> Result<(), io::Error> {
     let mut stream = TcpStream::connect("127.0.0.1:5002")?;
     stream.set_nodelay(true)?;
 
     let sguid = Uuid::new_v4();
     let sguid = base64::encode_config(sguid.as_bytes(), base64::URL_SAFE_NO_PAD);
     assert_eq!(sguid.len(), 22);
+    let name = station.name.clone();
+    let position = Position {
+        x: station.airfield.position.x,
+        z: station.airfield.position.y,
+        y: station.airfield.position.alt,
+    };
 
     let sync_msg = Message {
         client: Some(Client {
             client_guid: &sguid,
-            name: &station.name,
-            position: Position {
-                x: station.airfield.position.x,
-                y: station.airfield.position.alt,
-                z: station.airfield.position.y,
-            },
+            name: &name,
+            position: position.clone(),
+            coalition: Coalition::Blue,
         }),
         msg_type: MsgType::Sync,
         version: "1.5.3.5",
@@ -38,22 +41,53 @@ pub fn start(station: FinalStation<'_>) -> Result<(), io::Error> {
     let mut data = Vec::new();
     let mut stream = BufReader::new(stream);
 
+    data.clear();
+
+    let bytes_read = stream.read_until(b'\n', &mut data)?;
+    if bytes_read == 0 {
+        // TODO: ??
+//            return Ok(());
+    }
+
+    {
+        let sguid = sguid.clone();
+        thread::spawn(move || {
+            // TODO: unwrap
+            audio_broadcast(sguid, &station).unwrap();
+        });
+    }
+
+    let mut last_update = Instant::now();
     loop {
         data.clear();
 
         let bytes_read = stream.read_until(b'\n', &mut data)?;
         if bytes_read == 0 {
-            return Ok(());
+            // TODO: ??
+//            return Ok(());
         }
 
-        //        println!("RECEIVED: {}", String::from_utf8_lossy(&data));
-        //        let msg: Message = serde_json::from_slice(&data).unwrap();
+        let elapsed = Instant::now() - last_update;
+        if elapsed > Duration::from_secs(5) {
+            // send update
+            let mut stream = stream.get_mut();
+            let upd_msg = Message {
+                client: Some(Client {
+                    client_guid: &sguid,
+                    name: &name,
+                    position: position.clone(),
+                    coalition: Coalition::Blue,
+                }),
+                msg_type: MsgType::Update,
+                version: "1.5.3.5",
+            };
 
-        //        thread::spawn(move || {
-        audio_broadcast(sguid.clone(), &station)?;
-        //        });
+            serde_json::to_writer(&mut stream, &upd_msg).unwrap();
+            stream.write_all(&['\n' as u8])?;
 
-        break;
+            last_update = Instant::now();
+            debug!("SRS Update sent");
+        }
     }
 
     return Ok(());
@@ -277,6 +311,7 @@ impl ::serde::Serialize for MsgType {
     {
         // Serialize the enum as a u64.
         serializer.serialize_u64(match *self {
+            MsgType::Update => 1,
             MsgType::Sync => 2,
         })
     }
@@ -303,10 +338,61 @@ impl<'de> ::serde::Deserialize<'de> for MsgType {
                 // Rust does not come with a simple way of converting a
                 // number to an enum, so use a big `match`.
                 match value {
+                    1 => Ok(MsgType::Update),
                     2 => Ok(MsgType::Sync),
                     _ => Err(E::custom(format!(
                         "unknown {} value: {}",
                         stringify!(MsgType),
+                        value
+                    ))),
+                }
+            }
+        }
+
+        // Deserialize the enum from a u64.
+        deserializer.deserialize_u64(Visitor)
+    }
+}
+
+impl ::serde::Serialize for Coalition {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+    {
+        // Serialize the enum as a u64.
+        serializer.serialize_u64(match *self {
+            Coalition::Blue => 2,
+            Coalition::Red => 1,
+        })
+    }
+}
+
+impl<'de> ::serde::Deserialize<'de> for Coalition {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: ::serde::Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'de> ::serde::de::Visitor<'de> for Visitor {
+            type Value = Coalition;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("positive integer")
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<Coalition, E>
+                where
+                    E: ::serde::de::Error,
+            {
+                // Rust does not come with a simple way of converting a
+                // number to an enum, so use a big `match`.
+                match value {
+                    1 => Ok(Coalition::Red),
+                    2 => Ok(Coalition::Blue),
+                    _ => Err(E::custom(format!(
+                        "unknown {} value: {}",
+                        stringify!(Coalition),
                         value
                     ))),
                 }
