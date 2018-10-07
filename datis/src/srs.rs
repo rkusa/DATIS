@@ -1,16 +1,57 @@
+use std::cell::RefCell;
 use std::io::{self, BufRead, BufReader, Cursor, Write};
 use std::net::TcpStream;
 use std::time::{Duration, Instant};
 use std::{fmt, thread};
 
 use byteorder::{LittleEndian, WriteBytesExt};
-use crate::station::FinalStation;
+use crate::error::Error;
+use crate::station::{AtisStation, FinalStation};
+use crate::utils::create_lua_state;
 use ogg::reading::PacketReader;
 use uuid::Uuid;
 
 const MAX_FRAME_LENGTH: usize = 1024;
 
-pub fn start(station: FinalStation<'_>) -> Result<(), io::Error> {
+pub fn start(cpath: String, station: AtisStation) -> Result<(), Error> {
+    let airfield = station.airfield.as_ref().unwrap();
+    let code = format!(
+        r#"
+        local Weather = require 'Weather'
+        local position = {{
+            x = {},
+            y = {},
+            z = {},
+        }}
+
+        getWeather = function()
+            local wind = Weather.getGroundWindAtPoint({{ position = position }})
+            local temp, pressure = Weather.getTemperatureAndPressureAtPoint({{
+                position = position
+            }})
+
+            return {{
+                windSpeed = wind.v,
+                windDir = wind.a,
+                temp = temp,
+                pressure = pressure,
+            }}
+        end
+    "#,
+        airfield.position.x, airfield.position.alt, airfield.position.y,
+    );
+    debug!("Loading Lua: {}", code);
+
+    let new_state = create_lua_state(&cpath, &code)?;
+    let station = FinalStation {
+        name: station.name,
+        atis_freq: station.atis_freq,
+        traffic_freq: station.traffic_freq,
+        airfield: station.airfield.unwrap(),
+        static_wind: station.static_wind,
+        state: RefCell::new(new_state),
+    };
+
     let mut stream = TcpStream::connect("127.0.0.1:5002")?;
     stream.set_nodelay(true)?;
 
@@ -32,7 +73,7 @@ pub fn start(station: FinalStation<'_>) -> Result<(), io::Error> {
         version: "1.5.3.5",
     };
 
-    serde_json::to_writer(&stream, &sync_msg).unwrap();
+    serde_json::to_writer(&stream, &sync_msg)?;
     stream.write_all(&['\n' as u8])?;
 
     let mut data = Vec::new();
@@ -46,12 +87,7 @@ pub fn start(station: FinalStation<'_>) -> Result<(), io::Error> {
             return Ok(());
         }
 
-        //        println!("RECEIVED: {}", String::from_utf8_lossy(&data));
-        //        let msg: Message = serde_json::from_slice(&data).unwrap();
-
-        //        thread::spawn(move || {
         audio_broadcast(sguid.clone(), &station)?;
-        //        });
 
         break;
     }
@@ -59,7 +95,7 @@ pub fn start(station: FinalStation<'_>) -> Result<(), io::Error> {
     return Ok(());
 }
 
-fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), io::Error> {
+fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), Error> {
     #[derive(Serialize, Debug)]
     #[serde(rename_all = "camelCase")]
     struct AudioConfig<'a> {
@@ -96,18 +132,12 @@ fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), io::
     }
 
     let interval = Duration::from_secs(60 * 20);
-    let mut interval_start = Instant::now();
+    let mut interval_start;
     loop {
         interval_start = Instant::now();
 
         // TODO: unwrap
-        let report = match station.generate_report() {
-            Ok(report) => report,
-            Err(err) => {
-                error!("{}", err);
-                return Ok(());
-            }
-        };
+        let report = station.generate_report()?;
         info!("Report: {}", report);
 
         let payload = TextToSpeechRequest {
@@ -129,9 +159,9 @@ fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), io::
             key
         );
         let client = reqwest::Client::new();
-        let mut res = client.post(&url).json(&payload).send().unwrap();
-        let data: TextToSpeechResponse = res.json().unwrap();
-        let data = base64::decode(&data.audio_content).unwrap();
+        let mut res = client.post(&url).json(&payload).send()?;
+        let data: TextToSpeechResponse = res.json()?;
+        let data = base64::decode(&data.audio_content)?;
         let mut data = Cursor::new(data);
 
         let mut stream = TcpStream::connect("127.0.0.1:5003")?;
@@ -149,7 +179,7 @@ fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), io::
             let mut size = 0;
             let mut audio = PacketReader::new(data);
             let mut id: u64 = 1;
-            while let Some(pck) = audio.read_packet().unwrap() {
+            while let Some(pck) = audio.read_packet()? {
                 size += pck.data.len();
                 let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
                 stream.write(&frame)?;

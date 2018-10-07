@@ -1,3 +1,4 @@
+#![feature(try_trait)]
 #![warn(rust_2018_idioms)]
 
 #[macro_use]
@@ -10,6 +11,7 @@ extern crate serde_derive;
 #[macro_use]
 mod macros;
 mod datis;
+mod error;
 mod srs;
 mod station;
 mod utils;
@@ -56,14 +58,11 @@ pub extern "C" fn init(state: *mut ffi::lua_State) -> c_int {
 
         match Datis::create(lua, cpath.into_owned()) {
             Ok(datis) => {
-                //            for station in &datis.stations {
-                //                station.start();
-                //            }
                 DATIS = Some(datis);
             }
-            Err(_err) => {
-                //            err.report_to(state);
-                return 0;
+            Err(err) => {
+                let msg = err.to_string();
+                return report_error(state, &msg);
             }
         }
 
