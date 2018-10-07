@@ -73,7 +73,7 @@ impl Datis {
                         let mut default_camera_position: LuaTable<_> =
                             airdrome.get("default_camera_position").unwrap();
                         let mut pnt: LuaTable<_> = default_camera_position.get("pnt").unwrap();
-                        let alt: f64 = pnt.get(1).unwrap();
+                        let alt: f64 = pnt.get(2).unwrap();
                         // This is only the alt of the camera position of the airfield, which seems to be
                         // usually elevated by about 100. Keep the 100 elevation above the ground
                         // as a sender position (for SRS LOS).
