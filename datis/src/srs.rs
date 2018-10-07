@@ -80,38 +80,22 @@ pub fn start(cpath: String, station: AtisStation) -> Result<(), Error> {
     stream.write_all(&['\n' as u8])?;
 
     let mut data = Vec::new();
-    let mut stream = BufReader::new(stream);
-
-    data.clear();
-
-    let bytes_read = stream.read_until(b'\n', &mut data)?;
-    if bytes_read == 0 {
-        // TODO: ??
-//            return Ok(());
-    }
+    // TODO: unwrap?
+    let mut rd = BufReader::new(stream.try_clone().unwrap());
 
     {
         let sguid = sguid.clone();
         thread::spawn(move || {
-            // TODO: unwrap
-            audio_broadcast(sguid, &station).unwrap();
+            if let Err(err) = audio_broadcast(sguid, &station) {
+                error!("Error starting SRS broadcast: {}", err);
+            }
         });
     }
 
-    let mut last_update = Instant::now();
-    loop {
-        data.clear();
-
-        let bytes_read = stream.read_until(b'\n', &mut data)?;
-        if bytes_read == 0 {
-            // TODO: ??
-//            return Ok(());
-        }
-
-        let elapsed = Instant::now() - last_update;
-        if elapsed > Duration::from_secs(5) {
+    // send a update RPC call to SRS every 5 seconds
+    thread::spawn(move || {
+        let mut send_update = || -> Result<(), Error> {
             // send update
-            let mut stream = stream.get_mut();
             let upd_msg = Message {
                 client: Some(Client {
                     client_guid: &sguid,
@@ -123,15 +107,34 @@ pub fn start(cpath: String, station: AtisStation) -> Result<(), Error> {
                 version: "1.5.3.5",
             };
 
-            serde_json::to_writer(&mut stream, &upd_msg).unwrap();
+            serde_json::to_writer(&mut stream, &upd_msg)?;
             stream.write_all(&['\n' as u8])?;
 
-            last_update = Instant::now();
-            debug!("SRS Update sent");
-        }
-    }
+            Ok(())
+        };
 
-    return Ok(());
+        loop {
+            if let Err(err) = send_update() {
+                error!("Error sending update to SRS: {}", err);
+            }
+
+            debug!("SRS Update sent");
+
+            thread::sleep(Duration::from_secs(5));
+        }
+    });
+
+    loop {
+        data.clear();
+
+        let bytes_read = rd.read_until(b'\n', &mut data)?;
+        if bytes_read == 0 {
+            // TODO: ??
+            return Ok(());
+        }
+
+        // ignore received messages ...
+    }
 }
 
 fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), Error> {
@@ -219,11 +222,25 @@ fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), Erro
             let mut audio = PacketReader::new(data);
             let mut id: u64 = 1;
             while let Some(pck) = audio.read_packet()? {
-                size += pck.data.len();
+                let pck_size = pck.data.len();
+                if pck_size == 0 {
+                    continue;
+                }
+                size += pck_size;
                 let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
                 stream.write(&frame)?;
                 id += 1;
-                thread::sleep(Duration::from_millis(20));
+
+                // 32 kBit/s
+                let secs = (size * 8) as f64 / 1024.0 / 32.0;
+
+                let playtime = Duration::from_millis((secs * 1000.0) as u64);
+                let elapsed = Instant::now() - start;
+                if playtime > elapsed {
+                    thread::sleep(playtime - elapsed);
+                }
+
+//                thread::sleep(Duration::from_millis(10));
             }
 
             info!("TOTAL SIZE: {}", size);

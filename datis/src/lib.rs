@@ -30,31 +30,37 @@ static mut DATIS: Option<Datis> = None;
 
 #[no_mangle]
 pub extern "C" fn init(state: *mut ffi::lua_State) -> c_int {
-    CombinedLogger::init(vec![WriteLogger::new(
-        LevelFilter::Debug,
-        Config::default(),
-        // TODO: detect correct path
-        File::create("M:/Saved Games/DCS.openbeta/Logs/DATIS-dll.log").unwrap(),
-    )])
-    .unwrap();
-
-    debug!("Initializing ...");
-
     unsafe {
         let received = ffi::lua_gettop(state);
-        if received != 1 {
-            // expect 1 argument
-            return report_error(state, "expected 1 argument: cpath");
+        if received != 2 {
+            // expect 2 argument
+            return report_error(state, "expected 2 argument: cpath, logFile");
         }
 
-        if ffi::lua_isstring(state, -1) == 0 {
-            ffi::lua_pop(state, 1);
+        if ffi::lua_isstring(state, -2) == 0 {
+            ffi::lua_pop(state, 2);
             return report_error(state, "argument cpath must be a string");
         }
 
+        if ffi::lua_isstring(state, -1) == 0 {
+            ffi::lua_pop(state, 2);
+            return report_error(state, "argument logFile must be a string");
+        }
+
         let lua = Lua::from_existing_state(state, false);
-        let cpath = from_cstr!(ffi::lua_tostring(state, -1));
-        ffi::lua_pop(state, 1); // remove argument from stack
+        let cpath = from_cstr!(ffi::lua_tostring(state, -2));
+        let log_file = from_cstr!(ffi::lua_tostring(state, -1));
+        ffi::lua_pop(state, 2); // remove arguments from stack
+
+        CombinedLogger::init(vec![WriteLogger::new(
+            LevelFilter::Debug,
+            Config::default(),
+            // TODO: unwrap
+            File::create(log_file.as_ref()).unwrap(),
+        )])
+            .unwrap();
+
+        debug!("Initializing ...");
 
         match Datis::create(lua, cpath.into_owned()) {
             Ok(datis) => {
