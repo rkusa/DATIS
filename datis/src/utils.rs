@@ -1,18 +1,17 @@
+use crate::error::Error;
 use hlua51::{Lua, LuaTable};
 
-pub fn create_lua_state(cpath: &str, code: &str) -> Result<Lua<'static>, ()> {
+pub fn create_lua_state(cpath: &str, code: &str) -> Result<Lua<'static>, Error> {
     let mut lua = Lua::new();
     lua.openlibs();
 
     {
-        // TODO: unwrap
-        let mut package: LuaTable<_> = lua.get("package").unwrap();
+        let mut package: LuaTable<_> = lua.get("package")?;
         package.set("cpath", cpath);
     }
 
     {
-        // TODO: unwrap
-        lua.execute::<()>(code).unwrap();
+        lua.execute::<()>(code)?;
     }
 
     Ok(lua)

@@ -1,8 +1,7 @@
 use std::cell::RefCell;
 
+use crate::error::Error;
 use hlua51::{Lua, LuaFunction, LuaTable};
-
-type LuaError = usize;
 
 #[derive(Debug, PartialEq)]
 pub struct AtisStation {
@@ -51,8 +50,7 @@ struct WeatherInfo {
 }
 
 impl<'a> FinalStation<'a> {
-    pub fn generate_report(&self) -> Result<String, LuaError> {
-        // TODO: unwrap
+    pub fn generate_report(&self) -> Result<String, Error> {
         let weather = self.get_current_weather()?;
         let mut report = format!("This is {}. ", self.name);
 
@@ -87,7 +85,7 @@ impl<'a> FinalStation<'a> {
     }
 
     #[cfg(test)]
-    fn get_current_weather(&self) -> Result<WeatherInfo, LuaError> {
+    fn get_current_weather(&self) -> Result<WeatherInfo, Error> {
         Ok(WeatherInfo {
             wind_speed: 5.0,
             wind_dir: 330.0,
@@ -97,20 +95,17 @@ impl<'a> FinalStation<'a> {
     }
 
     #[cfg(not(test))]
-    fn get_current_weather(&self) -> Result<WeatherInfo, LuaError> {
+    fn get_current_weather(&self) -> Result<WeatherInfo, Error> {
         let mut lua = self.state.borrow_mut();
 
-        // TODO: unwrap
-        let mut get_weather: LuaFunction<_> = lua.get("getWeather").unwrap();
+        let mut get_weather: LuaFunction<_> = lua.get("getWeather")?;
 
-        // TODO: unwrap
-        let mut weather: LuaTable<_> = get_weather.call().unwrap();
+        let mut weather: LuaTable<_> = get_weather.call()?;
 
-        // TODO: unwrap
-        let wind_speed: f64 = weather.get("windSpeed").unwrap();
-        let wind_dir: f64 = weather.get("windDir").unwrap();
-        let temperature: f64 = weather.get("temp").unwrap();
-        let pressure: f64 = weather.get("pressure").unwrap();
+        let wind_speed: f64 = weather.get("windSpeed")?;
+        let wind_dir: f64 = weather.get("windDir")?;
+        let temperature: f64 = weather.get("temp")?;
+        let pressure: f64 = weather.get("pressure")?;
 
         let mut info = WeatherInfo {
             wind_speed,

@@ -1,30 +1,24 @@
-use std::cell::RefCell;
 use std::str::FromStr;
 use std::thread;
 
-use crate::station::{Airfield, AtisStation, FinalStation, Position, StaticWind};
-use crate::utils::create_lua_state;
+use crate::error::Error;
+use crate::station::{Airfield, AtisStation, Position, StaticWind};
 use hlua51::{Lua, LuaFunction, LuaTable};
 use regex::Regex;
-
-type LuaError = usize;
 
 pub struct Datis {
     pub stations: Vec<AtisStation>,
 }
 
 impl Datis {
-    pub fn create(mut lua: Lua<'_>, cpath: String) -> Result<Self, LuaError> {
+    pub fn create(mut lua: Lua<'_>, cpath: String) -> Result<Self, Error> {
         debug!("Extracting ATIS stations from Mission Situation");
 
         let mut stations = {
-            // TODO: unwrap
-            let mut dcs: LuaTable<_> = lua.get("DCS").unwrap();
+            let mut dcs: LuaTable<_> = lua.get("DCS")?;
 
-            // TODO: unwrap
-            let mut get_mission_description: LuaFunction<_> =
-                dcs.get("getMissionDescription").unwrap();
-            let mission_situation: String = get_mission_description.call().unwrap();
+            let mut get_mission_description: LuaFunction<_> = dcs.get("getMissionDescription")?;
+            let mission_situation: String = get_mission_description.call()?;
 
             extract_atis_stations(&mission_situation)
         };
@@ -36,21 +30,17 @@ impl Datis {
 
         // FETCH AIRDROMES
         {
-            // TODO: unwrap
-            let mut terrain: LuaTable<_> = lua.get("Terrain").unwrap();
+            let mut terrain: LuaTable<_> = lua.get("Terrain")?;
 
-            // TODO: unwrap
-            let mut get_terrain_config: LuaFunction<_> = terrain.get("GetTerrainConfig").unwrap();
-            let mut airdromes: LuaTable<_> =
-                get_terrain_config.call_with_args("Airdromes").unwrap();
+            let mut get_terrain_config: LuaFunction<_> = terrain.get("GetTerrainConfig")?;
+            let mut airdromes: LuaTable<_> = get_terrain_config.call_with_args("Airdromes")?;
 
             let mut i = 12;
             while let Some(mut airdrome) = airdromes.get::<LuaTable<_>, _, _>(i) {
                 i += 1;
 
-                // TODO: unwrap
-                let id: String = airdrome.get("id").unwrap();
-                let display_name: String = airdrome.get("display_name").unwrap();
+                let id: String = airdrome.get("id")?;
+                let display_name: String = airdrome.get("display_name")?;
 
                 for station in stations.iter_mut() {
                     if station.name != id && station.name != display_name {
@@ -60,36 +50,30 @@ impl Datis {
                     station.name = display_name.to_string();
 
                     let (x, y) = {
-                        // TODO: unwrap
-                        let mut reference_point: LuaTable<_> =
-                            airdrome.get("reference_point").unwrap();
-                        let x: f64 = reference_point.get("x").unwrap();
-                        let y: f64 = reference_point.get("y").unwrap();
+                        let mut reference_point: LuaTable<_> = airdrome.get("reference_point")?;
+                        let x: f64 = reference_point.get("x")?;
+                        let y: f64 = reference_point.get("y")?;
                         (x, y)
                     };
 
                     let alt = {
-                        // TODO: unwrap
-                        let mut default_camera_position: LuaTable<_> =
-                            airdrome.get("default_camera_position").unwrap();
-                        let mut pnt: LuaTable<_> = default_camera_position.get("pnt").unwrap();
-                        let alt: f64 = pnt.get(2).unwrap();
+                        let mut default_camera_position: LuaTable<_> = airdrome.get("default_camera_position")?;
+                        let mut pnt: LuaTable<_> = default_camera_position.get("pnt")?;
+                        let alt: f64 = pnt.get(2)?;
                         // This is only the alt of the camera position of the airfield, which seems to be
                         // usually elevated by about 100. Keep the 100 elevation above the ground
                         // as a sender position (for SRS LOS).
                         alt
                     };
 
-                    // TODO: unwrap
                     let mut rwys: Vec<String> = Vec::new();
 
-                    let mut runways: LuaTable<_> = airdrome.get("runways").unwrap();
+                    let mut runways: LuaTable<_> = airdrome.get("runways")?;
                     let mut j = 0;
                     while let Some(mut runway) = runways.get::<LuaTable<_>, _, _>(j) {
                         j += 1;
-                        // TODO: unwrap
-                        let start: String = runway.get("start").unwrap();
-                        let end: String = runway.get("end").unwrap();
+                        let start: String = runway.get("start")?;
+                        let end: String = runway.get("end")?;
                         rwys.push(start);
                         rwys.push(end);
                     }
@@ -107,29 +91,24 @@ impl Datis {
         stations.retain(|s| s.airfield.is_some());
 
         // get _current_mission.mission.weather
-        // TODO: unwrap
-        let mut current_mission: LuaTable<_> = lua.get("_current_mission").unwrap();
-        let mut mission: LuaTable<_> = current_mission.get("mission").unwrap();
-        let mut weather: LuaTable<_> = mission.get("weather").unwrap();
+        let mut current_mission: LuaTable<_> = lua.get("_current_mission")?;
+        let mut mission: LuaTable<_> = current_mission.get("mission")?;
+        let mut weather: LuaTable<_> = mission.get("weather")?;
 
         // get atmosphere_type
-        // TODO: unwrap
-        let atmosphere_type: f64 = weather.get("atmosphere_type").unwrap();
+        let atmosphere_type: f64 = weather.get("atmosphere_type")?;
 
         if atmosphere_type == 0.0 {
             // is static DCS weather system
             // get wind
-            // TODO: unwrap
-            let mut wind: LuaTable<_> = weather.get("wind").unwrap();
-            let mut wind_at_ground: LuaTable<_> = wind.get("wind_at_ground").unwrap();
+            let mut wind: LuaTable<_> = weather.get("wind")?;
+            let mut wind_at_ground: LuaTable<_> = wind.get("wind_at_ground")?;
 
             // get wind_at_ground.speed
-            // TODO: unwrap
-            let wind_speed: f64 = wind_at_ground.get("speed").unwrap();
+            let wind_speed: f64 = wind_at_ground.get("speed")?;
 
             // get wind_at_ground.dir
-            // TODO: unwrap
-            let mut wind_dir: f64 = wind_at_ground.get("dir").unwrap();
+            let mut wind_dir: f64 = wind_at_ground.get("dir")?;
 
             for station in stations.iter_mut() {
                 // rotate dir
@@ -153,47 +132,8 @@ impl Datis {
         for station in stations {
             let cpath = cpath.clone();
             thread::spawn(move || {
-                let airfield = station.airfield.as_ref().unwrap();
-                let code = format!(
-                    r#"
-                    local Weather = require 'Weather'
-                    local position = {{
-                        x = {},
-                        y = {},
-                        z = {},
-                    }}
-
-                    getWeather = function()
-                        local wind = Weather.getGroundWindAtPoint({{ position = position }})
-				        local temp, pressure = Weather.getTemperatureAndPressureAtPoint({{
-				            position = position
-				        }})
-
-				        return {{
-				            windSpeed = wind.v,
-				            windDir = wind.a,
-				            temp = temp,
-				            pressure = pressure,
-				        }}
-                    end
-                "#,
-                    airfield.position.x, airfield.position.alt, airfield.position.y,
-                );
-                debug!("Loading Lua: {}", code);
-
-                // TODO: unwrap
-                let new_state = create_lua_state(&cpath, &code).unwrap();
-                let station = FinalStation {
-                    name: station.name,
-                    atis_freq: station.atis_freq,
-                    traffic_freq: station.traffic_freq,
-                    airfield: station.airfield.unwrap(),
-                    static_wind: station.static_wind,
-                    state: RefCell::new(new_state),
-                };
-
-                if let Err(err) = crate::srs::start(station) {
-                    error!("{}", err);
+                if let Err(err) = crate::srs::start(cpath, station) {
+                    error!("Error starting SRS broadcast: {}", err);
                 }
             });
         }
