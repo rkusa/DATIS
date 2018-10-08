@@ -11,8 +11,14 @@ pub struct Datis {
 }
 
 impl Datis {
-    pub fn create(mut lua: Lua<'_>, cpath: String) -> Result<Self, Error> {
+    pub fn create(mut lua: Lua<'_>) -> Result<Self, Error> {
         debug!("Extracting ATIS stations from Mission Situation");
+
+        let cpath = {
+            let mut package: LuaTable<_> = get!(lua, "package")?;
+            let cpath: String = get!(package, "cpath")?;
+            cpath
+        };
 
         let mut stations = {
             let mut dcs: LuaTable<_> = get!(lua, "DCS")?;
@@ -57,7 +63,8 @@ impl Datis {
                     };
 
                     let alt = {
-                        let mut default_camera_position: LuaTable<_> = get!(airdrome, "default_camera_position")?;
+                        let mut default_camera_position: LuaTable<_> =
+                            get!(airdrome, "default_camera_position")?;
                         let mut pnt: LuaTable<_> = get!(default_camera_position, "pnt")?;
                         let alt: f64 = get!(pnt, 2)?;
                         // This is only the alt of the camera position of the airfield, which seems to be
