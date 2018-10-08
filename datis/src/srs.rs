@@ -7,6 +7,7 @@ use std::{fmt, thread};
 use byteorder::{LittleEndian, WriteBytesExt};
 use crate::error::Error;
 use crate::station::{AtisStation, FinalStation};
+use crate::tts::text_to_speech;
 use crate::utils::create_lua_state;
 use ogg::reading::PacketReader;
 use uuid::Uuid;
@@ -138,41 +139,6 @@ pub fn start(cpath: String, station: AtisStation) -> Result<(), Error> {
 }
 
 fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), Error> {
-    #[derive(Serialize, Debug)]
-    #[serde(rename_all = "camelCase")]
-    struct AudioConfig<'a> {
-        audio_encoding: &'a str,
-        sample_rate_hertz: u32,
-        speaking_rate: f32,
-    }
-
-    #[derive(Serialize, Debug)]
-    #[serde(rename_all = "camelCase")]
-    struct Input<'a> {
-        text: &'a str,
-    }
-
-    #[derive(Serialize, Debug)]
-    #[serde(rename_all = "camelCase")]
-    struct Voice<'a> {
-        language_code: &'a str,
-        name: &'a str,
-    }
-
-    #[derive(Serialize, Debug)]
-    #[serde(rename_all = "camelCase")]
-    struct TextToSpeechRequest<'a> {
-        audio_config: AudioConfig<'a>,
-        input: Input<'a>,
-        voice: Voice<'a>,
-    }
-
-    #[derive(Deserialize, Debug)]
-    #[serde(rename_all = "camelCase")]
-    struct TextToSpeechResponse {
-        audio_content: String,
-    }
-
     let interval = Duration::from_secs(60 * 20);
     let mut interval_start;
     loop {
@@ -182,28 +148,7 @@ fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), Erro
         let report = station.generate_report()?;
         info!("Report: {}", report);
 
-        let payload = TextToSpeechRequest {
-            audio_config: AudioConfig {
-                audio_encoding: "OGG_OPUS",
-                sample_rate_hertz: 16_000,
-                speaking_rate: 0.9,
-            },
-            input: Input { text: &report },
-            voice: Voice {
-                language_code: "en-US",
-                name: "en-US-Standard-C",
-            },
-        };
-
-        let key = "AIzaSyBB9rHqNGlclJTzz6bOA4hjjRmZBpdQ1Gg";
-        let url = format!(
-            "https://texttospeech.googleapis.com/v1/text:synthesize?key={}",
-            key
-        );
-        let client = reqwest::Client::new();
-        let mut res = client.post(&url).json(&payload).send()?;
-        let data: TextToSpeechResponse = res.json()?;
-        let data = base64::decode(&data.audio_content)?;
+        let data = text_to_speech(&report)?;
         let mut data = Cursor::new(data);
 
         let mut stream = TcpStream::connect("127.0.0.1:5003")?;
@@ -240,7 +185,7 @@ fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), Erro
                     thread::sleep(playtime - elapsed);
                 }
 
-//                thread::sleep(Duration::from_millis(10));
+                //                thread::sleep(Duration::from_millis(10));
             }
 
             info!("TOTAL SIZE: {}", size);
@@ -408,8 +353,8 @@ impl<'de> ::serde::Deserialize<'de> for MsgType {
 
 impl ::serde::Serialize for Coalition {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: ::serde::Serializer,
+    where
+        S: ::serde::Serializer,
     {
         // Serialize the enum as a u64.
         serializer.serialize_u64(match *self {
@@ -421,8 +366,8 @@ impl ::serde::Serialize for Coalition {
 
 impl<'de> ::serde::Deserialize<'de> for Coalition {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: ::serde::Deserializer<'de>,
+    where
+        D: ::serde::Deserializer<'de>,
     {
         struct Visitor;
 
@@ -434,8 +379,8 @@ impl<'de> ::serde::Deserialize<'de> for Coalition {
             }
 
             fn visit_u64<E>(self, value: u64) -> Result<Coalition, E>
-                where
-                    E: ::serde::de::Error,
+            where
+                E: ::serde::de::Error,
             {
                 // Rust does not come with a simple way of converting a
                 // number to an enum, so use a big `match`.

@@ -14,6 +14,7 @@ mod datis;
 mod error;
 mod srs;
 mod station;
+mod tts;
 mod utils;
 
 use std::ffi::CString;
@@ -58,7 +59,7 @@ pub extern "C" fn init(state: *mut ffi::lua_State) -> c_int {
             // TODO: unwrap
             File::create(log_file.as_ref()).unwrap(),
         )])
-            .unwrap();
+        .unwrap();
 
         debug!("Initializing ...");
 
