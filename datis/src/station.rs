@@ -1,55 +1,39 @@
-use std::cell::RefCell;
-
 use crate::error::Error;
-use hlua51::{Lua, LuaFunction, LuaTable};
+use crate::weather::{DynamicWeather, WeatherInfo};
 
-#[derive(Debug, PartialEq)]
-pub struct AtisStation {
-    pub name: String,
-    pub atis_freq: u64,
-    pub traffic_freq: Option<u64>,
-    pub airfield: Option<Airfield>,
-    pub static_wind: Option<StaticWind>,
-}
-
-#[derive(Debug)]
-pub struct FinalStation<'a> {
+#[derive(Debug, Clone)]
+pub struct Station {
     pub name: String,
     pub atis_freq: u64,
     pub traffic_freq: Option<u64>,
     pub airfield: Airfield,
     pub static_wind: Option<StaticWind>,
-    pub state: RefCell<Lua<'a>>,
+    pub dynamic_weather: DynamicWeather,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Position {
     pub x: f64,
+    #[serde(rename = "z")]
     pub y: f64,
+    #[serde(rename = "y")]
     pub alt: f64,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Airfield {
+    pub name: String,
     pub position: Position,
     pub runways: Vec<String>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct StaticWind {
     pub dir: f64,
     pub speed: f64,
 }
 
-#[derive(Debug)]
-struct WeatherInfo {
-    wind_speed: f64,  // in m/s
-    wind_dir: f64,    // in radians (the direction the wind is coming from)
-    temperature: f64, // in °C
-    pressure: f64,    // in N/m2
-}
-
-impl<'a> FinalStation<'a> {
+impl Station {
     pub fn generate_report(&self) -> Result<String, Error> {
         let weather = self.get_current_weather()?;
         let mut report = format!("This is {}. ", self.name);
@@ -88,7 +72,7 @@ impl<'a> FinalStation<'a> {
     fn get_current_weather(&self) -> Result<WeatherInfo, Error> {
         Ok(WeatherInfo {
             wind_speed: 5.0,
-            wind_dir: 330.0,
+            wind_dir: (330.0f64).to_radians(),
             temperature: 22.0,
             pressure: 1015.0,
         })
@@ -96,23 +80,11 @@ impl<'a> FinalStation<'a> {
 
     #[cfg(not(test))]
     fn get_current_weather(&self) -> Result<WeatherInfo, Error> {
-        let mut lua = self.state.borrow_mut();
-
-        let mut get_weather: LuaFunction<_> = get!(lua, "getWeather")?;
-
-        let mut weather: LuaTable<_> = get_weather.call()?;
-
-        let wind_speed: f64 = get!(weather, "windSpeed")?;
-        let wind_dir: f64 = get!(weather, "windDir")?;
-        let temperature: f64 = get!(weather, "temp")?;
-        let pressure: f64 = get!(weather, "pressure")?;
-
-        let mut info = WeatherInfo {
-            wind_speed,
-            wind_dir,
-            temperature,
-            pressure,
-        };
+        let mut info = self.dynamic_weather.get_at(
+            self.airfield.position.x,
+            self.airfield.position.y,
+            self.airfield.position.alt,
+        )?;
 
         if let Some(ref static_wind) = self.static_wind {
             info.wind_speed = static_wind.speed;
@@ -142,17 +114,19 @@ impl<'a> FinalStation<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::{Airfield, FinalStation, Position};
+    use super::{Airfield, Position, Station};
+    use crate::weather::DynamicWeather;
     use hlua51::Lua;
     use std::cell::RefCell;
 
     #[test]
     fn test_active_runway() {
-        let station = FinalStation {
+        let station = Station {
             name: String::from("Kutaisi"),
             atis_freq: 251_000_000,
             traffic_freq: None,
             airfield: Airfield {
+                name: String::from("Kutaisi"),
                 position: Position {
                     x: 0.0,
                     y: 0.0,
@@ -161,7 +135,7 @@ mod test {
                 runways: vec![String::from("04"), String::from("22")],
             },
             static_wind: None,
-            state: RefCell::new(Lua::new()),
+            dynamic_weather: DynamicWeather::create("").unwrap(),
         };
 
         assert_eq!(station.get_active_runway(0.0), Some("04"));
@@ -176,11 +150,12 @@ mod test {
 
     #[test]
     fn test_report() {
-        let station = FinalStation {
+        let station = Station {
             name: String::from("Kutaisi"),
             atis_freq: 251_000_000,
             traffic_freq: Some(255_000_000),
             airfield: Airfield {
+                name: String::from("Kutaisi"),
                 position: Position {
                     x: 0.0,
                     y: 0.0,
@@ -189,7 +164,7 @@ mod test {
                 runways: vec![String::from("04"), String::from("22")],
             },
             static_wind: None,
-            state: RefCell::new(Lua::new()),
+            dynamic_weather: DynamicWeather::create("").unwrap(),
         };
 
         let report = station.generate_report().unwrap();

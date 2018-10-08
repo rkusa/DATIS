@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::io::{self, BufRead, BufReader, Cursor, Write};
 use std::net::TcpStream;
 use std::time::{Duration, Instant};
@@ -6,139 +5,132 @@ use std::{fmt, thread};
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use crate::error::Error;
-use crate::station::{AtisStation, FinalStation};
+use crate::station::{Position, Station};
 use crate::tts::text_to_speech;
-use crate::utils::create_lua_state;
+use crate::worker::Worker;
 use ogg::reading::PacketReader;
 use uuid::Uuid;
 
 const MAX_FRAME_LENGTH: usize = 1024;
 
-pub fn start(cpath: String, station: AtisStation) -> Result<(), Error> {
-    let airfield = station.airfield.as_ref().unwrap();
-    let code = format!(
-        r#"
-        local Weather = require 'Weather'
-        local position = {{
-            x = {},
-            y = {},
-            z = {},
-        }}
+pub struct AtisSrsClient {
+    sguid: String,
+    station: Station,
+    worker: Vec<Worker<()>>,
+}
 
-        getWeather = function()
-            local wind = Weather.getGroundWindAtPoint({{ position = position }})
-            local temp, pressure = Weather.getTemperatureAndPressureAtPoint({{
-                position = position
-            }})
+impl AtisSrsClient {
+    pub fn new(station: Station) -> Self {
+        let sguid = Uuid::new_v4();
+        let sguid = base64::encode_config(sguid.as_bytes(), base64::URL_SAFE_NO_PAD);
+        assert_eq!(sguid.len(), 22);
 
-            return {{
-                windSpeed = wind.v,
-                windDir = wind.a,
-                temp = temp,
-                pressure = pressure,
-            }}
-        end
-    "#,
-        airfield.position.x, airfield.position.alt, airfield.position.y,
-    );
-    debug!("Loading Lua: {}", code);
-
-    let new_state = create_lua_state(&cpath, &code)?;
-    let station = FinalStation {
-        name: station.name,
-        atis_freq: station.atis_freq,
-        traffic_freq: station.traffic_freq,
-        airfield: station.airfield.unwrap(),
-        static_wind: station.static_wind,
-        state: RefCell::new(new_state),
-    };
-
-    let mut stream = TcpStream::connect("127.0.0.1:5002")?;
-    stream.set_nodelay(true)?;
-
-    let sguid = Uuid::new_v4();
-    let sguid = base64::encode_config(sguid.as_bytes(), base64::URL_SAFE_NO_PAD);
-    assert_eq!(sguid.len(), 22);
-    let name = station.name.clone();
-    let position = Position {
-        x: station.airfield.position.x,
-        z: station.airfield.position.y,
-        y: station.airfield.position.alt,
-    };
-
-    let sync_msg = Message {
-        client: Some(Client {
-            client_guid: &sguid,
-            name: &name,
-            position: position.clone(),
-            coalition: Coalition::Blue,
-        }),
-        msg_type: MsgType::Sync,
-        version: "1.5.3.5",
-    };
-
-    serde_json::to_writer(&stream, &sync_msg)?;
-    stream.write_all(&['\n' as u8])?;
-
-    let mut data = Vec::new();
-    // TODO: unwrap?
-    let mut rd = BufReader::new(stream.try_clone().unwrap());
-
-    {
-        let sguid = sguid.clone();
-        thread::spawn(move || {
-            if let Err(err) = audio_broadcast(sguid, &station) {
-                error!("Error starting SRS broadcast: {}", err);
-            }
-        });
+        AtisSrsClient {
+            sguid,
+            station,
+            worker: Vec::new(),
+        }
     }
 
-    // send a update RPC call to SRS every 5 seconds
-    thread::spawn(move || {
-        let mut send_update = || -> Result<(), Error> {
-            // send update
-            let upd_msg = Message {
-                client: Some(Client {
-                    client_guid: &sguid,
-                    name: &name,
-                    position: position.clone(),
-                    coalition: Coalition::Blue,
-                }),
-                msg_type: MsgType::Update,
-                version: "1.5.3.5",
-            };
-
-            serde_json::to_writer(&mut stream, &upd_msg)?;
-            stream.write_all(&['\n' as u8])?;
-
-            Ok(())
-        };
-
-        loop {
-            if let Err(err) = send_update() {
-                error!("Error sending update to SRS: {}", err);
-            }
-
-            debug!("SRS Update sent");
-
-            thread::sleep(Duration::from_secs(5));
-        }
-    });
-
-    loop {
-        data.clear();
-
-        let bytes_read = rd.read_until(b'\n', &mut data)?;
-        if bytes_read == 0 {
-            // TODO: ??
+    pub fn start(&mut self) -> Result<(), Error> {
+        if self.worker.len() > 0 {
+            // already started
             return Ok(());
         }
 
-        // ignore received messages ...
+        let mut stream = TcpStream::connect("127.0.0.1:5002")?;
+        stream.set_nodelay(true)?;
+
+        let sync_msg = Message {
+            client: Some(Client {
+                client_guid: &self.sguid,
+                name: &self.station.name,
+                position: self.station.airfield.position.clone(),
+                coalition: Coalition::Blue,
+            }),
+            msg_type: MsgType::Sync,
+            version: "1.5.3.5",
+        };
+
+        serde_json::to_writer(&stream, &sync_msg)?;
+        stream.write_all(&['\n' as u8])?;
+
+        let mut rd = BufReader::new(stream.try_clone().unwrap()); // TODO: unwrap?
+
+        // spawn audio broadcast thread
+        let sguid = self.sguid.clone();
+        let station = self.station.clone();
+        self.worker.push(Worker::new(move || {
+            if let Err(err) = audio_broadcast(sguid, station) {
+                error!("Error starting SRS broadcast: {}", err);
+            }
+        }));
+
+        // spawn thread that sends an update RPC call to SRS every 5 seconds
+        let sguid = self.sguid.clone();
+        let name = self.station.name.clone();
+        let position = self.station.airfield.position.clone();
+        self.worker.push(Worker::new(move || {
+            let mut send_update = || -> Result<(), Error> {
+                // send update
+                let upd_msg = Message {
+                    client: Some(Client {
+                        client_guid: &sguid,
+                        name: &name,
+                        position: position.clone(),
+                        coalition: Coalition::Blue,
+                    }),
+                    msg_type: MsgType::Update,
+                    version: "1.5.3.5",
+                };
+
+                serde_json::to_writer(&mut stream, &upd_msg)?;
+                stream.write_all(&['\n' as u8])?;
+
+                Ok(())
+            };
+
+            loop {
+                if let Err(err) = send_update() {
+                    error!("Error sending update to SRS: {}", err);
+                }
+
+                debug!("SRS Update sent");
+
+                thread::sleep(Duration::from_secs(5));
+            }
+        }));
+
+        self.worker.push(Worker::new(move || {
+            let mut data = Vec::new();
+            let mut receive = || -> Result<(), Error> {
+                data.clear();
+
+                let bytes_read = rd.read_until(b'\n', &mut data)?;
+                if bytes_read == 0 {
+                    // TODO: ??
+                    return Ok(());
+                }
+
+                // ignore received messages ...
+
+                Ok(())
+            };
+
+            loop {
+                if let Err(err) = receive() {
+                    error!("Error receiving update from SRS: {}", err);
+                }
+            }
+        }));
+
+        // TODO: endless loop required?
+
+        Ok(())
     }
 }
 
-fn audio_broadcast(sguid: String, station: &FinalStation<'_>) -> Result<(), Error> {
+fn audio_broadcast(sguid: String, station: Station) -> Result<(), Error> {
     let interval = Duration::from_secs(60 * 20);
     let mut interval_start;
     loop {
@@ -264,13 +256,6 @@ fn pack_frame(sguid: &str, id: u64, freq: u64, rd: &Vec<u8>) -> Result<Vec<u8>, 
 enum MsgType {
     Update,
     Sync,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct Position {
-    x: f64,
-    y: f64,
-    z: f64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

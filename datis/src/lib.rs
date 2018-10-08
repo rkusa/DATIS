@@ -15,7 +15,8 @@ mod error;
 mod srs;
 mod station;
 mod tts;
-mod utils;
+mod weather;
+mod worker;
 
 use std::ffi::CString;
 use std::fs::File;
@@ -49,25 +50,28 @@ pub fn init(lua: &mut Lua<'_>) -> Result<(), Error> {
 
 #[no_mangle]
 pub extern "C" fn start(state: *mut ffi::lua_State) -> c_int {
-    if unsafe { DATIS.is_some() } {
-        return 0;
-    }
+    unsafe {
+        if let Some(ref mut datis) = DATIS {
+            for client in datis.clients.iter_mut() {
+                if let Err(err) = client.start() {
+                    return report_error(state, &err.to_string());
+                }
+            }
+        } else {
+            let mut lua = Lua::from_existing_state(state, false);
 
-    let mut lua = unsafe { Lua::from_existing_state(state, false) };
+            if let Err(err) = init(&mut lua) {
+                return report_error(state, &err.to_string());
+            }
 
-    if let Err(err) = init(&mut lua) {
-        return report_error(state, &err.to_string());
-    }
+            debug!("Initializing ...");
 
-    debug!("Initializing ...");
-
-    match Datis::create(lua) {
-        Ok(datis) => unsafe {
-            DATIS = Some(datis);
-        },
-        Err(err) => {
-            let msg = err.to_string();
-            return report_error(state, &msg);
+            match Datis::create(lua) {
+                Ok(datis) => DATIS = Some(datis),
+                Err(err) => {
+                    return report_error(state, &err.to_string());
+                }
+            }
         }
     }
 

@@ -1,9 +1,18 @@
 use std::{error, fmt};
 
+// TODO: remove ugliness of this workaround ...
+type ArgsError = ::hlua51::LuaFunctionCallError<
+    ::hlua51::TuplePushError<
+        ::hlua51::Void,
+        ::hlua51::TuplePushError<::hlua51::Void, ::hlua51::Void>,
+    >,
+>;
+
 #[derive(Debug)]
 pub enum Error {
     Lua(::hlua51::LuaError),
     LuaFunctionCall(::hlua51::LuaFunctionCallError<::hlua51::Void>),
+    ArgsPush(ArgsError),
     // TODO: improve by including information about the global/key that was not defined
     Undefined(String),
     Tcp(std::io::Error),
@@ -15,12 +24,16 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use std::error::Error;
         use self::Error::*;
+        use std::error::Error;
 
         match self {
-            Undefined(key) => write!(f, "Error: Trying to access undefined lua global or table key: {}", key)?,
-            _ => write!(f, "Error: {}", self.description())?
+            Undefined(key) => write!(
+                f,
+                "Error: Trying to access undefined lua global or table key: {}",
+                key
+            )?,
+            _ => write!(f, "Error: {}", self.description())?,
         }
 
         let mut cause: Option<&dyn error::Error> = self.cause();
@@ -40,6 +53,7 @@ impl error::Error for Error {
         match *self {
             Lua(_) => "Lua error",
             LuaFunctionCall(_) => "Error calling Lua function",
+            ArgsPush(_) => "Error pushing Lua function arguments",
             Undefined(_) => "Trying to access lua gobal or table key that does not exist",
             Tcp(_) => "Error establishing TCP connection to SRS",
             Json(_) => "Error serializing/deserializing JSON RPC message",
@@ -74,6 +88,12 @@ impl From<::hlua51::LuaError> for Error {
 impl From<::hlua51::LuaFunctionCallError<::hlua51::Void>> for Error {
     fn from(err: ::hlua51::LuaFunctionCallError<::hlua51::Void>) -> Self {
         Error::LuaFunctionCall(err)
+    }
+}
+
+impl From<ArgsError> for Error {
+    fn from(err: ArgsError) -> Self {
+        Error::ArgsPush(err)
     }
 }
 
