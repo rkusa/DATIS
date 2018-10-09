@@ -162,11 +162,13 @@ impl AtisSrsClient {
 fn audio_broadcast(ctx: Context, sguid: String, station: Station) -> Result<(), Error> {
     let interval = Duration::from_secs(60 * 20);
     let mut interval_start;
+    let mut report_ix = 0;
     loop {
         interval_start = Instant::now();
 
         // TODO: unwrap
-        let report = station.generate_report()?;
+        let report = station.generate_report(report_ix)?;
+        report_ix += 1;
         info!("Report: {}", report);
 
         let data = text_to_speech(&report)?;

@@ -34,9 +34,11 @@ pub struct StaticWind {
 }
 
 impl Station {
-    pub fn generate_report(&self) -> Result<String, Error> {
+    pub fn generate_report(&self, report_nr: usize) -> Result<String, Error> {
+        let information_letter = PHONETIC_ALPHABET[report_nr % PHONETIC_ALPHABET.len()];
+
         let weather = self.get_current_weather()?;
-        let mut report = format!("This is {}. ", self.name);
+        let mut report = format!("This is {} information {}. ", self.name, information_letter);
 
         if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
             let rwy = pronounce_number(rwy);
@@ -65,6 +67,8 @@ impl Station {
                 pronounce_number(round(traffic_freq as f64 / 1_000_000.0, 3))
             );
         }
+
+        report += &format!("End information {}. ", information_letter);
 
         Ok(report)
     }
@@ -135,6 +139,12 @@ where
         .join(" ")
 }
 
+static PHONETIC_ALPHABET: &'static [&str] = &[
+    "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett",
+    "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango",
+    "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu",
+];
+
 #[cfg(test)]
 mod test {
     use super::{Airfield, Position, Station};
@@ -190,7 +200,7 @@ mod test {
             dynamic_weather: DynamicWeather::create("").unwrap(),
         };
 
-        let report = station.generate_report().unwrap();
-        assert_eq!(report, r"This is Kutaisi. Runway is 0 4. Surface wind 3 3 0, at 10 knots. Temperature 22.0 degree celcius, QNH 2 9 decimal 9 7 inch of mercury, or 1 0 hectopascal. Traffic frequency 2 4 9 decimal 5. ");
+        let report = station.generate_report(0).unwrap();
+        assert_eq!(report, r"This is Kutaisi information Alpha. Runway is 0 4. Surface wind 3 3 0, at 10 knots. Temperature 22.0 degree celcius, QNH 2 9 decimal 9 7 inch of mercury, or 1 0 hectopascal. Traffic frequency 2 4 9 decimal 5. End information Alpha. ");
     }
 }
