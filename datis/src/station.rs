@@ -39,30 +39,31 @@ impl Station {
         let mut report = format!("This is {}. ", self.name);
 
         if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
-            let rwy = rwy
-                .chars()
-                .map(|c| c.to_string())
-                .collect::<Vec<String>>()
-                .join(" ");
+            let rwy = pronounce_number(rwy);
             report += &format!("Runway is {}. ", rwy);
         } else {
             error!("Could not find active runway for {}", self.name);
         }
 
+        let wind_dir = format!("{:0>3}", weather.wind_dir.to_degrees().round().to_string());
         report += &format!(
-            "Surface wind {:.0}, {:.0} knots. ",
-            weather.wind_dir.to_degrees(),
+            "Surface wind {}, at {:.0} knots. ",
+            pronounce_number(wind_dir),
             weather.wind_speed * 1.94384, // to knots
         );
 
         report += &format!(
-            "Temperature {:.1} degree celcius, QNH {:.0} hectopascal. ",
+            "Temperature {:.1} degree celcius, QNH {} inch of mercury, or {} hectopascal. ",
             weather.temperature,
-            weather.pressure / 100.0, // to hPA
+            pronounce_number(round(weather.pressure * 0.02953, 2)), // inHg
+            pronounce_number((weather.pressure / 100.0).round()),   // to hPA
         );
 
         if let Some(traffic_freq) = self.traffic_freq {
-            report += &format!("Traffic frequency {}. ", traffic_freq as f64 / 1_000_000.0);
+            report += &format!(
+                "Traffic frequency {}. ",
+                pronounce_number(round(traffic_freq as f64 / 1_000_000.0, 3))
+            );
         }
 
         Ok(report)
@@ -112,6 +113,28 @@ impl Station {
     }
 }
 
+fn round(n: f64, max_decimal_places: i32) -> f64 {
+    if max_decimal_places == 0 {
+        return n.round();
+    }
+    let m = (10.0f64).powi(max_decimal_places);
+    (n * m).round() / m
+}
+
+fn pronounce_number<S>(n: S) -> String
+where
+    S: ToString,
+{
+    n.to_string()
+        .chars()
+        .filter_map(|c| match c {
+            '.' => Some(String::from("decimal")),
+            _ => Some(c.to_string()),
+        })
+        .collect::<Vec<String>>()
+        .join(" ")
+}
+
 #[cfg(test)]
 mod test {
     use super::{Airfield, Position, Station};
@@ -153,7 +176,7 @@ mod test {
         let station = Station {
             name: String::from("Kutaisi"),
             atis_freq: 251_000_000,
-            traffic_freq: Some(255_000_000),
+            traffic_freq: Some(249_500_000),
             airfield: Airfield {
                 name: String::from("Kutaisi"),
                 position: Position {
@@ -168,6 +191,6 @@ mod test {
         };
 
         let report = station.generate_report().unwrap();
-        assert_eq!(report, r"This is Kutaisi. Runway is 0 4. Surface wind 330, 10 knots. Temperature 22.0 degree celcius, QNH 10 hectopascal. Traffic frequency 255. ");
+        assert_eq!(report, r"This is Kutaisi. Runway is 0 4. Surface wind 3 3 0, at 10 knots. Temperature 22.0 degree celcius, QNH 2 9 decimal 9 7 inch of mercury, or 1 0 hectopascal. Traffic frequency 2 4 9 decimal 5. ");
     }
 }

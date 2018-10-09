@@ -76,7 +76,7 @@ pub extern "C" fn start(state: *mut ffi::lua_State) -> c_int {
                         }
                     }
                     DATIS = Some(datis);
-                },
+                }
                 Err(err) => {
                     return report_error(state, &err.to_string());
                 }

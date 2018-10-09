@@ -102,11 +102,14 @@ mod test {
     #[test]
     fn test_get_weather() {
         let dw = DynamicWeather::create("").unwrap();
-        assert_eq!(dw.get_at(1.0, 2.0, 3.0).unwrap(), WeatherInfo {
-            wind_speed: 1.0,
-            wind_dir: 2.0,
-            temperature: 3.0,
-            pressure: 42.0,
-        });
+        assert_eq!(
+            dw.get_at(1.0, 2.0, 3.0).unwrap(),
+            WeatherInfo {
+                wind_speed: 1.0,
+                wind_dir: 2.0,
+                temperature: 3.0,
+                pressure: 42.0,
+            }
+        );
     }
 }
