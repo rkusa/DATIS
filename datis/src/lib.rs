@@ -78,6 +78,45 @@ pub extern "C" fn start(state: *mut ffi::lua_State) -> c_int {
     0
 }
 
+#[no_mangle]
+pub extern "C" fn stop(_state: *mut ffi::lua_State) -> c_int {
+    unsafe {
+        if let Some(datis) = DATIS.take() {
+            for client in datis.clients.into_iter() {
+                client.stop()
+            }
+        }
+    }
+
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn pause(_state: *mut ffi::lua_State) -> c_int {
+    unsafe {
+        if let Some(ref mut datis) = DATIS {
+            for client in &datis.clients {
+                client.pause()
+            }
+        }
+    }
+
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn unpause(_state: *mut ffi::lua_State) -> c_int {
+    unsafe {
+        if let Some(ref mut datis) = DATIS {
+            for client in &datis.clients {
+                client.unpause()
+            }
+        }
+    }
+
+    0
+}
+
 fn report_error(state: *mut ffi::lua_State, msg: &str) -> c_int {
     let msg = CString::new(msg).unwrap();
 
@@ -96,6 +135,18 @@ pub unsafe extern "C" fn luaopen_datis(state: *mut ffi::lua_State) -> c_int {
         ffi::luaL_Reg {
             name: cstr!("start"),
             func: Some(start),
+        },
+        ffi::luaL_Reg {
+            name: cstr!("stop"),
+            func: Some(stop),
+        },
+        ffi::luaL_Reg {
+            name: cstr!("pause"),
+            func: Some(pause),
+        },
+        ffi::luaL_Reg {
+            name: cstr!("unpause"),
+            func: Some(unpause),
         },
         ffi::luaL_Reg {
             name: ptr::null(),

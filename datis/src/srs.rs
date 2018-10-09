@@ -7,7 +7,7 @@ use byteorder::{LittleEndian, WriteBytesExt};
 use crate::error::Error;
 use crate::station::{Position, Station};
 use crate::tts::text_to_speech;
-use crate::worker::Worker;
+use crate::worker::{Context, Worker};
 use ogg::reading::PacketReader;
 use uuid::Uuid;
 
@@ -40,6 +40,7 @@ impl AtisSrsClient {
 
         let mut stream = TcpStream::connect("127.0.0.1:5002")?;
         stream.set_nodelay(true)?;
+        stream.set_read_timeout(Some(Duration::from_millis(100)))?;
 
         let sync_msg = Message {
             client: Some(Client {
@@ -60,17 +61,17 @@ impl AtisSrsClient {
         // spawn audio broadcast thread
         let sguid = self.sguid.clone();
         let station = self.station.clone();
-        self.worker.push(Worker::new(move || {
-            if let Err(err) = audio_broadcast(sguid, station) {
+        self.worker.push(Worker::new(move |ctx| {
+            if let Err(err) = audio_broadcast(ctx, sguid, station) {
                 error!("Error starting SRS broadcast: {}", err);
             }
         }));
 
-        // spawn thread that sends an update RPC call to SRS every 5 seconds
+        // spawn thread that sends an update RPC call to SRS every ~5 seconds
         let sguid = self.sguid.clone();
         let name = self.station.name.clone();
         let position = self.station.airfield.position.clone();
-        self.worker.push(Worker::new(move || {
+        self.worker.push(Worker::new(move |ctx| {
             let mut send_update = || -> Result<(), Error> {
                 // send update
                 let upd_msg = Message {
@@ -97,29 +98,37 @@ impl AtisSrsClient {
 
                 debug!("SRS Update sent");
 
-                thread::sleep(Duration::from_secs(5));
+                if ctx.should_stop_timeout(Duration::from_secs(5)) {
+                    return ();
+                }
             }
         }));
 
-        self.worker.push(Worker::new(move || {
+        self.worker.push(Worker::new(move |ctx| {
             let mut data = Vec::new();
-            let mut receive = || -> Result<(), Error> {
-                data.clear();
-
-                let bytes_read = rd.read_until(b'\n', &mut data)?;
-                if bytes_read == 0 {
-                    // TODO: ??
-                    return Ok(());
-                }
-
-                // ignore received messages ...
-
-                Ok(())
-            };
 
             loop {
-                if let Err(err) = receive() {
-                    error!("Error receiving update from SRS: {}", err);
+                match rd.read_until(b'\n', &mut data) {
+                    Ok(bytes_read) => {
+                        if bytes_read == 0 {
+                            return ();
+                        }
+
+                        data.clear();
+                        // ignore received messages ...
+                    }
+                    Err(err) => match err.kind() {
+                        io::ErrorKind::WouldBlock => {
+                            continue;
+                        }
+                        _ => {
+                            error!("Error receiving update from SRS: {}", err);
+                        }
+                    },
+                }
+
+                if ctx.should_stop() {
+                    return ();
                 }
             }
         }));
@@ -128,9 +137,27 @@ impl AtisSrsClient {
 
         Ok(())
     }
+
+    pub fn stop(self) {
+        for worker in self.worker.into_iter() {
+            worker.stop();
+        }
+    }
+
+    pub fn pause(&self) {
+        for worker in &self.worker {
+            worker.pause();
+        }
+    }
+
+    pub fn unpause(&self) {
+        for worker in &self.worker {
+            worker.unpause();
+        }
+    }
 }
 
-fn audio_broadcast(sguid: String, station: Station) -> Result<(), Error> {
+fn audio_broadcast(ctx: Context, sguid: String, station: Station) -> Result<(), Error> {
     let interval = Duration::from_secs(60 * 20);
     let mut interval_start;
     loop {
@@ -177,7 +204,9 @@ fn audio_broadcast(sguid: String, station: Station) -> Result<(), Error> {
                     thread::sleep(playtime - elapsed);
                 }
 
-                //                thread::sleep(Duration::from_millis(10));
+                if ctx.should_stop() {
+                    return Ok(());
+                }
             }
 
             info!("TOTAL SIZE: {}", size);
@@ -192,7 +221,9 @@ fn audio_broadcast(sguid: String, station: Station) -> Result<(), Error> {
                 thread::sleep(playtime - elapsed);
             }
 
-            thread::sleep(Duration::from_secs(3));
+            if ctx.should_stop_timeout(Duration::from_secs(3)) {
+                return Ok(());
+            }
 
             data = audio.into_inner();
         }
