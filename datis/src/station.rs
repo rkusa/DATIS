@@ -57,7 +57,7 @@ impl Station {
         report += &format!(
             "Temperature {:.1} degree celcius, QNH {} inch of mercury, or {} hectopascal. ",
             weather.temperature,
-            pronounce_number(round(weather.pressure * 0.02953, 2)), // inHg
+            pronounce_number(round(weather.pressure * 0.0002953, 2)), // inHg
             pronounce_number((weather.pressure / 100.0).round()),   // to hPA
         );
 
