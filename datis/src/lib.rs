@@ -29,9 +29,17 @@ use libc::c_int;
 use lua51_sys as ffi;
 use simplelog::*;
 
+static mut INITIALIZED: bool = false;
 static mut DATIS: Option<Datis> = None;
 
 pub fn init(lua: &mut Lua<'_>) -> Result<(), Error> {
+    unsafe {
+        if INITIALIZED {
+            return Ok(());
+        }
+        INITIALIZED = true;
+    }
+
     let mut lfs: LuaTable<_> = get!(lua, "lfs")?;
     let mut writedir: LuaFunction<_> = get!(lfs, "writedir")?;
     let writedir: String = writedir.call()?;
@@ -51,23 +59,24 @@ pub fn init(lua: &mut Lua<'_>) -> Result<(), Error> {
 #[no_mangle]
 pub extern "C" fn start(state: *mut ffi::lua_State) -> c_int {
     unsafe {
-        if let Some(ref mut datis) = DATIS {
-            for client in datis.clients.iter_mut() {
-                if let Err(err) = client.start() {
-                    return report_error(state, &err.to_string());
-                }
-            }
-        } else {
+        if DATIS.is_none() {
             let mut lua = Lua::from_existing_state(state, false);
 
             if let Err(err) = init(&mut lua) {
                 return report_error(state, &err.to_string());
             }
 
-            debug!("Initializing ...");
+            info!("Starting ...");
 
             match Datis::create(lua) {
-                Ok(datis) => DATIS = Some(datis),
+                Ok(mut datis) => {
+                    for client in datis.clients.iter_mut() {
+                        if let Err(err) = client.start() {
+                            return report_error(state, &err.to_string());
+                        }
+                    }
+                    DATIS = Some(datis);
+                },
                 Err(err) => {
                     return report_error(state, &err.to_string());
                 }
@@ -82,6 +91,7 @@ pub extern "C" fn start(state: *mut ffi::lua_State) -> c_int {
 pub extern "C" fn stop(_state: *mut ffi::lua_State) -> c_int {
     unsafe {
         if let Some(datis) = DATIS.take() {
+            info!("Stopping ...");
             for client in datis.clients.into_iter() {
                 client.stop()
             }
@@ -95,6 +105,7 @@ pub extern "C" fn stop(_state: *mut ffi::lua_State) -> c_int {
 pub extern "C" fn pause(_state: *mut ffi::lua_State) -> c_int {
     unsafe {
         if let Some(ref mut datis) = DATIS {
+            info!("Pausing ...");
             for client in &datis.clients {
                 client.pause()
             }
@@ -108,6 +119,7 @@ pub extern "C" fn pause(_state: *mut ffi::lua_State) -> c_int {
 pub extern "C" fn unpause(_state: *mut ffi::lua_State) -> c_int {
     unsafe {
         if let Some(ref mut datis) = DATIS {
+            info!("Unpausing ...");
             for client in &datis.clients {
                 client.unpause()
             }

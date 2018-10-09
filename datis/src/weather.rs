@@ -6,7 +6,7 @@ use hlua51::{Lua, LuaFunction, LuaTable};
 #[derive(Debug, Clone)]
 pub struct DynamicWeather(Arc<Mutex<Lua<'static>>>);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct WeatherInfo {
     pub wind_speed: f64,  // in m/s
     pub wind_dir: f64,    // in radians (the direction the wind is coming from)
@@ -19,23 +19,36 @@ static LUA_CODE: &str = r#"
     local Weather = require 'Weather'
 
     getWeather = function(x, y, alt)
-        local wind = Weather.getGroundWindAtPoint({{
-            position = {{
-                x = x,
-                y = alt,
-                z = y,
-            }}
-        }})
-        local temp, pressure = Weather.getTemperatureAndPressureAtPoint({{
+        local position = {
+            x = x,
+            y = alt,
+            z = y,
+        }
+        local wind = Weather.getGroundWindAtPoint({
             position = position
-        }})
+        })
+        local temp, pressure = Weather.getTemperatureAndPressureAtPoint({
+            position = position
+        })
 
-        return {{
+        return {
             windSpeed = wind.v,
             windDir = wind.a,
             temp = temp,
             pressure = pressure,
-        }}
+        }
+    end
+"#;
+
+#[cfg(test)]
+static LUA_CODE: &str = r#"
+    function getWeather(x, y, alt)
+        return {
+            windSpeed = x,
+            windDir = y,
+            temp = alt,
+            pressure = 42,
+        }
     end
 "#;
 
@@ -50,14 +63,12 @@ impl DynamicWeather {
         }
 
         {
-            #[cfg(not(test))]
             lua.execute::<()>(LUA_CODE)?;
         }
 
         Ok(DynamicWeather(Arc::new(Mutex::new(lua))))
     }
 
-    #[cfg(not(test))]
     pub fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, Error> {
         // call `getWeather(x, y, alt)`
         let mut lua = self.0.lock().unwrap();
@@ -81,5 +92,21 @@ impl DynamicWeather {
 impl PartialEq for DynamicWeather {
     fn eq(&self, _other: &DynamicWeather) -> bool {
         true
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{DynamicWeather, WeatherInfo};
+
+    #[test]
+    fn test_get_weather() {
+        let dw = DynamicWeather::create("").unwrap();
+        assert_eq!(dw.get_at(1.0, 2.0, 3.0).unwrap(), WeatherInfo {
+            wind_speed: 1.0,
+            wind_dir: 2.0,
+            temperature: 3.0,
+            pressure: 42.0,
+        });
     }
 }

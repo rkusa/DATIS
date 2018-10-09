@@ -118,11 +118,10 @@ impl AtisSrsClient {
                         // ignore received messages ...
                     }
                     Err(err) => match err.kind() {
-                        io::ErrorKind::WouldBlock => {
-                            continue;
+                        io::ErrorKind::TimedOut => {
                         }
                         _ => {
-                            error!("Error receiving update from SRS: {}", err);
+                            error!("Error ({:?}) receiving update from SRS: {}", err.kind(), err);
                         }
                     },
                 }
