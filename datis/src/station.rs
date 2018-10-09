@@ -42,23 +42,22 @@ impl Station {
 
         if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
             let rwy = pronounce_number(rwy);
-            report += &format!("Runway is {}. ", rwy);
+            report += &format!("Runway in use is {}. ", rwy);
         } else {
             error!("Could not find active runway for {}", self.name);
         }
 
         let wind_dir = format!("{:0>3}", weather.wind_dir.to_degrees().round().to_string());
         report += &format!(
-            "Surface wind {}, at {:.0} knots. ",
+            "Wind {} at {} knots. ",
             pronounce_number(wind_dir),
-            weather.wind_speed * 1.94384, // to knots
+            pronounce_number((weather.wind_speed * 1.94384).round()), // to knots
         );
 
         report += &format!(
-            "Temperature {:.1} degree celcius, QNH {} inch of mercury, or {} hectopascal. ",
-            weather.temperature,
+            "Temperature {} celcius, ALTIMETER {}. ",
+            pronounce_number(round(weather.temperature, 1)),
             pronounce_number(round(weather.pressure * 0.0002953, 2)), // inHg
-            pronounce_number((weather.pressure / 100.0).round()),   // to hPA
         );
 
         if let Some(traffic_freq) = self.traffic_freq {
@@ -67,6 +66,11 @@ impl Station {
                 pronounce_number(round(traffic_freq as f64 / 1_000_000.0, 3))
             );
         }
+
+        report += &format!(
+            "REMARK {} hectopascal. ",
+            pronounce_number((weather.pressure / 100.0).round()), // to hPA
+        );
 
         report += &format!("End information {}. ", information_letter);
 
@@ -200,7 +204,7 @@ mod test {
             dynamic_weather: DynamicWeather::create("").unwrap(),
         };
 
-        let report = station.generate_report(0).unwrap();
-        assert_eq!(report, r"This is Kutaisi information Alpha. Runway is 0 4. Surface wind 3 3 0, at 10 knots. Temperature 22.0 degree celcius, QNH 2 9 decimal 9 7 inch of mercury, or 1 0 hectopascal. Traffic frequency 2 4 9 decimal 5. End information Alpha. ");
+        let report = station.generate_report(26).unwrap();
+        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is 0 4. Wind 3 3 0, at 1 0 knots. Temperature 2 2 celcius, ALTIMETER 2 9 decimal 9 7. Traffic frequency 2 4 9 decimal 5. REMARKS 1 0 hectopascal. End information Alpha. ");
     }
 }
