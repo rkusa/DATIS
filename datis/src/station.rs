@@ -68,7 +68,7 @@ impl Station {
         }
 
         report += &format!(
-            "REMARK {} hectopascal. ",
+            "REMARKS {} hectopascal. ",
             pronounce_number((weather.pressure / 100.0).round()), // to hPA
         );
 
@@ -83,7 +83,7 @@ impl Station {
             wind_speed: 5.0,
             wind_dir: (330.0f64).to_radians(),
             temperature: 22.0,
-            pressure: 1015.0,
+            pressure: 101500.0,
         })
     }
 
@@ -205,6 +205,6 @@ mod test {
         };
 
         let report = station.generate_report(26).unwrap();
-        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is 0 4. Wind 3 3 0, at 1 0 knots. Temperature 2 2 celcius, ALTIMETER 2 9 decimal 9 7. Traffic frequency 2 4 9 decimal 5. REMARKS 1 0 hectopascal. End information Alpha. ");
+        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is 0 4. Wind 3 3 0 at 1 0 knots. Temperature 2 2 celcius, ALTIMETER 2 9 decimal 9 7. Traffic frequency 2 4 9 decimal 5. REMARKS 1 0 1 5 hectopascal. End information Alpha. ");
     }
 }
