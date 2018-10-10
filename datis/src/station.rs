@@ -7,7 +7,7 @@ pub struct Station {
     pub atis_freq: u64,
     pub traffic_freq: Option<u64>,
     pub airfield: Airfield,
-    pub static_wind: Option<StaticWind>,
+    pub static_weather: Option<Weather>,
     pub dynamic_weather: DynamicWeather,
 }
 
@@ -28,9 +28,24 @@ pub struct Airfield {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct StaticWind {
+pub struct Weather {
+    pub wind: Wind,
+    pub clouds: Clouds,
+    pub visibility: u32,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Wind {
     pub dir: f64,
     pub speed: f64,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Clouds {
+    pub base: u32,
+    pub density: u32,
+    pub thickness: u32,
+    pub iprecptns: u32,
 }
 
 impl Station {
@@ -95,9 +110,9 @@ impl Station {
             self.airfield.position.alt,
         )?;
 
-        if let Some(ref static_wind) = self.static_wind {
-            info.wind_speed = static_wind.speed;
-            info.wind_dir = static_wind.dir;
+        if let Some(ref weather) = self.static_weather {
+            info.wind_speed = weather.wind.speed;
+            info.wind_dir = weather.wind.dir;
         }
 
         Ok(info)
@@ -171,7 +186,7 @@ mod test {
                 },
                 runways: vec![String::from("04"), String::from("22")],
             },
-            static_wind: None,
+            static_weather: None,
             dynamic_weather: DynamicWeather::create("").unwrap(),
         };
 
@@ -200,7 +215,7 @@ mod test {
                 },
                 runways: vec![String::from("04"), String::from("22")],
             },
-            static_wind: None,
+            static_weather: None,
             dynamic_weather: DynamicWeather::create("").unwrap(),
         };
 

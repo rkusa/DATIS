@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use crate::error::Error;
 use crate::srs::AtisSrsClient;
-use crate::station::{Airfield, Position, StaticWind, Station};
+use crate::station::*;
 use crate::weather::DynamicWeather;
 use hlua51::{Lua, LuaFunction, LuaTable};
 use regex::Regex;
@@ -102,27 +102,51 @@ impl Datis {
         // read `_current_mission.mission.weather.atmosphere_type`
         let atmosphere_type: f64 = get!(weather, "atmosphere_type")?;
 
-        let static_wind = if atmosphere_type == 0.0 {
+        let static_weather = if atmosphere_type == 0.0 {
             // is static DCS weather system
-            // get wind
-            let mut wind: LuaTable<_> = get!(weather, "wind")?;
-            let mut wind_at_ground: LuaTable<_> = get!(wind, "atGround")?;
 
-            // get wind_at_ground.speed
-            let wind_speed: f64 = get!(wind_at_ground, "speed")?;
+            let static_wind = {
+                // get wind
+                let mut wind: LuaTable<_> = get!(weather, "wind")?;
+                let mut wind_at_ground: LuaTable<_> = get!(wind, "atGround")?;
 
-            // get wind_at_ground.dir
-            let mut wind_dir: f64 = get!(wind_at_ground, "dir")?;
+                // get wind_at_ground.speed
+                let wind_speed: f64 = get!(wind_at_ground, "speed")?;
 
-            // rotate dir
-            wind_dir -= 180.0;
-            if wind_dir < 0.0 {
-                wind_dir += 360.0;
-            }
+                // get wind_at_ground.dir
+                let mut wind_dir: f64 = get!(wind_at_ground, "dir")?;
 
-            Some(StaticWind {
-                dir: wind_dir.to_radians(),
-                speed: wind_speed,
+                // rotate dir
+                wind_dir -= 180.0;
+                if wind_dir < 0.0 {
+                    wind_dir += 360.0;
+                }
+
+                Wind {
+                    dir: wind_dir.to_radians(),
+                    speed: wind_speed,
+                }
+            };
+
+            let static_clouds = {
+                let mut clouds: LuaTable<_> = get!(weather, "clouds")?;
+                Clouds {
+                    base: get!(clouds, "base")?,
+                    density: get!(clouds, "density")?,
+                    thickness: get!(clouds, "thickness")?,
+                    iprecptns: get!(clouds, "iprecptns")?,
+                }
+            };
+
+            let visibility: u32 = {
+                let mut visibility: LuaTable<_> = get!(weather, "visibility")?;
+                get!(visibility, "distance")?
+            };
+
+            Some(Weather {
+                wind: static_wind,
+                clouds: static_clouds,
+                visibility,
             })
         } else {
             None
@@ -138,7 +162,7 @@ impl Datis {
                         atis_freq: freq.atis,
                         traffic_freq: freq.traffic,
                         airfield,
-                        static_wind: static_wind.clone(),
+                        static_weather: static_weather.clone(),
                         dynamic_weather: dynamic_weather.clone(),
                     })
                 })
