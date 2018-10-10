@@ -19,7 +19,6 @@ mod weather;
 mod worker;
 
 use std::ffi::CString;
-use std::fs::File;
 use std::ptr;
 
 use crate::datis::Datis;
@@ -27,7 +26,6 @@ use crate::error::Error;
 use hlua51::{Lua, LuaFunction, LuaTable};
 use libc::c_int;
 use lua51_sys as ffi;
-use simplelog::*;
 
 static mut INITIALIZED: bool = false;
 static mut DATIS: Option<Datis> = None;
@@ -40,18 +38,28 @@ pub fn init(lua: &mut Lua<'_>) -> Result<(), Error> {
         INITIALIZED = true;
     }
 
+    // init logging
+    use log::LevelFilter;
+    use log4rs::append::file::FileAppender;
+    use log4rs::config::{Appender, Config, Logger, Root};
+
     let mut lfs: LuaTable<_> = get!(lua, "lfs")?;
     let mut writedir: LuaFunction<_> = get!(lfs, "writedir")?;
     let writedir: String = writedir.call()?;
     let log_file = writedir + "Logs\\DATIS-dll.log";
 
-    CombinedLogger::init(vec![WriteLogger::new(
-        LevelFilter::Debug,
-        Config::default(),
-        // TODO: unwrap
-        File::create(&log_file).unwrap(),
-    )])
-    .unwrap();
+    let requests = FileAppender::builder()
+        .append(false)
+        .build(log_file)
+        .unwrap();
+
+    let config = Config::builder()
+        .appender(Appender::builder().build("file", Box::new(requests)))
+        .logger(Logger::builder().build("datis", LevelFilter::Debug))
+        .build(Root::builder().appender("file").build(LevelFilter::Off))
+        .unwrap();
+
+    log4rs::init_config(config).unwrap();
 
     Ok(())
 }
