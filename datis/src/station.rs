@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::weather::{DynamicWeather, WeatherInfo};
+use crate::weather::{StaticWeather, DynamicWeather, WeatherKind, WeatherInfo};
 
 #[derive(Debug, Clone)]
 pub struct Station {
@@ -7,7 +7,8 @@ pub struct Station {
     pub atis_freq: u64,
     pub traffic_freq: Option<u64>,
     pub airfield: Airfield,
-    pub static_weather: Option<Weather>,
+    pub weather_kind: WeatherKind,
+    pub static_weather: StaticWeather,
     pub dynamic_weather: DynamicWeather,
 }
 
@@ -25,27 +26,6 @@ pub struct Airfield {
     pub name: String,
     pub position: Position,
     pub runways: Vec<String>,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Weather {
-    pub wind: Wind,
-    pub clouds: Clouds,
-    pub visibility: u32,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Wind {
-    pub dir: f64,
-    pub speed: f64,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Clouds {
-    pub base: u32,
-    pub density: u32,
-    pub thickness: u32,
-    pub iprecptns: u32,
 }
 
 impl Station {
@@ -110,9 +90,9 @@ impl Station {
             self.airfield.position.alt,
         )?;
 
-        if let Some(ref weather) = self.static_weather {
-            info.wind_speed = weather.wind.speed;
-            info.wind_dir = weather.wind.dir;
+        if self.weather_kind == WeatherKind::Static {
+            info.wind_speed = self.static_weather.wind.speed;
+            info.wind_dir = self.static_weather.wind.dir;
         }
 
         Ok(info)
@@ -174,7 +154,7 @@ static PHONETIC_NUMBERS: &'static [&str] = &[
 #[cfg(test)]
 mod test {
     use super::{pronounce_number, Airfield, Position, Station};
-    use crate::weather::DynamicWeather;
+    use crate::weather::{DynamicWeather, StaticWeather};
     use hlua51::Lua;
     use std::cell::RefCell;
 
@@ -207,7 +187,7 @@ mod test {
                 },
                 runways: vec![String::from("04"), String::from("22")],
             },
-            static_weather: None,
+            static_weather: StaticWeather::default(),
             dynamic_weather: DynamicWeather::create("").unwrap(),
         };
 
@@ -236,7 +216,7 @@ mod test {
                 },
                 runways: vec![String::from("04"), String::from("22")],
             },
-            static_weather: None,
+            static_weather: StaticWeather::default(),
             dynamic_weather: DynamicWeather::create("").unwrap(),
         };
 

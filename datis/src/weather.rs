@@ -3,8 +3,35 @@ use std::sync::{Arc, Mutex};
 use crate::error::Error;
 use hlua51::{Lua, LuaFunction, LuaTable};
 
+#[derive(Debug, PartialEq, Clone, Default)]
+pub struct StaticWeather {
+    pub wind: Wind,
+    pub clouds: Clouds,
+    pub visibility: u32,
+}
+
 #[derive(Debug, Clone)]
 pub struct DynamicWeather(Arc<Mutex<Lua<'static>>>);
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum WeatherKind {
+    Static,
+    Dynamic,
+}
+
+#[derive(Debug, PartialEq, Clone, Default)]
+pub struct Wind {
+    pub dir: f64, // in radians (the direction the wind is coming from)
+    pub speed: f64, // in m/s
+}
+
+#[derive(Debug, PartialEq, Clone, Default)]
+pub struct Clouds {
+    pub base: u32,
+    pub density: u32,
+    pub thickness: u32,
+    pub iprecptns: u32,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct WeatherInfo {

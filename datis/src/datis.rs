@@ -4,7 +4,7 @@ use std::str::FromStr;
 use crate::error::Error;
 use crate::srs::AtisSrsClient;
 use crate::station::*;
-use crate::weather::DynamicWeather;
+use crate::weather::*;
 use hlua51::{Lua, LuaFunction, LuaTable};
 use regex::Regex;
 
@@ -101,10 +101,9 @@ impl Datis {
 
         // read `_current_mission.mission.weather.atmosphere_type`
         let atmosphere_type: f64 = get!(weather, "atmosphere_type")?;
+        let weather_kind = if atmosphere_type == 0.0 { WeatherKind::Static } else { WeatherKind::Dynamic };
 
-        let static_weather = if atmosphere_type == 0.0 {
-            // is static DCS weather system
-
+        let static_weather = {
             let static_wind = {
                 // get wind
                 let mut wind: LuaTable<_> = get!(weather, "wind")?;
@@ -143,13 +142,11 @@ impl Datis {
                 get!(visibility, "distance")?
             };
 
-            Some(Weather {
+            StaticWeather {
                 wind: static_wind,
                 clouds: static_clouds,
                 visibility,
-            })
-        } else {
-            None
+            }
         };
 
         let dynamic_weather = DynamicWeather::create(&cpath)?;
@@ -162,6 +159,7 @@ impl Datis {
                         atis_freq: freq.atis,
                         traffic_freq: freq.traffic,
                         airfield,
+                        weather_kind,
                         static_weather: static_weather.clone(),
                         dynamic_weather: dynamic_weather.clone(),
                     })
