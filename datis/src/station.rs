@@ -151,7 +151,10 @@ where
     n.to_string()
         .chars()
         .filter_map(|c| match c {
-            '.' => Some(String::from("decimal")),
+            '.' => Some(String::from("DAYSEEMAL")),
+            '0'..='9' => Some(String::from(
+                PHONETIC_NUMBERS[c.to_digit(10).unwrap() as usize],
+            )),
             _ => Some(c.to_string()),
         })
         .collect::<Vec<String>>()
@@ -164,12 +167,30 @@ static PHONETIC_ALPHABET: &'static [&str] = &[
     "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu",
 ];
 
+static PHONETIC_NUMBERS: &'static [&str] = &[
+    "ZERO", "WUN", "TOO", "TREE", "FOWER", "FIFE", "SIX", "SEVEN", "AIT", "NINER",
+];
+
 #[cfg(test)]
 mod test {
-    use super::{Airfield, Position, Station};
+    use super::{pronounce_number, Airfield, Position, Station};
     use crate::weather::DynamicWeather;
     use hlua51::Lua;
     use std::cell::RefCell;
+
+    #[test]
+    fn text_phonetic_numbers() {
+        assert_eq!(pronounce_number(0), "ZERO");
+        assert_eq!(pronounce_number(1), "WUN");
+        assert_eq!(pronounce_number(2), "TOO");
+        assert_eq!(pronounce_number(3), "TREE");
+        assert_eq!(pronounce_number(4), "FOWER");
+        assert_eq!(pronounce_number(5), "FIFE");
+        assert_eq!(pronounce_number(6), "SIX");
+        assert_eq!(pronounce_number(7), "SEVEN");
+        assert_eq!(pronounce_number(8), "AIT");
+        assert_eq!(pronounce_number(9), "NINER");
+    }
 
     #[test]
     fn test_active_runway() {
@@ -220,6 +241,6 @@ mod test {
         };
 
         let report = station.generate_report(26).unwrap();
-        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is 0 4. Wind 3 3 0 at 1 0 knots. Temperature 2 2 celcius, ALTIMETER 2 9 decimal 9 7. Traffic frequency 2 4 9 decimal 5. REMARKS 1 0 1 5 hectopascal. End information Alpha. ");
+        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is ZERO FOWER. Wind TREE TREE ZERO at WUN ZERO knots. Temperature TOO TOO celcius, ALTIMETER TOO NINER DAYSEEMAL NINER SEVEN. Traffic frequency TOO FOWER NINER DAYSEEMAL FIFE. REMARKS WUN ZERO WUN FIFE hectopascal. End information Alpha. ");
     }
 }
