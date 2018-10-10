@@ -154,7 +154,7 @@ static PHONETIC_NUMBERS: &'static [&str] = &[
 #[cfg(test)]
 mod test {
     use super::{pronounce_number, Airfield, Position, Station};
-    use crate::weather::{DynamicWeather, StaticWeather};
+    use crate::weather::{DynamicWeather, StaticWeather, WeatherKind};
     use hlua51::Lua;
     use std::cell::RefCell;
 
@@ -187,6 +187,7 @@ mod test {
                 },
                 runways: vec![String::from("04"), String::from("22")],
             },
+            weather_kind: WeatherKind::Static,
             static_weather: StaticWeather::default(),
             dynamic_weather: DynamicWeather::create("").unwrap(),
         };
@@ -216,6 +217,7 @@ mod test {
                 },
                 runways: vec![String::from("04"), String::from("22")],
             },
+            weather_kind: WeatherKind::Static,
             static_weather: StaticWeather::default(),
             dynamic_weather: DynamicWeather::create("").unwrap(),
         };
