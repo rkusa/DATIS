@@ -160,7 +160,7 @@ impl AtisSrsClient {
 }
 
 fn audio_broadcast(ctx: Context, sguid: String, station: Station) -> Result<(), Error> {
-    let interval = Duration::from_secs(60 * 20);
+    let interval = Duration::from_secs(60 * 60); // 60min
     let mut interval_start;
     let mut report_ix = 0;
     loop {
@@ -180,7 +180,7 @@ fn audio_broadcast(ctx: Context, sguid: String, station: Station) -> Result<(), 
         loop {
             let elapsed = Instant::now() - interval_start;
             if elapsed > interval {
-                // every 20min, generate a new report
+                // every 60min, generate a new report
                 break;
             }
 
