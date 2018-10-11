@@ -43,52 +43,52 @@ impl Datis {
             let mut get_terrain_config: LuaFunction<_> = get!(terrain, "GetTerrainConfig")?;
             let mut airdromes: LuaTable<_> = get_terrain_config.call_with_args("Airdromes")?;
 
-            // on Caucasus, airdromes start at the index 12
-            // TODO: check starting index for other maps
-            let mut i = 12;
-            while let Some(mut airdrome) = airdromes.get::<LuaTable<_>, _, _>(i) {
-                i += 1;
+            // on Caucasus, airdromes start at the index 12, others start at 1; also hlua's table
+            // iterator does not work for tables of tables, which is why we are just iterating
+            // from 1 to 50 an check whether there is an airdrome table at this index or not
+            for i in 1..=50 {
+                if let Some(mut airdrome) = airdromes.get::<LuaTable<_>, _, _>(i) {
+                    let display_name: String = get!(airdrome, "display_name")?;
 
-                let display_name: String = get!(airdrome, "display_name")?;
+                    let (x, y) = {
+                        let mut reference_point: LuaTable<_> = get!(airdrome, "reference_point")?;
+                        let x: f64 = get!(reference_point, "x")?;
+                        let y: f64 = get!(reference_point, "y")?;
+                        (x, y)
+                    };
 
-                let (x, y) = {
-                    let mut reference_point: LuaTable<_> = get!(airdrome, "reference_point")?;
-                    let x: f64 = get!(reference_point, "x")?;
-                    let y: f64 = get!(reference_point, "y")?;
-                    (x, y)
-                };
+                    let alt = {
+                        // read `airdrome.default_camera_position.pnt[2]`
+                        let mut default_camera_position: LuaTable<_> =
+                            get!(airdrome, "default_camera_position")?;
+                        let mut pnt: LuaTable<_> = get!(default_camera_position, "pnt")?;
+                        let alt: f64 = get!(pnt, 2)?;
+                        // This is only the alt of the camera position of the airfield, which seems to be
+                        // usually elevated by about 100ft. Keep the 100ft elevation above the ground
+                        // as a sender position (for SRS LOS).
+                        alt
+                    };
 
-                let alt = {
-                    // read `airdrome.default_camera_position.pnt[2]`
-                    let mut default_camera_position: LuaTable<_> =
-                        get!(airdrome, "default_camera_position")?;
-                    let mut pnt: LuaTable<_> = get!(default_camera_position, "pnt")?;
-                    let alt: f64 = get!(pnt, 2)?;
-                    // This is only the alt of the camera position of the airfield, which seems to be
-                    // usually elevated by about 100ft. Keep the 100ft elevation above the ground
-                    // as a sender position (for SRS LOS).
-                    alt
-                };
+                    let mut runways: Vec<String> = Vec::new();
+                    let mut rwys: LuaTable<_> = get!(airdrome, "runways")?;
+                    let mut j = 0;
+                    while let Some(mut rw) = rwys.get::<LuaTable<_>, _, _>(j) {
+                        j += 1;
+                        let start: String = get!(rw, "start")?;
+                        let end: String = get!(rw, "end")?;
+                        runways.push(start);
+                        runways.push(end);
+                    }
 
-                let mut runways: Vec<String> = Vec::new();
-                let mut rwys: LuaTable<_> = get!(airdrome, "runways")?;
-                let mut j = 0;
-                while let Some(mut rw) = rwys.get::<LuaTable<_>, _, _>(j) {
-                    j += 1;
-                    let start: String = get!(rw, "start")?;
-                    let end: String = get!(rw, "end")?;
-                    runways.push(start);
-                    runways.push(end);
+                    airfields.insert(
+                        display_name.clone(),
+                        Airfield {
+                            name: display_name,
+                            position: Position { x, y, alt },
+                            runways,
+                        },
+                    );
                 }
-
-                airfields.insert(
-                    display_name.clone(),
-                    Airfield {
-                        name: display_name,
-                        position: Position { x, y, alt },
-                        runways,
-                    },
-                );
             }
 
             airfields
