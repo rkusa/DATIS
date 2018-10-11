@@ -8,8 +8,8 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-hlua51 = { path = "../../hlua51/hlua" }
-lua51-sys = { path = "../../hlua51/lua51-sys" }
+hlua51 = { git = "https://github.com/rkusa/hlua51.git" }
+lua51-sys = { git = "https://github.com/rkusa/hlua51.git" }
 libc = "0.2"
 regex = "1"
 log = "0.4"
