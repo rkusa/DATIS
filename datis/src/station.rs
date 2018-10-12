@@ -90,7 +90,7 @@ impl Station {
         let mut info = self.dynamic_weather.get_at(
             self.airfield.position.x,
             self.airfield.position.y,
-            self.airfield.position.alt,
+            0.0, // at ground level
         )?;
 
         if self.weather_kind == WeatherKind::Static {
