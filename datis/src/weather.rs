@@ -1,13 +1,14 @@
 use std::sync::{Arc, Mutex};
 
 use crate::error::Error;
+use crate::utils::{pronounce_number, round};
 use hlua51::{Lua, LuaFunction, LuaTable};
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct StaticWeather {
     pub wind: Wind,
     pub clouds: Clouds,
-    pub visibility: u32,
+    pub visibility: u32, // in m
 }
 
 #[derive(Debug, Clone)]
@@ -21,13 +22,13 @@ pub enum WeatherKind {
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Wind {
-    pub dir: f64, // in radians (the direction the wind is coming from)
+    pub dir: f64,   // in radians (the direction the wind is coming from)
     pub speed: f64, // in m/s
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Clouds {
-    pub base: u32,
+    pub base: u32, // in ft
     pub density: u32,
     pub thickness: u32,
     pub iprecptns: u32,
@@ -39,6 +40,33 @@ pub struct WeatherInfo {
     pub wind_dir: f64,    // in radians (the direction the wind is coming from)
     pub temperature: f64, // in °C
     pub pressure: f64,    // in N/m2
+}
+
+impl StaticWeather {
+    pub fn get_clouds_report(&self) -> String {
+        // convert m to nm
+        let visibility = (self.visibility as f64 * 0.000539957).round();
+        let mut report = format!("Visibility {}", pronounce_number(visibility));
+
+        let density = match self.clouds.density {
+            2..=5 => Some("few"),
+            6..=7 => Some("scattered"),
+            8 => Some("broken"),
+            9..=10 => Some("overcast"),
+            _ => None,
+        };
+        if let Some(density) = density {
+            // round to lowest 500ft increment and shortened (e.g. 17500 -> 175)
+            let base = (self.clouds.base - (self.clouds.base % 500)) / 100;
+            report += &format!(", {} {}", density, pronounce_number(base));
+            match self.clouds.iprecptns {
+                5..=8 => report += " rain",
+                9..=10 => report += " rain and thunderstorm",
+                _ => {}
+            }
+        }
+        report
+    }
 }
 
 #[cfg(not(test))]
@@ -124,7 +152,7 @@ impl PartialEq for DynamicWeather {
 
 #[cfg(test)]
 mod test {
-    use super::{DynamicWeather, WeatherInfo};
+    use super::*;
 
     #[test]
     fn test_get_weather() {
@@ -137,6 +165,52 @@ mod test {
                 temperature: 3.0,
                 pressure: 42.0,
             }
+        );
+    }
+
+    #[test]
+    fn test_clouds_report() {
+        fn create_clouds_report(
+            base: u32,
+            density: u32,
+            iprecptns: u32,
+            visibility: u32,
+        ) -> String {
+            StaticWeather {
+                wind: Wind {
+                    dir: 0.0,
+                    speed: 0.0,
+                },
+                clouds: Clouds {
+                    base,
+                    density,
+                    thickness: 0,
+                    iprecptns,
+                },
+                visibility,
+            }
+            .get_clouds_report()
+        }
+
+        assert_eq!(
+            create_clouds_report(8400, 1, 0, 80_000),
+            "Visibility FOWER TREE"
+        );
+        assert_eq!(
+            create_clouds_report(8400, 2, 0, 80_000),
+            "Visibility FOWER TREE, few AIT ZERO"
+        );
+        assert_eq!(
+            create_clouds_report(8400, 2, 0, 80_000),
+            "Visibility FOWER TREE, few AIT ZERO"
+        );
+        assert_eq!(
+            create_clouds_report(8500, 6, 5, 80_000),
+            "Visibility FOWER TREE, scattered AIT FIFE rain"
+        );
+        assert_eq!(
+            create_clouds_report(8500, 10, 9, 80_000),
+            "Visibility FOWER TREE, overcast AIT FIFE rain and thunderstorm"
         );
     }
 }

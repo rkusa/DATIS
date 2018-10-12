@@ -101,7 +101,11 @@ impl Datis {
 
         // read `_current_mission.mission.weather.atmosphere_type`
         let atmosphere_type: f64 = get!(weather, "atmosphere_type")?;
-        let weather_kind = if atmosphere_type == 0.0 { WeatherKind::Static } else { WeatherKind::Dynamic };
+        let weather_kind = if atmosphere_type == 0.0 {
+            WeatherKind::Static
+        } else {
+            WeatherKind::Dynamic
+        };
 
         let static_weather = {
             let static_wind = {

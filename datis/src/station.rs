@@ -1,5 +1,6 @@
 use crate::error::Error;
-use crate::weather::{StaticWeather, DynamicWeather, WeatherKind, WeatherInfo};
+use crate::utils::{pronounce_number, round};
+use crate::weather::{DynamicWeather, StaticWeather, WeatherInfo, WeatherKind};
 
 #[derive(Debug, Clone)]
 pub struct Station {
@@ -48,6 +49,8 @@ impl Station {
             pronounce_number(wind_dir),
             pronounce_number((weather.wind_speed * 1.94384).round()), // to knots
         );
+
+        report += &format!("{}. ", self.static_weather.get_clouds_report());
 
         report += &format!(
             "Temperature {} celcius, ALTIMETER {}. ",
@@ -116,39 +119,10 @@ impl Station {
     }
 }
 
-fn round(n: f64, max_decimal_places: i32) -> f64 {
-    if max_decimal_places == 0 {
-        return n.round();
-    }
-    let m = (10.0f64).powi(max_decimal_places);
-    (n * m).round() / m
-}
-
-fn pronounce_number<S>(n: S) -> String
-where
-    S: ToString,
-{
-    n.to_string()
-        .chars()
-        .filter_map(|c| match c {
-            '.' => Some(String::from("DAYSEEMAL")),
-            '0'..='9' => Some(String::from(
-                PHONETIC_NUMBERS[c.to_digit(10).unwrap() as usize],
-            )),
-            _ => Some(c.to_string()),
-        })
-        .collect::<Vec<String>>()
-        .join(" ")
-}
-
 static PHONETIC_ALPHABET: &'static [&str] = &[
     "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett",
     "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango",
     "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu",
-];
-
-static PHONETIC_NUMBERS: &'static [&str] = &[
-    "ZERO", "WUN", "TOO", "TREE", "FOWER", "FIFE", "SIX", "SEVEN", "AIT", "NINER",
 ];
 
 #[cfg(test)]
@@ -223,6 +197,6 @@ mod test {
         };
 
         let report = station.generate_report(26).unwrap();
-        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is ZERO FOWER. Wind TREE TREE ZERO at WUN ZERO knots. Temperature TOO TOO celcius, ALTIMETER TOO NINER DAYSEEMAL NINER SEVEN. Traffic frequency TOO FOWER NINER DAYSEEMAL FIFE. REMARKS WUN ZERO WUN FIFE hectopascal. End information Alpha. ");
+        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is ZERO FOWER. Wind TREE TREE ZERO at WUN ZERO knots. Visibility ZERO. Temperature TOO TOO celcius, ALTIMETER TOO NINER DAYSEEMAL NINER SEVEN. Traffic frequency TOO FOWER NINER DAYSEEMAL FIFE. REMARKS WUN ZERO WUN FIFE hectopascal. End information Alpha. ");
     }
 }
