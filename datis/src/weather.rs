@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::error::Error;
-use crate::utils::{pronounce_number, round};
+use crate::utils::pronounce_number;
 use hlua51::{Lua, LuaFunction, LuaTable};
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -28,7 +28,7 @@ pub struct Wind {
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Clouds {
-    pub base: u32, // in ft
+    pub base: u32, // in m
     pub density: u32,
     pub thickness: u32,
     pub iprecptns: u32,
@@ -56,8 +56,9 @@ impl StaticWeather {
             _ => None,
         };
         if let Some(density) = density {
-            // round to lowest 500ft increment and shortened (e.g. 17500 -> 175)
-            let base = (self.clouds.base - (self.clouds.base % 500)) / 100;
+            // convert m to ft, round to lowest 500ft increment and shortened (e.g. 17500 -> 175)
+            let base = (self.clouds.base as f64 * 3.28084).round() as u32;
+            let base = (base - (base % 500)) / 100;
             report += &format!(", {} {}", density, pronounce_number(base));
             match self.clouds.iprecptns {
                 1 => report += " rain",
