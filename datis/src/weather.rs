@@ -60,8 +60,8 @@ impl StaticWeather {
             let base = (self.clouds.base - (self.clouds.base % 500)) / 100;
             report += &format!(", {} {}", density, pronounce_number(base));
             match self.clouds.iprecptns {
-                5..=8 => report += " rain",
-                9..=10 => report += " rain and thunderstorm",
+                1 => report += " rain",
+                2 => report += " rain and thunderstorm",
                 _ => {}
             }
         }
