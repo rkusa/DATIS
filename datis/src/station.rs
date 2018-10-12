@@ -133,20 +133,6 @@ mod test {
     use std::cell::RefCell;
 
     #[test]
-    fn text_phonetic_numbers() {
-        assert_eq!(pronounce_number(0), "ZERO");
-        assert_eq!(pronounce_number(1), "WUN");
-        assert_eq!(pronounce_number(2), "TOO");
-        assert_eq!(pronounce_number(3), "TREE");
-        assert_eq!(pronounce_number(4), "FOWER");
-        assert_eq!(pronounce_number(5), "FIFE");
-        assert_eq!(pronounce_number(6), "SIX");
-        assert_eq!(pronounce_number(7), "SEVEN");
-        assert_eq!(pronounce_number(8), "AIT");
-        assert_eq!(pronounce_number(9), "NINER");
-    }
-
-    #[test]
     fn test_active_runway() {
         let station = Station {
             name: String::from("Kutaisi"),
@@ -197,6 +183,6 @@ mod test {
         };
 
         let report = station.generate_report(26).unwrap();
-        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is ZERO FOWER. Wind TREE TREE ZERO at WUN ZERO knots. Visibility ZERO. Temperature TOO TOO celcius, ALTIMETER TOO NINER DAYSEEMAL NINER SEVEN. Traffic frequency TOO FOWER NINER DAYSEEMAL FIFE. REMARKS WUN ZERO WUN FIFE hectopascal. End information Alpha. ");
+        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is 0 4. Wind 3 3 0 at 1 0 knots. Visibility 0. Temperature 2 2 celcius, ALTIMETER 2 NINER DECIMAL NINER 7. Traffic frequency 2 4 NINER DECIMAL 5. REMARKS 1 0 1 5 hectopascal. End information Alpha. ");
     }
 }

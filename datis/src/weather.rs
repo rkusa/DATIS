@@ -193,25 +193,22 @@ mod test {
             .get_clouds_report()
         }
 
+        assert_eq!(create_clouds_report(8400, 1, 0, 80_000), "Visibility 4 3");
         assert_eq!(
-            create_clouds_report(8400, 1, 0, 80_000),
-            "Visibility FOWER TREE"
+            create_clouds_report(8400, 2, 0, 80_000),
+            "Visibility 4 3, few 8 0"
         );
         assert_eq!(
             create_clouds_report(8400, 2, 0, 80_000),
-            "Visibility FOWER TREE, few AIT ZERO"
-        );
-        assert_eq!(
-            create_clouds_report(8400, 2, 0, 80_000),
-            "Visibility FOWER TREE, few AIT ZERO"
+            "Visibility 4 3, few 8 0"
         );
         assert_eq!(
             create_clouds_report(8500, 6, 5, 80_000),
-            "Visibility FOWER TREE, scattered AIT FIFE rain"
+            "Visibility 4 3, scattered 8 5 rain"
         );
         assert_eq!(
             create_clouds_report(8500, 10, 9, 80_000),
-            "Visibility FOWER TREE, overcast AIT FIFE rain and thunderstorm"
+            "Visibility 4 3, overcast 8 5 rain and thunderstorm"
         );
     }
 }
