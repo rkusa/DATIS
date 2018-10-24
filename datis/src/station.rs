@@ -50,7 +50,9 @@ impl Station {
             pronounce_number((weather.wind_speed * 1.94384).round()), // to knots
         );
 
-        report += &format!("{}. ", self.static_weather.get_clouds_report());
+        if self.weather_kind == WeatherKind::Static {
+            report += &format!("{}. ", self.static_weather.get_clouds_report());
+        }
 
         report += &format!(
             "Temperature {} celcius, ALTIMETER {}. ",

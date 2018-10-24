@@ -15,18 +15,20 @@ const MAX_FRAME_LENGTH: usize = 1024;
 
 pub struct AtisSrsClient {
     sguid: String,
+    gcloud_key: String,
     station: Station,
     worker: Vec<Worker<()>>,
 }
 
 impl AtisSrsClient {
-    pub fn new(station: Station) -> Self {
+    pub fn new(station: Station, gcloud_key: String) -> Self {
         let sguid = Uuid::new_v4();
         let sguid = base64::encode_config(sguid.as_bytes(), base64::URL_SAFE_NO_PAD);
         assert_eq!(sguid.len(), 22);
 
         AtisSrsClient {
             sguid,
+            gcloud_key,
             station,
             worker: Vec::new(),
         }
@@ -60,9 +62,10 @@ impl AtisSrsClient {
 
         // spawn audio broadcast thread
         let sguid = self.sguid.clone();
+        let gcloud_key = self.gcloud_key.clone();
         let station = self.station.clone();
         self.worker.push(Worker::new(move |ctx| {
-            if let Err(err) = audio_broadcast(ctx, sguid, station) {
+            if let Err(err) = audio_broadcast(ctx, sguid, gcloud_key, station) {
                 error!("Error starting SRS broadcast: {}", err);
             }
         }));
@@ -159,7 +162,12 @@ impl AtisSrsClient {
     }
 }
 
-fn audio_broadcast(ctx: Context, sguid: String, station: Station) -> Result<(), Error> {
+fn audio_broadcast(
+    ctx: Context,
+    sguid: String,
+    gloud_key: String,
+    station: Station,
+) -> Result<(), Error> {
     let interval = Duration::from_secs(60 * 60); // 60min
     let mut interval_start;
     let mut report_ix = 0;
@@ -171,7 +179,7 @@ fn audio_broadcast(ctx: Context, sguid: String, station: Station) -> Result<(), 
         report_ix += 1;
         info!("Report: {}", report);
 
-        let data = text_to_speech(&report)?;
+        let data = text_to_speech(&gloud_key, &report)?;
         let mut data = Cursor::new(data);
 
         let mut stream = TcpStream::connect("127.0.0.1:5003")?;

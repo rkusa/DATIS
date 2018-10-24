@@ -35,7 +35,7 @@ struct TextToSpeechResponse {
     audio_content: String,
 }
 
-pub fn text_to_speech(text: &str) -> Result<Vec<u8>, Error> {
+pub fn text_to_speech(gcloud_key: &str, text: &str) -> Result<Vec<u8>, Error> {
     let payload = TextToSpeechRequest {
         audio_config: AudioConfig {
             audio_encoding: "OGG_OPUS",
@@ -49,10 +49,9 @@ pub fn text_to_speech(text: &str) -> Result<Vec<u8>, Error> {
         },
     };
 
-    let key = "AIzaSyBB9rHqNGlclJTzz6bOA4hjjRmZBpdQ1Gg";
     let url = format!(
         "https://texttospeech.googleapis.com/v1/text:synthesize?key={}",
-        key
+        gcloud_key
     );
     let client = reqwest::Client::new();
     let mut res = client.post(&url).json(&payload).send()?;

@@ -16,6 +16,19 @@ impl Datis {
     pub fn create(mut lua: Lua<'_>) -> Result<Self, Error> {
         debug!("Extracting ATIS stations from Mission Situation");
 
+        // read gcloud access key option
+        let gcloud_key = {
+            // OptionsData.getPlugin("DATIS", "gcloudAccessKey")
+            let mut options_data: LuaTable<_> = get!(lua, "OptionsData")?;
+            let mut get_plugin: LuaFunction<_> = get!(options_data, "getPlugin")?;
+
+            let access_key: String = get_plugin.call_with_args(("DATIS", "gcloudAccessKey"))?;
+            if access_key.is_empty() {
+                return Err(Error::GcloudAccessKeyMissing);
+            }
+            access_key
+        };
+
         // read `package.cpath`
         let cpath = {
             let mut package: LuaTable<_> = get!(lua, "package")?;
@@ -179,7 +192,7 @@ impl Datis {
         Ok(Datis {
             clients: stations
                 .into_iter()
-                .map(|station| AtisSrsClient::new(station))
+                .map(|station| AtisSrsClient::new(station, gcloud_key.clone()))
                 .collect(),
         })
     }

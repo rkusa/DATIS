@@ -47,7 +47,7 @@ pub fn init(lua: &mut Lua<'_>) -> Result<(), Error> {
     let mut lfs: LuaTable<_> = get!(lua, "lfs")?;
     let mut writedir: LuaFunction<_> = get!(lfs, "writedir")?;
     let writedir: String = writedir.call()?;
-    let log_file = writedir + "Logs\\DATIS-dll.log";
+    let log_file = writedir + "Logs\\DATIS.log";
 
     let requests = FileAppender::builder()
         .append(false)

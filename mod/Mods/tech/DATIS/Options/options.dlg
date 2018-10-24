@@ -1,0 +1,146 @@
+
+local leftMargin = 56
+
+-- Skins
+
+local EditBoxSkin = {
+        ["params"] = {
+            ["name"] = "editBoxSkin_login",
+        }
+    }
+
+local TitleSkin = {
+        ["params"] = {
+            ["name"] = "staticOptionsTitleSkin",
+        },
+        ["states"] = {
+            ["released"] = {
+                [1] = {
+                    ["text"] = {
+                        ["horzAlign"] = {
+                            ["type"] = "min"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+-- Content
+
+dialog =
+{
+    ["children"] =
+    {
+        ["containerPlugin"] =
+        {
+            ["children"] =
+            {
+
+            ----------------------------------------
+            -- Title
+            ----------------------------------------
+                ["nameLabel"] =
+                {
+                    ["params"] = {
+                        ["enabled"] = true,
+                        ["bounds"] = {
+                            ["x"] = leftMargin,
+                            ["y"] = 30,
+                            ["w"] = 261,
+                            ["h"] = 24,
+                        }, 
+                        ["visible"] = true,
+                        ["tooltip"] = "",
+                        ["zindex"] = 0,
+                        ["text"] = "$DCSATIS",
+                    },
+                    ["skin"] = TitleSkin,
+                    ["type"] = "Static",
+                }, 
+
+            -----------------------------------------------
+            -- Google Cloud Access Key
+            -----------------------------------------------
+
+                ["gcloudAccessKeyLabel"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["x"] = leftMargin,
+                            ["y"] = 95,
+                            ["w"] = 500,
+                            ["h"] = 25,
+                        },
+                        ["enabled"] = true,
+                        ["text"] = "$DATIS_CLOUD_ACCESS_KEY",
+                        ["tooltip"] = "",
+                        ["visible"] = true,
+                        ["zindex"] = 0,
+                    },
+                    ["skin"] = OptionLabelSkin,
+                    ["type"] = "Static",
+                },
+
+                ["gcloudAccessKeyEditBox"] = {
+                    ["params"] = {
+                        ["bounds"] = {
+                            ["x"] = leftMargin,
+                            ["y"] = 130,
+                            ["w"] = 500,
+                            ["h"] = 20,
+                        },
+                    },
+                    ["skin"] = EditBoxSkin,
+                    ["type"] = "EditBox",
+                },
+
+            },
+            ["type"] = "Panel",
+            ["skin"] =
+            {
+                ["params"] =
+                {
+                    ["name"] = "panelSkin",
+                },
+            },
+            ["params"] =
+            {
+                ["enabled"] = true,
+                ["bounds"] =
+                {
+                    ["x"] = 0,
+                    ["y"] = 0,
+                    ["w"] = 974,
+                    ["h"] = 600,
+                }, 
+                ["visible"] = true,
+                ["tooltip"] = "",
+                ["zindex"] = 2,
+                ["text"] = "",
+            },
+        },
+    },
+    ["type"] = "Window",
+    ["skin"] =
+    {
+        ["params"] =
+        {
+            ["name"] = "windowSkin",
+        }, 
+    }, 
+    ["params"] = {
+        ["bounds"] = {
+            ["h"] = 851,
+            ["w"] = 1135,
+            ["x"] = 0,
+            ["y"] = 0,
+        },
+        ["draggable"] = true,
+        ["enabled"] =  true,
+        ["hasCursor"] =  true,
+        ["lockFlow"] = false,
+        ["modal"] = false,
+        ["text"] = "New dialog",
+        ["zOrder"] = 1,
+    }, 
+} 
