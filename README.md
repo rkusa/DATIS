@@ -22,16 +22,21 @@ TRAFFIC [Airfield] [Traffic Frequency]
 
 ## Build
 
+Instead of building you can also use the prebuild mod from one of the [releases](https://github.com/rkusa/DATIS/releases).
+
 Requirements:
 - Rust nightly
 
-Run
+Build with
 
 ```
 make release
 ```
 
 ## Installation
+
+Before you start, be aware that this mod requires a Google Cloud account.
+
 
 Either use build it yourself and use the content inside the `mod` directory or use the prebuild mod from one of the [releases](https://github.com/rkusa/DATIS/releases).
 
