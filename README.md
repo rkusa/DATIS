@@ -20,16 +20,23 @@ If you want the ATIS station's report to also include a traffic frequency, add i
 TRAFFIC [Airfield] [Traffic Frequency]
 ```
 
+## Build
+
+Requirements:
+- Rust nightly
+
+Run
+
+```
+make release
+```
+
 ## Installation
 
-Copy (or link) `lua/datis-hook.lua` to your `Saved Games\DCS.openbeta\Scripts\Hooks\` directory.
+Either use build it yourself and use the content inside the `mod` directory or use the prebuild mod from one of the [releases](https://github.com/rkusa/DATIS/releases).
 
-Build DATIS with rust nightly:
-
-```
-cargo build --release
-```
-
-Copy `target/release/datis.dll` to `Saved Games\DCS.openbeta\Scripts\DATIS\`.
+1. Copy the content (`Mods` and `Scripts` directory) into `Saved Games\DCS.openbeta\`.
+2. Go to https://console.cloud.google.com/apis/credentials and create an API key and restrict API access to Google Text-to-Speech
+3. Open DCS go to OPTIONS -> SPECIAL -> DCS ATIS, enter the API key into "Google Cloud Access Key" textfield and save
 
 Once you start a mission that contains a pattern in the mission situation as described above, DATIS should work automatically (expects a SRS server to run locally on the default SRS ports).
