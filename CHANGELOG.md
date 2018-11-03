@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added option to setup ATIS stations by [adding static units](https://github.com/rkusa/DATIS#mission-setup) with a specific naming scheme to the mission
 - Possibility to use a different voice per station
 
+### Fixed
+- TTS should now properly read ZERO and not "o"
+- Pressure and temperature readings fixed for multiplayer servers (was onlny working correctly in SP)
+
 ## [0.3.0] - 2018-10-24
 ### Changed
 - Extracted Google Cloud Access Key into "DCS ATIS" option specials menu
