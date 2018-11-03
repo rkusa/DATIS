@@ -18,7 +18,7 @@ Either [build it](#build) yourself and use the content inside the `mod` director
 
 Once you start a mission that contains a pattern as described in the next section, DATIS runs automatically (expects a SRS server to run locally on the default SRS ports).
 
-## Add an ATIS station to a Mission
+## Mission Setup
 
 There are two methods to add an ATIS station. The first method is easier to setup, but the second one will get more configuration options in the future.
 
