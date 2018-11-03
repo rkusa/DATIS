@@ -6,6 +6,10 @@ DCS World Automatic Terminal Information Service (ATIS) broadcasted though [Simp
 
 [Changelog](./CHANGELOG.md) | [Prebuild Releases](https://github.com/rkusa/DATIS/releases)
 
+Current Example Report:
+
+> This is Kutaisi information Alpha. Runway in use is 0 8. Wind 0 0 1 at NINER knots. Temperature 2 3 celcius, ALTIMETER 2 NINER DECIMAL 6 NINER. REMARKS 1 0 0 5 hectopascal. End information Alpha. 
+
 ## Installation
 
 _Before you start, be aware that this mod requires a Google Cloud account._
