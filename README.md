@@ -8,7 +8,7 @@ DCS World Automatic Terminal Information Service (ATIS) broadcasted though [Simp
 
 Current Example Report:
 
-> This is Kutaisi information Alpha. Runway in use is 0 8. Wind 0 0 1 at NINER knots. Temperature 2 3 celcius, ALTIMETER 2 NINER DECIMAL 6 NINER. REMARKS 1 0 0 5 hectopascal. End information Alpha. 
+> This is Kutaisi information Alpha. Runway in use is ZERO 8. Wind ZERO ZERO 1 at NINER knots. Temperature 2 3 celcius, ALTIMETER 2 NINER DECIMAL 6 NINER. REMARKS 1 ZERO ZERO 5 hectopascal. End information Alpha. 
 
 ## Installation
 

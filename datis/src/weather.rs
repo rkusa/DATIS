@@ -46,7 +46,7 @@ impl StaticWeather {
     pub fn get_clouds_report(&self) -> String {
         // convert m to nm
         let visibility = (self.visibility as f64 * 0.000539957).round();
-        let mut report = format!("Visibility {}", pronounce_number(visibility));
+        let mut report = format!("Visibility {}.", pronounce_number(visibility));
 
         let density = match self.clouds.density {
             2..=5 => Some("few"),
@@ -59,12 +59,13 @@ impl StaticWeather {
             // convert m to ft, round to lowest 500ft increment and shortened (e.g. 17500 -> 175)
             let base = (self.clouds.base as f64 * 3.28084).round() as u32;
             let base = (base - (base % 500)) / 100;
-            report += &format!(", {} {}", density, pronounce_number(base));
+            report += &format!(" Cloud conditions {} {}", density, pronounce_number(base));
             match self.clouds.iprecptns {
                 1 => report += " rain",
                 2 => report += " rain and thunderstorm",
                 _ => {}
             }
+            report += ".";
         }
         report
     }
@@ -193,22 +194,22 @@ mod test {
             .get_clouds_report()
         }
 
-        assert_eq!(create_clouds_report(8400, 1, 0, 80_000), "Visibility 4 3");
+        assert_eq!(create_clouds_report(8400, 1, 0, 80_000), "Visibility 4 3.");
         assert_eq!(
             create_clouds_report(8400, 2, 0, 80_000),
-            "Visibility 4 3, few 2 7 5"
+            "Visibility 4 3. Cloud conditions few 2 7 5."
         );
         assert_eq!(
             create_clouds_report(8400, 2, 0, 80_000),
-            "Visibility 4 3, few 2 7 5"
+            "Visibility 4 3. Cloud conditions few 2 7 5."
         );
         assert_eq!(
             create_clouds_report(8500, 6, 1, 80_000),
-            "Visibility 4 3, scattered 2 7 5 rain"
+            "Visibility 4 3. Cloud conditions scattered 2 7 5 rain."
         );
         assert_eq!(
             create_clouds_report(8500, 10, 2, 80_000),
-            "Visibility 4 3, overcast 2 7 5 rain and thunderstorm"
+            "Visibility 4 3. Cloud conditions overcast 2 7 5 rain and thunderstorm."
         );
     }
 }

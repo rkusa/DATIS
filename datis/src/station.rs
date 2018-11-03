@@ -53,7 +53,7 @@ impl Station {
         );
 
         if self.weather_kind == WeatherKind::Static {
-            report += &format!("{}. ", self.static_weather.get_clouds_report());
+            report += &format!("{} ", self.static_weather.get_clouds_report());
         }
 
         report += &format!(
@@ -188,6 +188,6 @@ mod test {
         };
 
         let report = station.generate_report(26).unwrap();
-        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is 0 4. Wind 3 3 0 at 1 0 knots. Visibility 0. Temperature 2 2 celcius, ALTIMETER 2 NINER DECIMAL NINER 7. Traffic frequency 2 4 NINER DECIMAL 5. REMARKS 1 0 1 5 hectopascal. End information Alpha. ");
+        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is ZERO 4. Wind 3 3 ZERO at 1 ZERO knots. Visibility ZERO. Temperature 2 2 celcius, ALTIMETER 2 NINER DECIMAL NINER 7. Traffic frequency 2 4 NINER DECIMAL 5. REMARKS 1 ZERO 1 5 hectopascal. End information Alpha. ");
     }
 }

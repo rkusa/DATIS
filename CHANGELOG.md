@@ -11,7 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - TTS should now properly read ZERO and not "o"
-- Pressure and temperature readings fixed for multiplayer servers (was onlny working correctly in SP)
+- Pressure and temperature readings fixed for multiplayer servers (was only working correctly in SP)
+
+### Changed
+- Added "Cloud conditions" in front of the cloud report
 
 ## [0.3.0] - 2018-10-24
 ### Changed
