@@ -196,19 +196,19 @@ mod test {
         assert_eq!(create_clouds_report(8400, 1, 0, 80_000), "Visibility 4 3");
         assert_eq!(
             create_clouds_report(8400, 2, 0, 80_000),
-            "Visibility 4 3, few 8 0"
+            "Visibility 4 3, few 2 7 5"
         );
         assert_eq!(
             create_clouds_report(8400, 2, 0, 80_000),
-            "Visibility 4 3, few 8 0"
+            "Visibility 4 3, few 2 7 5"
         );
         assert_eq!(
-            create_clouds_report(8500, 6, 5, 80_000),
-            "Visibility 4 3, scattered 8 5 rain"
+            create_clouds_report(8500, 6, 1, 80_000),
+            "Visibility 4 3, scattered 2 7 5 rain"
         );
         assert_eq!(
-            create_clouds_report(8500, 10, 9, 80_000),
-            "Visibility 4 3, overcast 8 5 rain and thunderstorm"
+            create_clouds_report(8500, 10, 2, 80_000),
+            "Visibility 4 3, overcast 2 7 5 rain and thunderstorm"
         );
     }
 }
