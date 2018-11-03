@@ -4,10 +4,10 @@ use std::str::FromStr;
 use crate::error::Error;
 use crate::srs::AtisSrsClient;
 use crate::station::*;
+use crate::tts::VoiceKind;
 use crate::weather::*;
 use hlua51::{Lua, LuaFunction, LuaTable};
 use regex::{Regex, RegexBuilder};
-use crate::tts::VoiceKind;
 
 pub struct Datis {
     pub clients: Vec<AtisSrsClient>,
@@ -284,7 +284,10 @@ impl Datis {
 
         debug!("Valid ATIS Stations:");
         for station in &stations {
-            debug!("  - {} (Freq: {}, Voice: {:?})", station.name, station.atis_freq, station.voice);
+            debug!(
+                "  - {} (Freq: {}, Voice: {:?})",
+                station.name, station.atis_freq, station.voice
+            );
         }
 
         Ok(Datis {
@@ -362,7 +365,9 @@ fn extract_station_config(config: &str) -> Option<StationConfig> {
         let traffic_freq = caps
             .get(5)
             .map(|freq| (f32::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64);
-        let voice = caps.get(8).and_then(|s| serde_json::from_value(json!(s.as_str())).ok());
+        let voice = caps
+            .get(8)
+            .and_then(|s| serde_json::from_value(json!(s.as_str())).ok());
         StationConfig {
             name: name.to_string(),
             atis: atis_freq,

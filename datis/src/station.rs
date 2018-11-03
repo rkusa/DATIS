@@ -1,7 +1,7 @@
 use crate::error::Error;
+use crate::tts::VoiceKind;
 use crate::utils::{pronounce_number, round};
 use crate::weather::{DynamicWeather, StaticWeather, WeatherInfo, WeatherKind};
-use crate::tts::VoiceKind;
 
 #[derive(Debug, Clone)]
 pub struct Station {
@@ -31,50 +31,67 @@ pub struct Airfield {
     pub runways: Vec<String>,
 }
 
+#[cfg(not(test))]
+pub(crate) const BREAK: &str = "<break time=\"500ms\"/>\n";
+#[cfg(test)]
+pub(crate) const BREAK: &str = "| ";
+
 impl Station {
     pub fn generate_report(&self, report_nr: usize) -> Result<String, Error> {
         let information_letter = PHONETIC_ALPHABET[report_nr % PHONETIC_ALPHABET.len()];
 
         let weather = self.get_current_weather()?;
-        let mut report = format!("This is {} information {}. ", self.name, information_letter);
+        let mut report = format!(
+            "<speak>\nThis is {} information {}. {}",
+            self.name, information_letter, BREAK
+        );
 
         if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
             let rwy = pronounce_number(rwy);
-            report += &format!("Runway in use is {}. ", rwy);
+            report += &format!("Runway in use is {}. {}", rwy, BREAK);
         } else {
             error!("Could not find active runway for {}", self.name);
         }
 
         let wind_dir = format!("{:0>3}", weather.wind_dir.to_degrees().round().to_string());
         report += &format!(
-            "Wind {} at {} knots. ",
+            "Wind {} at {} knots. {}",
             pronounce_number(wind_dir),
             pronounce_number((weather.wind_speed * 1.94384).round()), // to knots
+            BREAK,
         );
 
         if self.weather_kind == WeatherKind::Static {
-            report += &format!("{} ", self.static_weather.get_clouds_report());
+            report += &self.static_weather.get_clouds_report();
         }
 
         report += &format!(
-            "Temperature {} celcius, ALTIMETER {}. ",
+            "Temperature {} celcius. {}",
             pronounce_number(round(weather.temperature, 1)),
+            BREAK,
+        );
+
+        report += &format!(
+            "ALTIMETER {}. {}",
             pronounce_number(round(weather.pressure * 0.0002953, 2)), // inHg
+            BREAK,
         );
 
         if let Some(traffic_freq) = self.traffic_freq {
             report += &format!(
-                "Traffic frequency {}. ",
-                pronounce_number(round(traffic_freq as f64 / 1_000_000.0, 3))
+                "Traffic frequency {}. {}",
+                pronounce_number(round(traffic_freq as f64 / 1_000_000.0, 3)),
+                BREAK
             );
         }
 
         report += &format!(
-            "REMARKS {} hectopascal. ",
+            "REMARKS {} hectopascal. {}",
             pronounce_number((weather.pressure / 100.0).round()), // to hPA
+            BREAK,
         );
 
-        report += &format!("End information {}. ", information_letter);
+        report += &format!("End information {}.\n</speak>", information_letter);
 
         Ok(report)
     }
@@ -132,8 +149,8 @@ static PHONETIC_ALPHABET: &'static [&str] = &[
 #[cfg(test)]
 mod test {
     use super::{Airfield, Position, Station};
-    use crate::weather::{DynamicWeather, StaticWeather, WeatherKind};
     use crate::tts::VoiceKind;
+    use crate::weather::{DynamicWeather, StaticWeather, WeatherKind};
 
     #[test]
     fn test_active_runway() {
@@ -188,6 +205,6 @@ mod test {
         };
 
         let report = station.generate_report(26).unwrap();
-        assert_eq!(report, r"This is Kutaisi information Alpha. Runway in use is ZERO 4. Wind 3 3 ZERO at 1 ZERO knots. Visibility ZERO. Temperature 2 2 celcius, ALTIMETER 2 NINER DECIMAL NINER 7. Traffic frequency 2 4 NINER DECIMAL 5. REMARKS 1 ZERO 1 5 hectopascal. End information Alpha. ");
+        assert_eq!(report, "<speak>\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind 3 3 ZERO at 1 ZERO knots. | Visibility ZERO. | Temperature 2 2 celcius. | ALTIMETER 2 NINER DECIMAL NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS 1 ZERO 1 5 hectopascal. | End information Alpha.\n</speak>");
     }
 }

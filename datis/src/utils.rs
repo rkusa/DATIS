@@ -6,7 +6,8 @@ pub fn round(n: f64, max_decimal_places: i32) -> f64 {
     (n * m).round() / m
 }
 
-static PHONETIC_NUMBERS: &'static [&str] = &["ZERO", "1", "2", "3", "4", "5", "6", "7", "8", "NINER"];
+static PHONETIC_NUMBERS: &'static [&str] =
+    &["ZERO", "1", "2", "3", "4", "5", "6", "7", "8", "NINER"];
 
 pub fn pronounce_number<S>(n: S) -> String
 where

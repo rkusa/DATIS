@@ -11,7 +11,7 @@ struct AudioConfig<'a> {
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct Input<'a> {
-    text: &'a str,
+    ssml: &'a str,
 }
 
 #[derive(Serialize, Debug)]
@@ -66,7 +66,7 @@ pub fn text_to_speech(gcloud_key: &str, text: &str, voice: VoiceKind) -> Result<
             sample_rate_hertz: 16_000,
             speaking_rate: 0.9,
         },
-        input: Input { text },
+        input: Input { ssml: text },
         voice: Voice {
             language_code: "en-US",
             name: voice,
