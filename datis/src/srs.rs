@@ -99,7 +99,7 @@ impl AtisSrsClient {
                     error!("Error sending update to SRS: {}", err);
                 }
 
-                debug!("SRS Update sent");
+                //                debug!("SRS Update sent");
 
                 if ctx.should_stop_timeout(Duration::from_secs(5)) {
                     return ();

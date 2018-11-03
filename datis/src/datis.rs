@@ -6,7 +6,7 @@ use crate::srs::AtisSrsClient;
 use crate::station::*;
 use crate::weather::*;
 use hlua51::{Lua, LuaFunction, LuaTable};
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 
 pub struct Datis {
     pub clients: Vec<AtisSrsClient>,
@@ -107,20 +107,88 @@ impl Datis {
             airfields
         };
 
-        // read `_current_mission.mission.weather`
-        let mut current_mission: LuaTable<_> = get!(lua, "_current_mission")?;
-        let mut mission: LuaTable<_> = get!(current_mission, "mission")?;
-        let mut weather: LuaTable<_> = get!(mission, "weather")?;
+        // extract all mission statics to later look for ATIS configs in their names
+        let mut comm_towers = {
+            // `_current_mission.mission.coalition.{blue,red}.country[i].static.group[j]
+            let mut current_mission: LuaTable<_> = get!(lua, "_current_mission")?;
+            let mut mission: LuaTable<_> = get!(current_mission, "mission")?;
+            let mut coalitions: LuaTable<_> = get!(mission, "coalition")?;
 
-        // read `_current_mission.mission.weather.atmosphere_type`
-        let atmosphere_type: f64 = get!(weather, "atmosphere_type")?;
-        let weather_kind = if atmosphere_type == 0.0 {
-            WeatherKind::Static
-        } else {
-            WeatherKind::Dynamic
+            let mut comm_towers = Vec::new();
+            let keys = vec!["blue", "red"];
+            for key in keys {
+                let mut coalition: LuaTable<_> = get!(coalitions, key)?;
+                let mut countries: LuaTable<_> = get!(coalition, "country")?;
+
+                let mut i = 1;
+                while let Some(mut country) = countries.get::<LuaTable<_>, _, _>(i) {
+                    if let Some(mut statics) = country.get::<LuaTable<_>, _, _>("static") {
+                        if let Some(mut groups) = statics.get::<LuaTable<_>, _, _>("group") {
+                            let mut j = 1;
+                            while let Some(mut group) = groups.get::<LuaTable<_>, _, _>(j) {
+                                let x: f64 = get!(group, "x")?;
+                                let y: f64 = get!(group, "y")?;
+
+                                // read `group.units[1].unitId
+                                let mut units: LuaTable<_> = get!(group, "units")?;
+                                let mut first_unit: LuaTable<_> = get!(units, 1)?;
+                                let unit_id: i32 = get!(first_unit, "unitId")?;
+
+                                comm_towers.push(CommTower {
+                                    id: unit_id,
+                                    name: String::new(),
+                                    x,
+                                    y,
+                                    alt: 0.0,
+                                });
+
+                                j += 1;
+                            }
+                        }
+                    }
+                    i += 1;
+                }
+            }
+            comm_towers
         };
 
-        let static_weather = {
+        // extract the names for all statics
+        {
+            // read `DCS.getUnitProperty`
+            let mut dcs: LuaTable<_> = get!(lua, "DCS")?;
+            let mut get_unit_property: LuaFunction<_> = get!(dcs, "getUnitProperty")?;
+            for mut tower in &mut comm_towers {
+                // 3 = DCS.UNIT_NAME
+                tower.name = get_unit_property.call_with_args((tower.id, 3))?;
+            }
+        }
+
+        // read the terrain height for all statics
+        {
+            // read `Terrain.GetHeight`
+            let mut terrain: LuaTable<_> = get!(lua, "Terrain")?;
+            let mut get_height: LuaFunction<_> = get!(terrain, "GetHeight")?;
+            for mut tower in &mut comm_towers {
+                tower.alt = get_height.call_with_args((tower.x, tower.y))?;
+                tower.alt += 100.0;
+            }
+        }
+
+        // extract the current mission's weather kind and static weather configuration
+        let (weather_kind, static_weather) = {
+            // read `_current_mission.mission.weather`
+            let mut current_mission: LuaTable<_> = get!(lua, "_current_mission")?;
+            let mut mission: LuaTable<_> = get!(current_mission, "mission")?;
+            let mut weather: LuaTable<_> = get!(mission, "weather")?;
+
+            // read `_current_mission.mission.weather.atmosphere_type`
+            let atmosphere_type: f64 = get!(weather, "atmosphere_type")?;
+            let weather_kind = if atmosphere_type == 0.0 {
+                WeatherKind::Static
+            } else {
+                WeatherKind::Dynamic
+            };
+
             let static_wind = {
                 // get wind
                 let mut wind: LuaTable<_> = get!(weather, "wind")?;
@@ -159,30 +227,58 @@ impl Datis {
                 get!(visibility, "distance")?
             };
 
-            StaticWeather {
-                wind: static_wind,
-                clouds: static_clouds,
-                visibility,
-            }
+            (
+                weather_kind,
+                StaticWeather {
+                    wind: static_wind,
+                    clouds: static_clouds,
+                    visibility,
+                },
+            )
         };
 
+        // initialize the dynamic weather component
         let dynamic_weather = DynamicWeather::create(&cpath)?;
-        let stations: Vec<Station> = frequencies
+
+        // combine the frequencies that have extracted from the mission's situation with their
+        // corresponding airfield
+        let mut stations: Vec<Station> = frequencies
             .into_iter()
             .filter_map(|(name, freq)| {
-                airfields.remove(&name).and_then(|airfield| {
-                    Some(Station {
-                        name,
-                        atis_freq: freq.atis,
-                        traffic_freq: freq.traffic,
+                airfields.remove(&name).map(|airfield| Station {
+                    name,
+                    atis_freq: freq.atis,
+                    traffic_freq: freq.traffic,
+                    airfield,
+                    weather_kind,
+                    static_weather: static_weather.clone(),
+                    dynamic_weather: dynamic_weather.clone(),
+                })
+            })
+            .collect();
+
+        // check all statics weather they represent and ATIS station and if so, combine them with
+        // their corresponding airfield
+        stations.extend(comm_towers.into_iter().filter_map(|tower| {
+            extract_station_config(&tower.name).and_then(|config| {
+                airfields.remove(&config.name).map(|mut airfield| {
+
+                    airfield.position.x = tower.x;
+                    airfield.position.y = tower.y;
+                    airfield.position.alt = tower.alt;
+
+                    Station {
+                        name: config.name,
+                        atis_freq: config.atis,
+                        traffic_freq: config.traffic,
                         airfield,
                         weather_kind,
                         static_weather: static_weather.clone(),
                         dynamic_weather: dynamic_weather.clone(),
-                    })
+                    }
                 })
             })
-            .collect();
+        }));
 
         debug!("Valid ATIS Stations:");
         for station in &stations {
@@ -198,24 +294,34 @@ impl Datis {
     }
 }
 
+struct CommTower {
+    id: i32,
+    name: String,
+    x: f64,
+    y: f64,
+    alt: f64,
+}
+
 #[derive(Debug, PartialEq)]
-struct Frequencies {
+struct StationConfig {
+    name: String,
     atis: u64,
     traffic: Option<u64>,
 }
 
-fn extract_frequencies(situation: &str) -> HashMap<String, Frequencies> {
+fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
     // extract ATIS stations and frequencies
     let re = Regex::new(r"ATIS ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
-    let mut stations: HashMap<String, Frequencies> = re
+    let mut stations: HashMap<String, StationConfig> = re
         .captures_iter(situation)
         .map(|caps| {
             let name = caps.get(1).unwrap().as_str().to_string();
             let freq = caps.get(2).unwrap().as_str();
             let freq = (f32::from_str(freq).unwrap() * 1_000_000.0) as u64;
             (
-                name,
-                Frequencies {
+                name.clone(),
+                StationConfig {
+                    name: name,
                     atis: freq,
                     traffic: None,
                 },
@@ -238,12 +344,35 @@ fn extract_frequencies(situation: &str) -> HashMap<String, Frequencies> {
     stations
 }
 
+fn extract_station_config(config: &str) -> Option<StationConfig> {
+    let re = RegexBuilder::new(
+        r"ATIS ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?",
+    )
+    .case_insensitive(true)
+    .build()
+    .unwrap();
+    re.captures(config).map(|caps| {
+        eprintln!("{:?}", caps);
+        let name = caps.get(1).unwrap().as_str();
+        let atis_freq = caps.get(2).unwrap().as_str();
+        let atis_freq = (f32::from_str(atis_freq).unwrap() * 1_000_000.0) as u64;
+        let traffic_freq = caps
+            .get(5)
+            .map(|freq| (f32::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64);
+        StationConfig {
+            name: name.to_string(),
+            atis: atis_freq,
+            traffic: traffic_freq,
+        }
+    })
+}
+
 #[cfg(test)]
 mod test {
-    use super::{extract_frequencies, Frequencies};
+    use super::{extract_frequencies, extract_station_config, StationConfig};
 
     #[test]
-    fn test_atis_extraction() {
+    fn test_mission_situation_extraction() {
         let freqs = extract_frequencies(
             r#"
             ATIS Kutaisi 251.000
@@ -259,21 +388,24 @@ mod test {
             vec![
                 (
                     "Kutaisi".to_string(),
-                    Frequencies {
+                    StationConfig {
+                        name: "Kutaisi".to_string(),
                         atis: 251_000_000,
                         traffic: None,
                     }
                 ),
                 (
                     "Batumi".to_string(),
-                    Frequencies {
+                    StationConfig {
+                        name: "Batumi".to_string(),
                         atis: 131_500_000,
                         traffic: Some(255_000_000),
                     }
                 ),
                 (
                     "Senaki-Kolkhi".to_string(),
-                    Frequencies {
+                    StationConfig {
+                        name: "Senaki-Kolkhi".to_string(),
                         atis: 145_000_000,
                         traffic: None,
                     }
@@ -281,6 +413,26 @@ mod test {
             ]
             .into_iter()
             .collect()
+        );
+    }
+
+    #[test]
+    fn test_config_extraction() {
+        assert_eq!(
+            extract_station_config("ATIS Kutaisi 251"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 251_000_000,
+                traffic: None,
+            })
+        );
+        assert_eq!(
+            extract_station_config("ATIS Kutaisi 251.000, TRAFFIC 123.45"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 251_000_000,
+                traffic: Some(123_450_000),
+            })
         );
     }
 }

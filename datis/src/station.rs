@@ -129,10 +129,8 @@ static PHONETIC_ALPHABET: &'static [&str] = &[
 
 #[cfg(test)]
 mod test {
-    use super::{pronounce_number, Airfield, Position, Station};
+    use super::{Airfield, Position, Station};
     use crate::weather::{DynamicWeather, StaticWeather, WeatherKind};
-    use hlua51::Lua;
-    use std::cell::RefCell;
 
     #[test]
     fn test_active_runway() {
