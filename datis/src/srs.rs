@@ -179,7 +179,7 @@ fn audio_broadcast(
         report_ix += 1;
         info!("Report: {}", report);
 
-        let data = text_to_speech(&gloud_key, &report)?;
+        let data = text_to_speech(&gloud_key, &report, station.voice)?;
         let mut data = Cursor::new(data);
 
         let mut stream = TcpStream::connect("127.0.0.1:5003")?;

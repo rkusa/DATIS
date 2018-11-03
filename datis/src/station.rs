@@ -1,12 +1,14 @@
 use crate::error::Error;
 use crate::utils::{pronounce_number, round};
 use crate::weather::{DynamicWeather, StaticWeather, WeatherInfo, WeatherKind};
+use crate::tts::VoiceKind;
 
 #[derive(Debug, Clone)]
 pub struct Station {
     pub name: String,
     pub atis_freq: u64,
     pub traffic_freq: Option<u64>,
+    pub voice: VoiceKind,
     pub airfield: Airfield,
     pub weather_kind: WeatherKind,
     pub static_weather: StaticWeather,
@@ -131,6 +133,7 @@ static PHONETIC_ALPHABET: &'static [&str] = &[
 mod test {
     use super::{Airfield, Position, Station};
     use crate::weather::{DynamicWeather, StaticWeather, WeatherKind};
+    use crate::tts::VoiceKind;
 
     #[test]
     fn test_active_runway() {
@@ -138,6 +141,7 @@ mod test {
             name: String::from("Kutaisi"),
             atis_freq: 251_000_000,
             traffic_freq: None,
+            voice: VoiceKind::StandardC,
             airfield: Airfield {
                 name: String::from("Kutaisi"),
                 position: Position {
@@ -168,6 +172,7 @@ mod test {
             name: String::from("Kutaisi"),
             atis_freq: 251_000_000,
             traffic_freq: Some(249_500_000),
+            voice: VoiceKind::StandardC,
             airfield: Airfield {
                 name: String::from("Kutaisi"),
                 position: Position {

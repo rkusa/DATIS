@@ -55,14 +55,20 @@ The second method is to add one static unit per ATIS station to the mission. A c
 (`{}` denotes a part that has to be replaced with a proper value and `[]` denotes an optional part)
 
 ```
-ATIS {Airfield} {ATIS Frequency}[, {TRAFFIC Frequency}]
+ATIS {Airfield} {ATIS Frequency}[, TRAFFIC {TRAFFIC Frequency}][, VOICE {VOICE NAME}]
 ```
+
+Available voices are: `en-US-Standard-B`, `en-US-Standard-C` (current default), `en-US-Standard-D`, `en-US-Standard-E`, `en-US-Wavenet-A`, `en-US-Wavenet-B`, `en-US-Wavenet-C`, `en-US-Wavenet-D`, `en-US-Wavenet-E`, `en-US-Wavenet-F` _(a bit down [on this page](https://cloud.google.com/text-to-speech/) is a widget where the different voices can easily be tested)_
+
+Keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota (see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing)).
 
 Examples:
 
 ```
-ATIS Kutaisi 251.000, TRAFFIC 252.000
 ATIS Batumi 131.5
+ATIS Kutaisi 251.000, TRAFFIC 252.000
+ATIS Kutaisi 251.000, VOICE en-US-Standard-E
+ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE en-US-Standard-E
 ```
 
 ![Example](./docs/static.jpg)

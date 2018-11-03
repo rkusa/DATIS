@@ -7,6 +7,7 @@ use crate::station::*;
 use crate::weather::*;
 use hlua51::{Lua, LuaFunction, LuaTable};
 use regex::{Regex, RegexBuilder};
+use crate::tts::VoiceKind;
 
 pub struct Datis {
     pub clients: Vec<AtisSrsClient>,
@@ -249,6 +250,7 @@ impl Datis {
                     name,
                     atis_freq: freq.atis,
                     traffic_freq: freq.traffic,
+                    voice: VoiceKind::StandardC,
                     airfield,
                     weather_kind,
                     static_weather: static_weather.clone(),
@@ -262,7 +264,6 @@ impl Datis {
         stations.extend(comm_towers.into_iter().filter_map(|tower| {
             extract_station_config(&tower.name).and_then(|config| {
                 airfields.remove(&config.name).map(|mut airfield| {
-
                     airfield.position.x = tower.x;
                     airfield.position.y = tower.y;
                     airfield.position.alt = tower.alt;
@@ -271,6 +272,7 @@ impl Datis {
                         name: config.name,
                         atis_freq: config.atis,
                         traffic_freq: config.traffic,
+                        voice: config.voice.unwrap_or(VoiceKind::StandardC),
                         airfield,
                         weather_kind,
                         static_weather: static_weather.clone(),
@@ -282,7 +284,7 @@ impl Datis {
 
         debug!("Valid ATIS Stations:");
         for station in &stations {
-            debug!("  - {} (Freq: {})", station.name, station.atis_freq);
+            debug!("  - {} (Freq: {}, Voice: {:?})", station.name, station.atis_freq, station.voice);
         }
 
         Ok(Datis {
@@ -307,6 +309,7 @@ struct StationConfig {
     name: String,
     atis: u64,
     traffic: Option<u64>,
+    voice: Option<VoiceKind>,
 }
 
 fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
@@ -324,6 +327,7 @@ fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
                     name: name,
                     atis: freq,
                     traffic: None,
+                    voice: None,
                 },
             )
         })
@@ -346,23 +350,24 @@ fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
 
 fn extract_station_config(config: &str) -> Option<StationConfig> {
     let re = RegexBuilder::new(
-        r"ATIS ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?",
+        r"ATIS ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?(,[ ]?VOICE ([a-zA-Z-]+))?",
     )
     .case_insensitive(true)
     .build()
     .unwrap();
     re.captures(config).map(|caps| {
-        eprintln!("{:?}", caps);
         let name = caps.get(1).unwrap().as_str();
         let atis_freq = caps.get(2).unwrap().as_str();
         let atis_freq = (f32::from_str(atis_freq).unwrap() * 1_000_000.0) as u64;
         let traffic_freq = caps
             .get(5)
             .map(|freq| (f32::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64);
+        let voice = caps.get(8).and_then(|s| serde_json::from_value(json!(s.as_str())).ok());
         StationConfig {
             name: name.to_string(),
             atis: atis_freq,
             traffic: traffic_freq,
+            voice: voice,
         }
     })
 }
@@ -370,6 +375,7 @@ fn extract_station_config(config: &str) -> Option<StationConfig> {
 #[cfg(test)]
 mod test {
     use super::{extract_frequencies, extract_station_config, StationConfig};
+    use crate::tts::VoiceKind;
 
     #[test]
     fn test_mission_situation_extraction() {
@@ -392,6 +398,7 @@ mod test {
                         name: "Kutaisi".to_string(),
                         atis: 251_000_000,
                         traffic: None,
+                        voice: None,
                     }
                 ),
                 (
@@ -400,6 +407,7 @@ mod test {
                         name: "Batumi".to_string(),
                         atis: 131_500_000,
                         traffic: Some(255_000_000),
+                        voice: None,
                     }
                 ),
                 (
@@ -408,6 +416,7 @@ mod test {
                         name: "Senaki-Kolkhi".to_string(),
                         atis: 145_000_000,
                         traffic: None,
+                        voice: None,
                     }
                 )
             ]
@@ -424,14 +433,37 @@ mod test {
                 name: "Kutaisi".to_string(),
                 atis: 251_000_000,
                 traffic: None,
+                voice: None,
             })
         );
+
         assert_eq!(
             extract_station_config("ATIS Kutaisi 251.000, TRAFFIC 123.45"),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
                 atis: 251_000_000,
                 traffic: Some(123_450_000),
+                voice: None,
+            })
+        );
+
+        assert_eq!(
+            extract_station_config("ATIS Kutaisi 251.000, TRAFFIC 123.45, VOICE en-US-Standard-E"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 251_000_000,
+                traffic: Some(123_450_000),
+                voice: Some(VoiceKind::StandardE),
+            })
+        );
+
+        assert_eq!(
+            extract_station_config("ATIS Kutaisi 251.000, VOICE en-US-Standard-E"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 251_000_000,
+                traffic: None,
+                voice: Some(VoiceKind::StandardE),
             })
         );
     }

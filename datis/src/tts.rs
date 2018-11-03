@@ -18,7 +18,7 @@ struct Input<'a> {
 #[serde(rename_all = "camelCase")]
 struct Voice<'a> {
     language_code: &'a str,
-    name: &'a str,
+    name: VoiceKind,
 }
 
 #[derive(Serialize, Debug)]
@@ -35,7 +35,31 @@ struct TextToSpeechResponse {
     audio_content: String,
 }
 
-pub fn text_to_speech(gcloud_key: &str, text: &str) -> Result<Vec<u8>, Error> {
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
+pub enum VoiceKind {
+    #[serde(rename = "en-US-Standard-B")]
+    StandardB,
+    #[serde(rename = "en-US-Standard-C")]
+    StandardC,
+    #[serde(rename = "en-US-Standard-D")]
+    StandardD,
+    #[serde(rename = "en-US-Standard-E")]
+    StandardE,
+    #[serde(rename = "en-US-Wavenet-A")]
+    WavenetA,
+    #[serde(rename = "en-US-Wavenet-B")]
+    WavenetB,
+    #[serde(rename = "en-US-Wavenet-C")]
+    WavenetC,
+    #[serde(rename = "en-US-Wavenet-D")]
+    WavenetD,
+    #[serde(rename = "en-US-Wavenet-E")]
+    WavenetE,
+    #[serde(rename = "en-US-Wavenet-F")]
+    WavenetF,
+}
+
+pub fn text_to_speech(gcloud_key: &str, text: &str, voice: VoiceKind) -> Result<Vec<u8>, Error> {
     let payload = TextToSpeechRequest {
         audio_config: AudioConfig {
             audio_encoding: "OGG_OPUS",
@@ -45,7 +69,7 @@ pub fn text_to_speech(gcloud_key: &str, text: &str) -> Result<Vec<u8>, Error> {
         input: Input { text },
         voice: Voice {
             language_code: "en-US",
-            name: "en-US-Standard-C",
+            name: voice,
         },
     };
 
