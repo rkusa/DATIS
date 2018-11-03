@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.3.0] - 2018-10-24
 ### Changed
-- Extracted Google Cloud Acccess Key into "DCS ATIS" option specials menu
+- Extracted Google Cloud Access Key into "DCS ATIS" option specials menu
 
 ## [0.2.1] - 2018-10-12
 ### Fixed

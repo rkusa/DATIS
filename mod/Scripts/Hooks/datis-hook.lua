@@ -46,13 +46,6 @@ function datis_load()
 
 	local handler = {}
 
-	function handler.onSimulationStart()
-		local status, err = pcall(datis_start)
-		if not status then
-			log.write("[DATIS]", log.INFO, "Start Error: " .. tostring(err))
-		end
-	end
-
 	function handler.onSimulationStop()
 		log.write("[DATIS]", log.INFO, "Stopping")
 
@@ -74,10 +67,18 @@ function datis_load()
 	function handler.onSimulationResume()
 		log.write("[DATIS]", log.INFO, "Resuming")
 
-		local status, err = pcall(datis_unpause)
-		if not status then
-			log.write("[DATIS]", log.INFO, "Unpause Error: " .. tostring(err))
+		if datis == nil then
+			local status, err = pcall(datis_start)
+			if not status then
+				log.write("[DATIS]", log.INFO, "Start Error: " .. tostring(err))
+			end
+		else
+			local status, err = pcall(datis_unpause)
+			if not status then
+				log.write("[DATIS]", log.INFO, "Unpause Error: " .. tostring(err))
+			end
 		end
+		
 	end
 
 	DCS.setUserCallbacks(handler)
