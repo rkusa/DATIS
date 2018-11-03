@@ -73,7 +73,9 @@ impl Station {
 
         report += &format!(
             "ALTIMETER {}. {}",
-            pronounce_number(round(weather.pressure * 0.0002953, 2)), // inHg
+            // inHg, but using 0.02953 instead of 0.0002953 since we don't want to speak the
+            // DECIMAL here
+            pronounce_number((weather.pressure * 0.02953).round()),
             BREAK,
         );
 
@@ -205,6 +207,6 @@ mod test {
         };
 
         let report = station.generate_report(26).unwrap();
-        assert_eq!(report, "<speak>\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind 3 3 ZERO at 1 ZERO knots. | Visibility ZERO. | Temperature 2 2 celcius. | ALTIMETER 2 NINER DECIMAL NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS 1 ZERO 1 5 hectopascal. | End information Alpha.\n</speak>");
+        assert_eq!(report, "<speak>\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind 3 3 ZERO at 1 ZERO knots. | Visibility ZERO. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS 1 ZERO 1 5 hectopascal. | End information Alpha.\n</speak>");
     }
 }

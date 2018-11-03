@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Added "Cloud conditions" in front of the cloud report
 - Added longer breaks between the different report parts
+- Skip the "DECIMAL" when calling out the altimeter setting
 
 ## [0.3.0] - 2018-10-24
 ### Changed
