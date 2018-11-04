@@ -6,9 +6,18 @@ DCS World Automatic Terminal Information Service (ATIS) broadcasted though [Simp
 
 [Changelog](./CHANGELOG.md) | [Prebuild Releases](https://github.com/rkusa/DATIS/releases)
 
-Current Example Report:
+Example Report:
 
-> This is Kutaisi information Alpha. Runway in use is ZERO 8. Wind ZERO ZERO 1 at NINER knots. Temperature 2 3 celcius, ALTIMETER 2 NINER DECIMAL 6 NINER. REMARKS 1 ZERO ZERO 5 hectopascal. End information Alpha. 
+> This is Batumi information Alpha.
+> Runway in use is 3 1.
+> Wind ZERO 4 1 at 8 knots.
+> Visibility 4 3.
+> Cloud conditions scattered ZERO, rain.
+> Temperature 2 3 celcius.
+> ALTIMETER 2 NINER 5 3.
+> REMARKS 1 ZERO ZERO ZERO hectopascal.
+> End information Alpha.
+
 
 ## Installation
 
@@ -21,6 +30,8 @@ Either [build it](#build) yourself and use the content inside the `mod` director
 3. Open DCS go to OPTIONS -> SPECIAL -> DCS ATIS, enter the API key into "Google Cloud Access Key" textfield and save
 
 Once you start a mission that contains a pattern as described in the next section, DATIS runs automatically (expects a SRS server to run locally on the default SRS ports).
+
+If the ATIS is not working, you might find some helpful information in the log file at `DCS.openbeta\Logs\DATIS.log`.
 
 ## Mission Setup
 

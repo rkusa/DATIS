@@ -1,4 +1,6 @@
 use crate::error::Error;
+use reqwest::StatusCode;
+use serde_json::Value;
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -79,7 +81,12 @@ pub fn text_to_speech(gcloud_key: &str, text: &str, voice: VoiceKind) -> Result<
     );
     let client = reqwest::Client::new();
     let mut res = client.post(&url).json(&payload).send()?;
-    let data: TextToSpeechResponse = res.json()?;
-    let data = base64::decode(&data.audio_content)?;
-    Ok(data)
+    if res.status() == StatusCode::Ok {
+        let data: TextToSpeechResponse = res.json()?;
+        let data = base64::decode(&data.audio_content)?;
+        Ok(data)
+    } else {
+        let err: Value = res.json()?;
+        Err(Error::GcloudTTL(err))
+    }
 }

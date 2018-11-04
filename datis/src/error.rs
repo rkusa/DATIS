@@ -24,6 +24,7 @@ pub enum Error {
     Base64Decode(base64::DecodeError),
     Ogg(ogg::reading::OggReadError),
     GcloudAccessKeyMissing,
+    GcloudTTL(serde_json::Value),
 }
 
 impl fmt::Display for Error {
@@ -37,6 +38,9 @@ impl fmt::Display for Error {
                 "Error: Trying to access undefined lua global or table key: {}",
                 key
             )?,
+            GcloudTTL(json) => {
+                write!(f, "Error calling Gcloud TTS service: {}", json.to_string(),)?
+            }
             _ => write!(f, "Error: {}", self.description())?,
         }
 
@@ -66,6 +70,7 @@ impl error::Error for Error {
             Base64Decode(_) => "Error decoding TTS audio content",
             Ogg(_) => "Error decoding OGG audio stream",
             GcloudAccessKeyMissing => "Google Cloud Access key is not set",
+            GcloudTTL(_) => "Error calling Gcloud TTS service",
         }
     }
 
