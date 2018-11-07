@@ -190,29 +190,6 @@ impl Datis {
                 WeatherKind::Dynamic
             };
 
-            let static_wind = {
-                // get wind
-                let mut wind: LuaTable<_> = get!(weather, "wind")?;
-                let mut wind_at_ground: LuaTable<_> = get!(wind, "atGround")?;
-
-                // get wind_at_ground.speed
-                let wind_speed: f64 = get!(wind_at_ground, "speed")?;
-
-                // get wind_at_ground.dir
-                let mut wind_dir: f64 = get!(wind_at_ground, "dir")?;
-
-                // rotate dir
-                wind_dir -= 180.0;
-                if wind_dir < 0.0 {
-                    wind_dir += 360.0;
-                }
-
-                Wind {
-                    dir: wind_dir.to_radians(),
-                    speed: wind_speed,
-                }
-            };
-
             let static_clouds = {
                 let mut clouds: LuaTable<_> = get!(weather, "clouds")?;
                 Clouds {
@@ -231,12 +208,20 @@ impl Datis {
             (
                 weather_kind,
                 StaticWeather {
-                    wind: static_wind,
                     clouds: static_clouds,
                     visibility,
                 },
             )
         };
+
+        // YOLO initialize the atmosphere, because DCS initializes it only after hitting the
+        // "Briefing" button, which is something most of the time not done for "dedicated" servers
+        {
+            lua.execute::<()>(r#"
+                local Weather = require 'Weather'
+                Weather.initAtmospere(_current_mission.mission.weather)
+            "#)?;
+        }
 
         // initialize the dynamic weather component
         let dynamic_weather = DynamicWeather::create(&cpath)?;

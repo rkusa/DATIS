@@ -7,7 +7,6 @@ use hlua51::{Lua, LuaFunction, LuaTable};
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct StaticWeather {
-    pub wind: Wind,
     pub clouds: Clouds,
     pub visibility: u32, // in m
 }
@@ -19,12 +18,6 @@ pub struct DynamicWeather(Arc<Mutex<Lua<'static>>>);
 pub enum WeatherKind {
     Static,
     Dynamic,
-}
-
-#[derive(Debug, PartialEq, Clone, Default)]
-pub struct Wind {
-    pub dir: f64,   // in radians (the direction the wind is coming from)
-    pub speed: f64, // in m/s
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]

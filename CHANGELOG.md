@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2018-11-07
+### Fixed
+- Pressure and temperature readings should now also work when the server does not hit the "Briefing" button
+- SRS broadcasts should now always be stopped when the mission is stopped
+
 ## [0.4.1] - 2018-11-04
 ### Fixed
 - Properly handle and report Gcloud TTS API errors (the previous error message was not useful at all, see #8)

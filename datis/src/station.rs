@@ -110,16 +110,11 @@ impl Station {
 
     #[cfg(not(test))]
     fn get_current_weather(&self) -> Result<WeatherInfo, Error> {
-        let mut info = self.dynamic_weather.get_at(
+        let info = self.dynamic_weather.get_at(
             self.airfield.position.x,
             self.airfield.position.y,
             0.0, // at ground level
         )?;
-
-        if self.weather_kind == WeatherKind::Static {
-            info.wind_speed = self.static_weather.wind.speed;
-            info.wind_dir = self.static_weather.wind.dir;
-        }
 
         Ok(info)
     }

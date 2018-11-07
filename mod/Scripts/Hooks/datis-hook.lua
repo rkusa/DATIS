@@ -1,6 +1,7 @@
 package.cpath = package.cpath..";"..lfs.writedir().."Mods\\tech\\DATIS\\bin\\?.dll;"
 
 local datis = nil
+local isStarted = false
 
 function datis_start()
 	if not DCS.isServer() then
@@ -53,6 +54,8 @@ function datis_load()
 		if not status then
 			log.write("[DATIS]", log.INFO, "Stop Error: " .. tostring(err))
 		end
+
+		isStarted = false
 	end
 
 	function handler.onSimulationPause()
@@ -66,8 +69,9 @@ function datis_load()
 
 	function handler.onSimulationResume()
 		log.write("[DATIS]", log.INFO, "Resuming")
-
-		if datis == nil then
+		
+		if datis == nil and not isStarted then
+			isStarted = true
 			local status, err = pcall(datis_start)
 			if not status then
 				log.write("[DATIS]", log.INFO, "Start Error: " .. tostring(err))
@@ -78,7 +82,6 @@ function datis_load()
 				log.write("[DATIS]", log.INFO, "Unpause Error: " .. tostring(err))
 			end
 		end
-		
 	end
 
 	DCS.setUserCallbacks(handler)
