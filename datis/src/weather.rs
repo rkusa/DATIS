@@ -133,7 +133,7 @@ impl DynamicWeather {
 
         Ok(WeatherInfo {
             wind_speed,
-            wind_dir,
+            wind_dir: wind_dir.abs(),
             temperature,
             pressure,
         })
@@ -173,10 +173,6 @@ mod test {
             visibility: u32,
         ) -> String {
             StaticWeather {
-                wind: Wind {
-                    dir: 0.0,
-                    speed: 0.0,
-                },
                 clouds: Clouds {
                     base,
                     density,
