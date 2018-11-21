@@ -31,7 +31,7 @@ pub struct Clouds {
 #[derive(Debug, PartialEq)]
 pub struct WeatherInfo {
     pub wind_speed: f64,  // in m/s
-    pub wind_dir: f64,    // in radians (the direction the wind is coming from)
+    pub wind_dir: f64,    // in degrees (the direction the wind is coming from)
     pub temperature: f64, // in °C
     pub pressure: f64,    // in N/m2
 }
@@ -127,13 +127,21 @@ impl DynamicWeather {
         let mut weather: LuaTable<_> = get_weather.call_with_args((x, y, alt))?;
 
         let wind_speed: f64 = get!(weather, "windSpeed")?;
-        let wind_dir: f64 = get!(weather, "windDir")?;
+        let mut wind_dir: f64 = get!(weather, "windDir")?;
         let temperature: f64 = get!(weather, "temp")?;
         let pressure: f64 = get!(weather, "pressure")?;
 
+        // convert to degrees and rotate wind direction
+        wind_dir = wind_dir.to_degrees() - 180.0;
+
+        // normalize wind direction
+        while wind_dir < 0.0 {
+            wind_dir += 360.0;
+        }
+
         Ok(WeatherInfo {
             wind_speed,
-            wind_dir: wind_dir.abs(),
+            wind_dir,
             temperature,
             pressure,
         })

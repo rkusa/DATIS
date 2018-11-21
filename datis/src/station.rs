@@ -46,14 +46,14 @@ impl Station {
             self.name, information_letter, BREAK
         );
 
-        if let Some(rwy) = self.get_active_runway(weather.wind_dir.to_degrees()) {
+        if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
             let rwy = pronounce_number(rwy);
             report += &format!("Runway in use is {}. {}", rwy, BREAK);
         } else {
             error!("Could not find active runway for {}", self.name);
         }
 
-        let wind_dir = format!("{:0>3}", weather.wind_dir.to_degrees().round().to_string());
+        let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
         report += &format!(
             "Wind {} at {} knots. {}",
             pronounce_number(wind_dir),
