@@ -30,10 +30,11 @@ pub struct Clouds {
 
 #[derive(Debug, PartialEq)]
 pub struct WeatherInfo {
-    pub wind_speed: f64,  // in m/s
-    pub wind_dir: f64,    // in degrees (the direction the wind is coming from)
-    pub temperature: f64, // in °C
-    pub pressure: f64,    // in N/m2
+    pub wind_speed: f64,   // in m/s
+    pub wind_dir: f64,     // in degrees (the direction the wind is coming from)
+    pub temperature: f64,  // in °C
+    pub pressure_qnh: f64, // in N/m2
+    pub pressure_qfe: f64, // in N/m2
 }
 
 impl StaticWeather {
@@ -124,12 +125,17 @@ impl DynamicWeather {
         // call `getWeather(x, y, alt)`
         let mut lua = self.0.lock().unwrap();
         let mut get_weather: LuaFunction<_> = get!(lua, "getWeather")?;
-        let mut weather: LuaTable<_> = get_weather.call_with_args((x, y, alt))?;
 
+        let pressure_qnh: f64 = {
+            let mut weather: LuaTable<_> = get_weather.call_with_args((x, y, 0))?;
+            get!(weather, "pressure")
+        }?;
+
+        let mut weather: LuaTable<_> = get_weather.call_with_args((x, y, alt))?;
         let wind_speed: f64 = get!(weather, "windSpeed")?;
         let mut wind_dir: f64 = get!(weather, "windDir")?;
         let temperature: f64 = get!(weather, "temp")?;
-        let pressure: f64 = get!(weather, "pressure")?;
+        let pressure_qfe: f64 = get!(weather, "pressure")?;
 
         // convert to degrees and rotate wind direction
         wind_dir = wind_dir.to_degrees() - 180.0;
@@ -143,7 +149,8 @@ impl DynamicWeather {
             wind_speed,
             wind_dir,
             temperature,
-            pressure,
+            pressure_qnh,
+            pressure_qfe,
         })
     }
 }
@@ -162,12 +169,13 @@ mod test {
     fn test_get_weather() {
         let dw = DynamicWeather::create("").unwrap();
         assert_eq!(
-            dw.get_at(1.0, 2.0, 3.0).unwrap(),
+            dw.get_at(1.0, 2.0_f64.to_radians(), 3.0).unwrap(),
             WeatherInfo {
                 wind_speed: 1.0,
-                wind_dir: 2.0,
+                wind_dir: 182.0,
                 temperature: 3.0,
-                pressure: 42.0,
+                pressure_qnh: 42.0,
+                pressure_qfe: 42.0,
             }
         );
     }

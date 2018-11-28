@@ -75,7 +75,7 @@ impl Station {
             "ALTIMETER {}. {}",
             // inHg, but using 0.02953 instead of 0.0002953 since we don't want to speak the
             // DECIMAL here
-            pronounce_number((weather.pressure * 0.02953).round()),
+            pronounce_number((weather.pressure_qnh * 0.02953).round()),
             BREAK,
         );
 
@@ -87,9 +87,16 @@ impl Station {
             );
         }
 
+        report += &format!("REMARKS. {}", BREAK,);
         report += &format!(
-            "REMARKS {} hectopascal. {}",
-            pronounce_number((weather.pressure / 100.0).round()), // to hPA
+            "{} hectopascal. {}",
+            pronounce_number((weather.pressure_qnh / 100.0).round()), // to hPA
+            BREAK,
+        );
+        report += &format!(
+            "QFE {} or {}. {}",
+            pronounce_number((weather.pressure_qfe * 0.02953).round()), // to inHg
+            pronounce_number((weather.pressure_qfe / 100.0).round()),   // to hPA
             BREAK,
         );
 
@@ -104,7 +111,8 @@ impl Station {
             wind_speed: 5.0,
             wind_dir: (330.0f64).to_radians(),
             temperature: 22.0,
-            pressure: 101500.0,
+            pressure_qnh: 101500.0,
+            pressure_qfe: 101500.0,
         })
     }
 
@@ -113,7 +121,7 @@ impl Station {
         let info = self.dynamic_weather.get_at(
             self.airfield.position.x,
             self.airfield.position.y,
-            0.0, // at ground level
+            self.airfield.position.alt,
         )?;
 
         Ok(info)
@@ -202,6 +210,6 @@ mod test {
         };
 
         let report = station.generate_report(26).unwrap();
-        assert_eq!(report, "<speak>\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind 3 3 ZERO at 1 ZERO knots. | Visibility ZERO. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS 1 ZERO 1 5 hectopascal. | End information Alpha.\n</speak>");
+        assert_eq!(report, "<speak>\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 1 ZERO knots. | Visibility ZERO. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Alpha.\n</speak>");
     }
 }

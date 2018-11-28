@@ -3,11 +3,11 @@ use std::net::TcpStream;
 use std::time::{Duration, Instant};
 use std::{fmt, thread};
 
-use byteorder::{LittleEndian, WriteBytesExt};
 use crate::error::Error;
 use crate::station::{Position, Station};
 use crate::tts::text_to_speech;
 use crate::worker::{Context, Worker};
+use byteorder::{LittleEndian, WriteBytesExt};
 use ogg::reading::PacketReader;
 use uuid::Uuid;
 

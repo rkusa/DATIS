@@ -159,7 +159,8 @@ impl Datis {
             let mut get_height: LuaFunction<_> = get!(terrain, "GetHeight")?;
 
             for (_, mut airfield) in &mut airfields {
-                airfield.position.alt = get_height.call_with_args((airfield.position.x, airfield.position.y))?;
+                airfield.position.alt =
+                    get_height.call_with_args((airfield.position.x, airfield.position.y))?;
             }
 
             for mut tower in &mut comm_towers {
@@ -209,10 +210,12 @@ impl Datis {
         // YOLO initialize the atmosphere, because DCS initializes it only after hitting the
         // "Briefing" button, which is something most of the time not done for "dedicated" servers
         {
-            lua.execute::<()>(r#"
+            lua.execute::<()>(
+                r#"
                 local Weather = require 'Weather'
                 Weather.initAtmospere(_current_mission.mission.weather)
-            "#)?;
+            "#,
+            )?;
         }
 
         // initialize the dynamic weather component
