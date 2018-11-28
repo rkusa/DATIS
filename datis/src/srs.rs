@@ -73,7 +73,8 @@ impl AtisSrsClient {
         // spawn thread that sends an update RPC call to SRS every ~5 seconds
         let sguid = self.sguid.clone();
         let name = self.station.name.clone();
-        let position = self.station.airfield.position.clone();
+        let mut position = self.station.airfield.position.clone();
+        position.alt += 100.0; // increase sending alt to 100ft above ground for LOS
         self.worker.push(Worker::new(move |ctx| {
             let mut send_update = || -> Result<(), Error> {
                 // send update

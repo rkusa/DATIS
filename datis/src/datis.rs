@@ -71,18 +71,6 @@ impl Datis {
                         (x, y)
                     };
 
-                    let alt = {
-                        // read `airdrome.default_camera_position.pnt[2]`
-                        let mut default_camera_position: LuaTable<_> =
-                            get!(airdrome, "default_camera_position")?;
-                        let mut pnt: LuaTable<_> = get!(default_camera_position, "pnt")?;
-                        let alt: f64 = get!(pnt, 2)?;
-                        // This is only the alt of the camera position of the airfield, which seems to be
-                        // usually elevated by about 100ft. Keep the 100ft elevation above the ground
-                        // as a sender position (for SRS LOS).
-                        alt
-                    };
-
                     let mut runways: Vec<String> = Vec::new();
                     let mut rwys: LuaTable<_> = get!(airdrome, "runways")?;
                     let mut j = 0;
@@ -98,7 +86,7 @@ impl Datis {
                         display_name.clone(),
                         Airfield {
                             name: display_name,
-                            position: Position { x, y, alt },
+                            position: Position { x, y, alt: 0.0 },
                             runways,
                         },
                     );
@@ -164,14 +152,18 @@ impl Datis {
             }
         }
 
-        // read the terrain height for all statics
+        // read the terrain height for all airdromes and statics
         {
             // read `Terrain.GetHeight`
             let mut terrain: LuaTable<_> = get!(lua, "Terrain")?;
             let mut get_height: LuaFunction<_> = get!(terrain, "GetHeight")?;
+
+            for (_, mut airfield) in &mut airfields {
+                airfield.position.alt = get_height.call_with_args((airfield.position.x, airfield.position.y))?;
+            }
+
             for mut tower in &mut comm_towers {
                 tower.alt = get_height.call_with_args((tower.x, tower.y))?;
-                tower.alt += 100.0;
             }
         }
 
