@@ -128,7 +128,9 @@ impl Station {
     }
 
     fn get_active_runway(&self, wind_dir: f64) -> Option<&str> {
+        let lr: &[_] = &['L', 'R'];
         for rwy in &self.airfield.runways {
+            let rwy = rwy.trim_matches(lr);
             if let Ok(mut rwy_dir) = rwy.parse::<f64>() {
                 rwy_dir *= 10.0; // e.g. 04 to 040
                 let phi = (wind_dir - rwy_dir).abs() % 360.0;
@@ -171,7 +173,7 @@ mod test {
                     y: 0.0,
                     alt: 0.0,
                 },
-                runways: vec![String::from("04"), String::from("22")],
+                runways: vec![String::from("04"), String::from("22R")],
             },
             weather_kind: WeatherKind::Static,
             static_weather: StaticWeather::default(),

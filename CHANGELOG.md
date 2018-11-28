@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Added QFE in inHg and hPa to the ATIS report remarks
 
+### Fixed
+- Fixed reading runways with a _L_ or _R_ suffix
+
 ## [0.4.4] - 2018-11-21
 ### Fixed
 - Properly rotate and normalize the DCS reported wind direction
