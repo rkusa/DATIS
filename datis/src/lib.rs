@@ -58,7 +58,7 @@ pub fn init(lua: &mut Lua<'_>) -> Result<(), Error> {
 
     let config = Config::builder()
         .appender(Appender::builder().build("file", Box::new(requests)))
-        .logger(Logger::builder().build("datis", LevelFilter::Debug))
+        .logger(Logger::builder().build("datis", LevelFilter::Info))
         .build(Root::builder().appender("file").build(LevelFilter::Off))
         .unwrap();
 
@@ -116,7 +116,7 @@ pub extern "C" fn stop(_state: *mut ffi::lua_State) -> c_int {
 pub extern "C" fn pause(_state: *mut ffi::lua_State) -> c_int {
     unsafe {
         if let Some(ref mut datis) = DATIS {
-            info!("Pausing ...");
+            debug!("Pausing ...");
             for client in &datis.clients {
                 client.pause()
             }
@@ -130,7 +130,7 @@ pub extern "C" fn pause(_state: *mut ffi::lua_State) -> c_int {
 pub extern "C" fn unpause(_state: *mut ffi::lua_State) -> c_int {
     unsafe {
         if let Some(ref mut datis) = DATIS {
-            info!("Unpausing ...");
+            debug!("Unpausing ...");
             for client in &datis.clients {
                 client.unpause()
             }

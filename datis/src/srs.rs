@@ -178,7 +178,7 @@ fn audio_broadcast(
         // TODO: unwrap
         let report = station.generate_report(report_ix)?;
         report_ix += 1;
-        info!("Report: {}", report);
+        debug!("Report: {}", report);
 
         let data = text_to_speech(&gloud_key, &report, station.voice)?;
         let mut data = Cursor::new(data);
@@ -222,11 +222,11 @@ fn audio_broadcast(
                 }
             }
 
-            info!("TOTAL SIZE: {}", size);
+            debug!("TOTAL SIZE: {}", size);
 
             // 32 kBit/s
             let secs = (size * 8) as f64 / 1024.0 / 32.0;
-            info!("SECONDS: {}", secs);
+            debug!("SECONDS: {}", secs);
 
             let playtime = Duration::from_millis((secs * 1000.0) as u64);
             let elapsed = Instant::now() - start;

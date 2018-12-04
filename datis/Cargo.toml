@@ -1,6 +1,6 @@
 [package]
 name = "datis"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Markus Ast <m@rkusa.st>"]
 edition = "2018"
 
