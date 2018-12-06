@@ -270,6 +270,10 @@ impl Datis {
             );
         }
 
+        if stations.is_empty() {
+            warn!("No ATIS stations found ...");
+        }
+
         Ok(Datis {
             clients: stations
                 .into_iter()
