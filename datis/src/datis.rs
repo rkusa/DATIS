@@ -301,7 +301,7 @@ struct StationConfig {
 
 fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
     // extract ATIS stations and frequencies
-    let re = Regex::new(r"ATIS ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
+    let re = Regex::new(r"ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
     let mut stations: HashMap<String, StationConfig> = re
         .captures_iter(situation)
         .map(|caps| {
@@ -337,7 +337,7 @@ fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
 
 fn extract_station_config(config: &str) -> Option<StationConfig> {
     let re = RegexBuilder::new(
-        r"ATIS ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?(,[ ]?VOICE ([a-zA-Z-]+))?",
+        r"ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?(,[ ]?VOICE ([a-zA-Z-]+))?",
     )
     .case_insensitive(true)
     .build()
@@ -370,7 +370,7 @@ mod test {
     fn test_mission_situation_extraction() {
         let freqs = extract_frequencies(
             r#"
-            ATIS Kutaisi 251.000
+            ATIS Mineralnye Vody 251.000
             ATIS Batumi 131.5
             ATIS Senaki-Kolkhi 145
 
@@ -382,9 +382,9 @@ mod test {
             freqs,
             vec![
                 (
-                    "Kutaisi".to_string(),
+                    "Mineralnye Vody".to_string(),
                     StationConfig {
-                        name: "Kutaisi".to_string(),
+                        name: "Mineralnye Vody".to_string(),
                         atis: 251_000_000,
                         traffic: None,
                         voice: None,
@@ -420,6 +420,16 @@ mod test {
             extract_station_config("ATIS Kutaisi 251"),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
+                atis: 251_000_000,
+                traffic: None,
+                voice: None,
+            })
+        );
+
+        assert_eq!(
+            extract_station_config("ATIS Mineralnye Vody 251"),
+            Some(StationConfig {
+                name: "Mineralnye Vody".to_string(),
                 atis: 251_000_000,
                 traffic: None,
                 voice: None,
