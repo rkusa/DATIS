@@ -77,7 +77,7 @@ pub extern "C" fn start(state: *mut ffi::lua_State) -> c_int {
                 return report_error(state, &err.to_string());
             }
 
-            info!("Starting ...");
+            info!("Starting DATIS version {} ...", env!("CARGO_PKG_VERSION"));
 
             match Datis::create(lua) {
                 Ok(mut datis) => {
