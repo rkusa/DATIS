@@ -44,12 +44,40 @@ impl AtisSrsClient {
         stream.set_nodelay(true)?;
         stream.set_read_timeout(Some(Duration::from_millis(100)))?;
 
+        let name = format!("ATIS {}", self.station.name);
         let sync_msg = Message {
             client: Some(Client {
                 client_guid: &self.sguid,
-                name: &self.station.name,
+                name: &name,
                 position: self.station.airfield.position.clone(),
                 coalition: Coalition::Blue,
+                radio_info: Some(RadioInfo {
+                    name: "ATIS",
+                    pos: self.station.airfield.position.clone(),
+                    ptt: false,
+                    radios: vec![Radio {
+                        enc: false,
+                        enc_key: 0,
+                        enc_mode: 0, // no encryption
+                        freq_max: 1.0,
+                        freq_min: 1.0,
+                        freq: self.station.atis_freq as f64,
+                        modulation: 0,
+                        name: "ATIS",
+                        sec_freq: 0.0,
+                        volume: 1.0,
+                        freq_mode: 0, // Cockpit
+                        vol_mode: 0,  // Cockpit
+                        expansion: false,
+                        channel: -1,
+                        simul: false,
+                    }],
+                    control: 0, // HOTAS
+                    selected: 0,
+                    unit: &name,
+                    unit_id: 0,
+                    simultaneous_transmission: true,
+                }),
             }),
             msg_type: MsgType::Sync,
             version: "1.5.3.5",
@@ -84,9 +112,10 @@ impl AtisSrsClient {
                         name: &name,
                         position: position.clone(),
                         coalition: Coalition::Blue,
+                        radio_info: None,
                     }),
                     msg_type: MsgType::Update,
-                    version: "1.5.3.5",
+                    version: "1.5.6.0",
                 };
 
                 serde_json::to_writer(&mut stream, &upd_msg)?;
@@ -309,13 +338,47 @@ enum Coalition {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Radio<'a> {
+    enc: bool,
+    enc_key: u8,
+    enc_mode: u8,
+    freq_max: f64,   // 1.0,
+    freq_min: f64,   // 1.0,
+    freq: f64,       // 1.0,
+    modulation: u8,  // 3,
+    name: &'a str,   // "No Radio",
+    sec_freq: f64,   // 0.0,
+    volume: f32,     // 1.0,
+    freq_mode: u8,   // 0,
+    vol_mode: u8,    // 0,
+    expansion: bool, // false,
+    channel: i32,    // -1,
+    simul: bool,     // false
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct RadioInfo<'a> {
+    name: &'a str,
+    pos: Position,
+    ptt: bool,
+    radios: Vec<Radio<'a>>,
+    control: u8,
+    selected: usize,
+    unit: &'a str,
+    unit_id: usize,
+    simultaneous_transmission: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 struct Client<'a> {
     client_guid: &'a str,
     name: &'a str,
     position: Position,
     coalition: Coalition,
-    // RadioInfo
+    radio_info: Option<RadioInfo<'a>>,
     // ClientChannelId
 }
 
