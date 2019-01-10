@@ -6,6 +6,7 @@ use crate::srs::AtisSrsClient;
 use crate::station::*;
 use crate::tts::VoiceKind;
 use crate::weather::*;
+use crate::export::ReportExporter;
 use hlua51::{Lua, LuaFunction, LuaTable};
 use regex::{Regex, RegexBuilder};
 
@@ -14,7 +15,7 @@ pub struct Datis {
 }
 
 impl Datis {
-    pub fn create(mut lua: Lua<'_>) -> Result<Self, Error> {
+    pub fn create(mut lua: Lua<'_>, log_dir: String) -> Result<Self, Error> {
         debug!("Extracting ATIS stations from Mission Situation");
 
         // read gcloud access key option
@@ -274,10 +275,12 @@ impl Datis {
             warn!("No ATIS stations found ...");
         }
 
+        let export = ReportExporter::new(log_dir + "atis-reports.json");
+
         Ok(Datis {
             clients: stations
                 .into_iter()
-                .map(|station| AtisSrsClient::new(station, gcloud_key.clone()))
+                .map(|station| AtisSrsClient::new(station, export.clone(), gcloud_key.clone()))
                 .collect(),
         })
     }

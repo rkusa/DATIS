@@ -10,6 +10,7 @@ use crate::worker::{Context, Worker};
 use byteorder::{LittleEndian, WriteBytesExt};
 use ogg::reading::PacketReader;
 use uuid::Uuid;
+use crate::export::ReportExporter;
 
 const MAX_FRAME_LENGTH: usize = 1024;
 
@@ -17,11 +18,12 @@ pub struct AtisSrsClient {
     sguid: String,
     gcloud_key: String,
     station: Station,
+    exporter: ReportExporter,
     worker: Vec<Worker<()>>,
 }
 
 impl AtisSrsClient {
-    pub fn new(station: Station, gcloud_key: String) -> Self {
+    pub fn new(station: Station, exporter: ReportExporter, gcloud_key: String) -> Self {
         let sguid = Uuid::new_v4();
         let sguid = base64::encode_config(sguid.as_bytes(), base64::URL_SAFE_NO_PAD);
         assert_eq!(sguid.len(), 22);
@@ -30,6 +32,7 @@ impl AtisSrsClient {
             sguid,
             gcloud_key,
             station,
+            exporter,
             worker: Vec::new(),
         }
     }
@@ -92,8 +95,9 @@ impl AtisSrsClient {
         let sguid = self.sguid.clone();
         let gcloud_key = self.gcloud_key.clone();
         let station = self.station.clone();
+        let exporter = self.exporter.clone();
         self.worker.push(Worker::new(move |ctx| {
-            if let Err(err) = audio_broadcast(ctx, sguid, gcloud_key, station) {
+            if let Err(err) = audio_broadcast(ctx, sguid, gcloud_key, station, exporter) {
                 error!("Error starting SRS broadcast: {}", err);
             }
         }));
@@ -197,6 +201,7 @@ fn audio_broadcast(
     sguid: String,
     gloud_key: String,
     station: Station,
+    exporter: ReportExporter,
 ) -> Result<(), Error> {
     let interval = Duration::from_secs(60 * 60); // 60min
     let mut interval_start;
@@ -204,10 +209,13 @@ fn audio_broadcast(
     loop {
         interval_start = Instant::now();
 
-        // TODO: unwrap
-        let report = station.generate_report(report_ix)?;
+        let report = station.generate_report(report_ix, true)?;
+        let report_textual = station.generate_report(report_ix, false)?;
+        exporter.export(&station.name, report_textual);
+
         report_ix += 1;
         debug!("Report: {}", report);
+
 
         let data = text_to_speech(&gloud_key, &report, station.voice)?;
         let mut data = Cursor::new(data);

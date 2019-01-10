@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex};
 
 use crate::error::Error;
-use crate::station::BREAK;
 use crate::utils::pronounce_number;
 use hlua51::{Lua, LuaFunction, LuaTable};
 
@@ -38,11 +37,13 @@ pub struct WeatherInfo {
 }
 
 impl StaticWeather {
-    pub fn get_clouds_report(&self) -> String {
+    pub fn get_visibility_report(&self, spoken: bool) -> String {
         // convert m to nm
         let visibility = (self.visibility as f64 * 0.000539957).round();
-        let mut report = format!("Visibility {}. {}", pronounce_number(visibility), BREAK);
+        format!("Visibility {}", pronounce_number(visibility, spoken))
+    }
 
+    pub fn get_clouds_report(&self, spoken: bool) -> Option<String> {
         let density = match self.clouds.density {
             2..=5 => Some("few"),
             6..=7 => Some("scattered"),
@@ -51,18 +52,20 @@ impl StaticWeather {
             _ => None,
         };
         if let Some(density) = density {
+            let mut report = String::new();
             // convert m to ft, round to lowest 500ft increment and shortened (e.g. 17500 -> 175)
             let base = (self.clouds.base as f64 * 3.28084).round() as u32;
             let base = (base - (base % 500)) / 100;
-            report += &format!("Cloud conditions {} {}", density, pronounce_number(base));
+            report += &format!("Cloud conditions {} {}", density, pronounce_number(base, spoken));
             match self.clouds.iprecptns {
                 1 => report += ", rain",
                 2 => report += ", rain and thunderstorm",
                 _ => {}
             }
-            report += &format!(". {}", BREAK);
+            Some(report)
+        } else {
+            None
         }
-        report
     }
 }
 
@@ -181,13 +184,35 @@ mod test {
     }
 
     #[test]
+    fn test_visibility_report() {
+        fn create_clouds_report(
+            visibility: u32,
+        ) -> String {
+            StaticWeather {
+                clouds: Clouds {
+                    base: 0,
+                    density: 0,
+                    thickness: 0,
+                    iprecptns: 0,
+                },
+                visibility,
+            }
+                .get_visibility_report(true)
+        }
+
+        assert_eq!(
+            create_clouds_report(80_000),
+            "Visibility 4 3"
+        );
+    }
+
+    #[test]
     fn test_clouds_report() {
         fn create_clouds_report(
             base: u32,
             density: u32,
             iprecptns: u32,
-            visibility: u32,
-        ) -> String {
+        ) -> Option<String> {
             StaticWeather {
                 clouds: Clouds {
                     base,
@@ -195,30 +220,30 @@ mod test {
                     thickness: 0,
                     iprecptns,
                 },
-                visibility,
+                visibility: 80_000,
             }
-            .get_clouds_report()
+            .get_clouds_report(true)
         }
 
         assert_eq!(
-            create_clouds_report(8400, 1, 0, 80_000),
-            "Visibility 4 3. | "
+            create_clouds_report(8400, 1, 0),
+            None
         );
         assert_eq!(
-            create_clouds_report(8400, 2, 0, 80_000),
-            "Visibility 4 3. | Cloud conditions few 2 7 5. | "
+            create_clouds_report(8400, 2, 0),
+            Some("Cloud conditions few 2 7 5".to_string())
         );
         assert_eq!(
-            create_clouds_report(8400, 2, 0, 80_000),
-            "Visibility 4 3. | Cloud conditions few 2 7 5. | "
+            create_clouds_report(8400, 2, 0),
+            Some("Cloud conditions few 2 7 5".to_string())
         );
         assert_eq!(
-            create_clouds_report(8500, 6, 1, 80_000),
-            "Visibility 4 3. | Cloud conditions scattered 2 7 5, rain. | "
+            create_clouds_report(8500, 6, 1),
+            Some("Cloud conditions scattered 2 7 5, rain".to_string())
         );
         assert_eq!(
-            create_clouds_report(8500, 10, 2, 80_000),
-            "Visibility 4 3. | Cloud conditions overcast 2 7 5, rain and thunderstorm. | "
+            create_clouds_report(8500, 10, 2),
+            Some("Cloud conditions overcast 2 7 5, rain and thunderstorm".to_string())
         );
     }
 }

@@ -9,10 +9,14 @@ pub fn round(n: f64, max_decimal_places: i32) -> f64 {
 static PHONETIC_NUMBERS: &'static [&str] =
     &["ZERO", "1", "2", "3", "4", "5", "6", "7", "8", "NINER"];
 
-pub fn pronounce_number<S>(n: S) -> String
+pub fn pronounce_number<S>(n: S, pronounce: bool) -> String
 where
     S: ToString,
 {
+    if !pronounce {
+        return n.to_string();
+    }
+
     n.to_string()
         .chars()
         .filter_map(|c| match c {

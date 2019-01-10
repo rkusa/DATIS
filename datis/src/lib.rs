@@ -14,6 +14,7 @@ extern crate serde_derive;
 mod macros;
 mod datis;
 mod error;
+mod export;
 mod srs;
 mod station;
 mod tts;
@@ -33,14 +34,7 @@ use lua51_sys as ffi;
 static mut INITIALIZED: bool = false;
 static mut DATIS: Option<Datis> = None;
 
-pub fn init(lua: &mut Lua<'_>) -> Result<(), Error> {
-    unsafe {
-        if INITIALIZED {
-            return Ok(());
-        }
-        INITIALIZED = true;
-    }
-
+pub fn init(lua: &mut Lua<'_>) -> Result<String, Error> {
     // init logging
     use log::LevelFilter;
     use log4rs::append::file::FileAppender;
@@ -49,22 +43,29 @@ pub fn init(lua: &mut Lua<'_>) -> Result<(), Error> {
     let mut lfs: LuaTable<_> = get!(lua, "lfs")?;
     let mut writedir: LuaFunction<_> = get!(lfs, "writedir")?;
     let writedir: String = writedir.call()?;
-    let log_file = writedir + "Logs\\DATIS.log";
 
-    let requests = FileAppender::builder()
-        .append(false)
-        .build(log_file)
-        .unwrap();
+    if unsafe { !INITIALIZED } {
+        let log_file = writedir.clone() + "Logs\\DATIS.log";
 
-    let config = Config::builder()
-        .appender(Appender::builder().build("file", Box::new(requests)))
-        .logger(Logger::builder().build("datis", LevelFilter::Info))
-        .build(Root::builder().appender("file").build(LevelFilter::Off))
-        .unwrap();
+        let requests = FileAppender::builder()
+            .append(false)
+            .build(log_file)
+            .unwrap();
 
-    log4rs::init_config(config).unwrap();
+        let config = Config::builder()
+            .appender(Appender::builder().build("file", Box::new(requests)))
+            .logger(Logger::builder().build("datis", LevelFilter::Info))
+            .build(Root::builder().appender("file").build(LevelFilter::Off))
+            .unwrap();
 
-    Ok(())
+        log4rs::init_config(config).unwrap();
+    }
+
+    unsafe {
+        INITIALIZED = true;
+    }
+
+    Ok(writedir + "Logs\\")
 }
 
 #[no_mangle]
@@ -73,13 +74,16 @@ pub extern "C" fn start(state: *mut ffi::lua_State) -> c_int {
         if DATIS.is_none() {
             let mut lua = Lua::from_existing_state(state, false);
 
-            if let Err(err) = init(&mut lua) {
-                return report_error(state, &err.to_string());
-            }
+            let log_dir = match init(&mut lua) {
+                Ok(p) => p,
+                Err(err) => {
+                    return report_error(state, &err.to_string());
+                }
+            };
 
             info!("Starting DATIS version {} ...", env!("CARGO_PKG_VERSION"));
 
-            match Datis::create(lua) {
+            match Datis::create(lua, log_dir) {
                 Ok(mut datis) => {
                     for client in datis.clients.iter_mut() {
                         if let Err(err) = client.start() {

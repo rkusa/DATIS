@@ -37,18 +37,33 @@ pub(crate) const BREAK: &str = "<break time=\"500ms\"/>\n";
 pub(crate) const BREAK: &str = "| ";
 
 impl Station {
-    pub fn generate_report(&self, report_nr: usize) -> Result<String, Error> {
+    pub fn generate_report(&self, report_nr: usize, spoken: bool) -> Result<String, Error> {
+        #[cfg(not(test))]
+        let _break = if spoken {
+            "<break time=\"500ms\"/>\n"
+        } else {
+            ""
+        };
+        #[cfg(test)]
+        let _break = if spoken {
+            "| "
+        } else {
+            ""
+        };
+
         let information_letter = PHONETIC_ALPHABET[report_nr % PHONETIC_ALPHABET.len()];
 
         let weather = self.get_current_weather()?;
-        let mut report = format!(
-            "<speak>\nThis is {} information {}. {}",
-            self.name, information_letter, BREAK
+        let mut report = if spoken { "<speak>\n" } else { "" }.to_string();
+
+        report += &format!(
+            "This is {} information {}. {}",
+            self.name, information_letter, _break
         );
 
         if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
-            let rwy = pronounce_number(rwy);
-            report += &format!("Runway in use is {}. {}", rwy, BREAK);
+            let rwy = pronounce_number(rwy, spoken);
+            report += &format!("Runway in use is {}. {}", rwy, _break);
         } else {
             error!("Could not find active runway for {}", self.name);
         }
@@ -56,51 +71,58 @@ impl Station {
         let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
         report += &format!(
             "Wind {} at {} knots. {}",
-            pronounce_number(wind_dir),
-            pronounce_number(weather.wind_speed.round()),
-            BREAK,
+            pronounce_number(wind_dir, spoken),
+            pronounce_number(weather.wind_speed.round(), spoken),
+            _break,
         );
 
         if self.weather_kind == WeatherKind::Static {
-            report += &self.static_weather.get_clouds_report();
+            report += &format!("{}. {}", self.static_weather.get_visibility_report(spoken), _break);
+            if let Some(clouds_report) = self.static_weather.get_clouds_report(spoken) {
+                report += &format!("{}. {}", clouds_report, _break);
+            }
         }
 
         report += &format!(
             "Temperature {} celcius. {}",
-            pronounce_number(round(weather.temperature, 1)),
-            BREAK,
+            pronounce_number(round(weather.temperature, 1), spoken),
+            _break,
         );
 
         report += &format!(
             "ALTIMETER {}. {}",
             // inHg, but using 0.02953 instead of 0.0002953 since we don't want to speak the
             // DECIMAL here
-            pronounce_number((weather.pressure_qnh * 0.02953).round()),
-            BREAK,
+            pronounce_number((weather.pressure_qnh * 0.02953).round(), spoken),
+            _break,
         );
 
         if let Some(traffic_freq) = self.traffic_freq {
             report += &format!(
                 "Traffic frequency {}. {}",
-                pronounce_number(round(traffic_freq as f64 / 1_000_000.0, 3)),
-                BREAK
+                pronounce_number(round(traffic_freq as f64 / 1_000_000.0, 3), spoken),
+                _break
             );
         }
 
-        report += &format!("REMARKS. {}", BREAK,);
+        report += &format!("REMARKS. {}", _break,);
         report += &format!(
             "{} hectopascal. {}",
-            pronounce_number((weather.pressure_qnh / 100.0).round()), // to hPA
-            BREAK,
+            pronounce_number((weather.pressure_qnh / 100.0).round(), spoken), // to hPA
+            _break,
         );
         report += &format!(
             "QFE {} or {}. {}",
-            pronounce_number((weather.pressure_qfe * 0.02953).round()), // to inHg
-            pronounce_number((weather.pressure_qfe / 100.0).round()),   // to hPA
-            BREAK,
+            pronounce_number((weather.pressure_qfe * 0.02953).round(), spoken), // to inHg
+            pronounce_number((weather.pressure_qfe / 100.0).round(), spoken),   // to hPA
+            _break,
         );
 
-        report += &format!("End information {}.\n</speak>", information_letter);
+        report += &format!("End information {}.", information_letter);
+
+        if spoken {
+            report += "\n</speak>";
+        }
 
         Ok(report)
     }
@@ -211,7 +233,10 @@ mod test {
             dynamic_weather: DynamicWeather::create("").unwrap(),
         };
 
-        let report = station.generate_report(26).unwrap();
-        assert_eq!(report, "<speak>\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 1 ZERO knots. | Visibility ZERO. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Alpha.\n</speak>");
+        let report = station.generate_report(26, true).unwrap();
+        assert_eq!(report, "<speak>\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Visibility ZERO. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Alpha.\n</speak>");
+
+        let report = station.generate_report(26, false).unwrap();
+        assert_eq!(report, "This is Kutaisi information Alpha. Runway in use is 04. Wind 006 at 5 knots. Visibility 0. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Alpha.");
     }
 }
