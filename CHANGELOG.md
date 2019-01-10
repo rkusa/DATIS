@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Added radio information to the initial SRS sync message #10
 
+### Added
+- Log a warning if there are no ATIS stations found
+
+### Fixed
+- Fix parsing of airfield names that contain a space in their name
+
 ## [0.6.0] - 2018-12-04
 ### Changed
 - Reduced logging output (to started, stopped and error messages)
