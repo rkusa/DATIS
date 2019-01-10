@@ -133,7 +133,7 @@ impl DynamicWeather {
 
         let mut weather: LuaTable<_> = get_weather.call_with_args((x, y, alt))?;
         let wind_speed: f64 = get!(weather, "windSpeed")?;
-        let mut wind_dir: f64 = get!(weather, "windDir")?;
+        let mut wind_dir: f64 = get!(weather, "windDir")?;  // in knots
         let temperature: f64 = get!(weather, "temp")?;
         let pressure_qfe: f64 = get!(weather, "pressure")?;
 

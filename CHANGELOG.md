@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Fix parsing of airfield names that contain a space in their name
+- Fix wind speed unit
 
 ## [0.6.0] - 2018-12-04
 ### Changed
