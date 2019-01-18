@@ -32,22 +32,22 @@ impl<T> Worker<T> {
     }
 
     pub fn stop(self) {
-        if let Err(_) = self.tx.send(Command::Stop) {
+        if self.tx.send(Command::Stop).is_err() {
             error!("Error sending stop signal to worker thread");
         }
-        if let Err(_) = self.join_handle.join() {
+        if self.join_handle.join().is_err() {
             error!("Error joining worker thread");
         }
     }
 
     pub fn pause(&self) {
-        if let Err(_) = self.tx.send(Command::Pause) {
+        if self.tx.send(Command::Pause).is_err() {
             error!("Error sending pause signal to worker thread");
         }
     }
 
     pub fn unpause(&self) {
-        if let Err(_) = self.tx.send(Command::Unpause) {
+        if self.tx.send(Command::Unpause).is_err() {
             error!("Error sending unpause signal to worker thread");
         }
     }
@@ -56,9 +56,7 @@ impl<T> Worker<T> {
 impl Context {
     pub fn should_stop(&self) -> bool {
         match self.rx.try_recv() {
-            Ok(Command::Pause) => {
-                return self.pause_handler();
-            }
+            Ok(Command::Pause) => self.pause_handler(),
             Ok(Command::Unpause) | Err(TryRecvError::Empty) => false,
             Ok(Command::Stop) | Err(TryRecvError::Disconnected) => true,
         }
@@ -66,9 +64,7 @@ impl Context {
 
     pub fn should_stop_timeout(&self, timeout: Duration) -> bool {
         match self.rx.recv_timeout(timeout) {
-            Ok(Command::Pause) => {
-                return self.pause_handler();
-            }
+            Ok(Command::Pause) => self.pause_handler(),
             Ok(Command::Unpause) | Err(RecvTimeoutError::Timeout) => false,
             Ok(Command::Stop) | Err(RecvTimeoutError::Disconnected) => true,
         }

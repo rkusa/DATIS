@@ -19,12 +19,10 @@ where
 
     n.to_string()
         .chars()
-        .filter_map(|c| match c {
-            '.' => Some(String::from("DECIMAL")),
-            '0'..='9' => Some(String::from(
-                PHONETIC_NUMBERS[c.to_digit(10).unwrap() as usize],
-            )),
-            _ => Some(c.to_string()),
+        .map(|c| match c {
+            '.' => String::from("DECIMAL"),
+            '0'..='9' => String::from(PHONETIC_NUMBERS[c.to_digit(10).unwrap() as usize]),
+            _ => c.to_string(),
         })
         .collect::<Vec<String>>()
         .join(" ")

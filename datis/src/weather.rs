@@ -39,7 +39,7 @@ pub struct WeatherInfo {
 impl StaticWeather {
     pub fn get_visibility_report(&self, spoken: bool) -> String {
         // convert m to nm
-        let visibility = (self.visibility as f64 * 0.000539957).round();
+        let visibility = (f64::from(self.visibility) * 0.000_539_957).round();
         format!("Visibility {}", pronounce_number(visibility, spoken))
     }
 
@@ -54,9 +54,13 @@ impl StaticWeather {
         if let Some(density) = density {
             let mut report = String::new();
             // convert m to ft, round to lowest 500ft increment and shortened (e.g. 17500 -> 175)
-            let base = (self.clouds.base as f64 * 3.28084).round() as u32;
+            let base = (f64::from(self.clouds.base) * 3.28084).round() as u32;
             let base = (base - (base % 500)) / 100;
-            report += &format!("Cloud conditions {} {}", density, pronounce_number(base, spoken));
+            report += &format!(
+                "Cloud conditions {} {}",
+                density,
+                pronounce_number(base, spoken)
+            );
             match self.clouds.iprecptns {
                 1 => report += ", rain",
                 2 => report += ", rain and thunderstorm",
@@ -136,7 +140,7 @@ impl DynamicWeather {
 
         let mut weather: LuaTable<_> = get_weather.call_with_args((x, y, alt))?;
         let wind_speed: f64 = get!(weather, "windSpeed")?;
-        let mut wind_dir: f64 = get!(weather, "windDir")?;  // in knots
+        let mut wind_dir: f64 = get!(weather, "windDir")?; // in knots
         let temperature: f64 = get!(weather, "temp")?;
         let pressure_qfe: f64 = get!(weather, "pressure")?;
 
@@ -185,9 +189,7 @@ mod test {
 
     #[test]
     fn test_visibility_report() {
-        fn create_clouds_report(
-            visibility: u32,
-        ) -> String {
+        fn create_clouds_report(visibility: u32) -> String {
             StaticWeather {
                 clouds: Clouds {
                     base: 0,
@@ -197,22 +199,15 @@ mod test {
                 },
                 visibility,
             }
-                .get_visibility_report(true)
+            .get_visibility_report(true)
         }
 
-        assert_eq!(
-            create_clouds_report(80_000),
-            "Visibility 4 3"
-        );
+        assert_eq!(create_clouds_report(80_000), "Visibility 4 3");
     }
 
     #[test]
     fn test_clouds_report() {
-        fn create_clouds_report(
-            base: u32,
-            density: u32,
-            iprecptns: u32,
-        ) -> Option<String> {
+        fn create_clouds_report(base: u32, density: u32, iprecptns: u32) -> Option<String> {
             StaticWeather {
                 clouds: Clouds {
                     base,
@@ -225,10 +220,7 @@ mod test {
             .get_clouds_report(true)
         }
 
-        assert_eq!(
-            create_clouds_report(8400, 1, 0),
-            None
-        );
+        assert_eq!(create_clouds_report(8400, 1, 0), None);
         assert_eq!(
             create_clouds_report(8400, 2, 0),
             Some("Cloud conditions few 2 7 5".to_string())

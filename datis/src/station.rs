@@ -31,11 +31,6 @@ pub struct Airfield {
     pub runways: Vec<String>,
 }
 
-#[cfg(not(test))]
-pub(crate) const BREAK: &str = "<break time=\"500ms\"/>\n";
-#[cfg(test)]
-pub(crate) const BREAK: &str = "| ";
-
 impl Station {
     pub fn generate_report(&self, report_nr: usize, spoken: bool) -> Result<String, Error> {
         #[cfg(not(test))]
@@ -45,11 +40,7 @@ impl Station {
             ""
         };
         #[cfg(test)]
-        let _break = if spoken {
-            "| "
-        } else {
-            ""
-        };
+        let _break = if spoken { "| " } else { "" };
 
         let information_letter = PHONETIC_ALPHABET[report_nr % PHONETIC_ALPHABET.len()];
 
@@ -77,7 +68,11 @@ impl Station {
         );
 
         if self.weather_kind == WeatherKind::Static {
-            report += &format!("{}. {}", self.static_weather.get_visibility_report(spoken), _break);
+            report += &format!(
+                "{}. {}",
+                self.static_weather.get_visibility_report(spoken),
+                _break
+            );
             if let Some(clouds_report) = self.static_weather.get_clouds_report(spoken) {
                 report += &format!("{}. {}", clouds_report, _break);
             }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::fs::File;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct ReportExporter(Arc<Mutex<ReportExporterInner>>);

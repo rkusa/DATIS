@@ -1,4 +1,3 @@
-#![feature(try_trait)]
 #![warn(rust_2018_idioms)]
 
 #[macro_use]

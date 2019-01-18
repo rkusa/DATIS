@@ -88,7 +88,7 @@ ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE en-US-Standard-E
 
 Instead of building you can also use the prebuild mod from one of the [releases](https://github.com/rkusa/DATIS/releases).
 
-Build with [Rust nightly](https://rustup.rs/):
+Build with [Rust (stable)](https://rustup.rs/):
 
 ```
 make release

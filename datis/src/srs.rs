@@ -4,13 +4,13 @@ use std::time::{Duration, Instant};
 use std::{fmt, thread};
 
 use crate::error::Error;
+use crate::export::ReportExporter;
 use crate::station::{Position, Station};
 use crate::tts::text_to_speech;
 use crate::worker::{Context, Worker};
 use byteorder::{LittleEndian, WriteBytesExt};
 use ogg::reading::PacketReader;
 use uuid::Uuid;
-use crate::export::ReportExporter;
 
 const MAX_FRAME_LENGTH: usize = 1024;
 
@@ -38,7 +38,7 @@ impl AtisSrsClient {
     }
 
     pub fn start(&mut self) -> Result<(), Error> {
-        if self.worker.len() > 0 {
+        if !self.worker.is_empty() {
             // already started
             return Ok(());
         }
@@ -87,7 +87,7 @@ impl AtisSrsClient {
         };
 
         serde_json::to_writer(&stream, &sync_msg)?;
-        stream.write_all(&['\n' as u8])?;
+        stream.write_all(&[b'\n'])?;
 
         let mut rd = BufReader::new(stream.try_clone().unwrap()); // TODO: unwrap?
 
@@ -123,7 +123,7 @@ impl AtisSrsClient {
                 };
 
                 serde_json::to_writer(&mut stream, &upd_msg)?;
-                stream.write_all(&['\n' as u8])?;
+                stream.write_all(&[b'\n'])?;
 
                 Ok(())
             };
@@ -136,7 +136,7 @@ impl AtisSrsClient {
                 //                debug!("SRS Update sent");
 
                 if ctx.should_stop_timeout(Duration::from_secs(5)) {
-                    return ();
+                    return;
                 }
             }
         }));
@@ -148,7 +148,7 @@ impl AtisSrsClient {
                 match rd.read_until(b'\n', &mut data) {
                     Ok(bytes_read) => {
                         if bytes_read == 0 {
-                            return ();
+                            return;
                         }
 
                         data.clear();
@@ -167,7 +167,7 @@ impl AtisSrsClient {
                 }
 
                 if ctx.should_stop() {
-                    return ();
+                    return;
                 }
             }
         }));
@@ -216,7 +216,6 @@ fn audio_broadcast(
         report_ix += 1;
         debug!("Report: {}", report);
 
-
         let data = text_to_speech(&gloud_key, &report, station.voice)?;
         let mut data = Cursor::new(data);
 
@@ -242,7 +241,7 @@ fn audio_broadcast(
                 }
                 size += pck_size;
                 let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
-                stream.write(&frame)?;
+                stream.write_all(&frame)?;
                 id += 1;
 
                 // 32 kBit/s
@@ -282,7 +281,7 @@ fn audio_broadcast(
     //    Ok(())
 }
 
-fn pack_frame(sguid: &str, id: u64, freq: u64, rd: &Vec<u8>) -> Result<Vec<u8>, io::Error> {
+fn pack_frame(sguid: &str, id: u64, freq: u64, rd: &[u8]) -> Result<Vec<u8>, io::Error> {
     let mut frame = Cursor::new(Vec::with_capacity(MAX_FRAME_LENGTH));
 
     // header segment will be written at the end

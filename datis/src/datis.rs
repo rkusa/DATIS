@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::error::Error;
+use crate::export::ReportExporter;
 use crate::srs::AtisSrsClient;
 use crate::station::*;
 use crate::tts::VoiceKind;
 use crate::weather::*;
-use crate::export::ReportExporter;
 use hlua51::{Lua, LuaFunction, LuaTable};
 use regex::{Regex, RegexBuilder};
 
@@ -159,7 +159,7 @@ impl Datis {
             let mut terrain: LuaTable<_> = get!(lua, "Terrain")?;
             let mut get_height: LuaFunction<_> = get!(terrain, "GetHeight")?;
 
-            for (_, mut airfield) in &mut airfields {
+            for mut airfield in airfields.values_mut() {
                 airfield.position.alt =
                     get_height.call_with_args((airfield.position.x, airfield.position.y))?;
             }
@@ -314,7 +314,7 @@ fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
             (
                 name.clone(),
                 StationConfig {
-                    name: name,
+                    name,
                     atis: freq,
                     traffic: None,
                     voice: None,
@@ -359,7 +359,7 @@ fn extract_station_config(config: &str) -> Option<StationConfig> {
             name: name.to_string(),
             atis: atis_freq,
             traffic: traffic_freq,
-            voice: voice,
+            voice,
         }
     })
 }
