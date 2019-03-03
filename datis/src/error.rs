@@ -44,10 +44,10 @@ impl fmt::Display for Error {
             _ => write!(f, "Error: {}", self.description())?,
         }
 
-        let mut cause: Option<&dyn error::Error> = self.cause();
+        let mut cause: Option<&dyn error::Error> = self.source();
         while let Some(err) = cause {
             write!(f, "  -> {}", err)?;
-            cause = err.cause();
+            cause = err.source();
         }
 
         Ok(())
