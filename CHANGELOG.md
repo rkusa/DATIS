@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2019-03-03
+### Fixed
+- Fix missing `Terrain` global when starting DCS server with `--norender`
+
+### Changed
+- Use different log levels for DCS Lua hook
+
 ## [0.7.0] - 2019-01-10
 ### Changed
 - Added radio information to the initial SRS sync message #10

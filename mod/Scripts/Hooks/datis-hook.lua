@@ -10,6 +10,10 @@ function datis_start()
 	end
 
 	log.write("[DATIS]", log.DEBUG, "Starting ...")
+	
+	if _G.Terrain == nil then
+		_G.Terrain = require "terrain"
+	end
 
 	if datis == nil then
 		datis = require "datis"
