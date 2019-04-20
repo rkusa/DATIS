@@ -48,15 +48,17 @@ impl AtisSrsClient {
         stream.set_read_timeout(Some(Duration::from_millis(100)))?;
 
         let name = format!("ATIS {}", self.station.name);
+        let mut position = self.station.airfield.position.clone();
+        position.alt += 100.0; // increase sending alt to 100m above ground for LOS
         let sync_msg = Message {
             client: Some(Client {
                 client_guid: &self.sguid,
                 name: &name,
-                position: self.station.airfield.position.clone(),
+                position: position.clone(),
                 coalition: Coalition::Blue,
                 radio_info: Some(RadioInfo {
                     name: "ATIS",
-                    pos: self.station.airfield.position.clone(),
+                    pos: position.clone(),
                     ptt: false,
                     radios: vec![Radio {
                         enc: false,
@@ -105,8 +107,6 @@ impl AtisSrsClient {
         // spawn thread that sends an update RPC call to SRS every ~5 seconds
         let sguid = self.sguid.clone();
         let name = self.station.name.clone();
-        let mut position = self.station.airfield.position.clone();
-        position.alt += 100.0; // increase sending alt to 100ft above ground for LOS
         self.worker.push(Worker::new(move |ctx| {
             let mut send_update = || -> Result<(), Error> {
                 // send update
