@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Fixed
+- Fix rounding issue in parsing of certain frequencies #15
+
 ## [0.8.0] - 2019-04-23
 ### Changed
 - DATIS now acts as an SRS version 1.6.0.0 client (and is thus not backwards compatible to <1.6 servers anymore)

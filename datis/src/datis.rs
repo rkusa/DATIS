@@ -348,10 +348,10 @@ fn extract_station_config(config: &str) -> Option<StationConfig> {
     re.captures(config).map(|caps| {
         let name = caps.get(1).unwrap().as_str();
         let atis_freq = caps.get(2).unwrap().as_str();
-        let atis_freq = (f32::from_str(atis_freq).unwrap() * 1_000_000.0) as u64;
+        let atis_freq = (f64::from_str(atis_freq).unwrap() * 1_000_000.0) as u64;
         let traffic_freq = caps
             .get(5)
-            .map(|freq| (f32::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64);
+            .map(|freq| (f64::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64);
         let voice = caps
             .get(8)
             .and_then(|s| serde_json::from_value(json!(s.as_str())).ok());
@@ -440,6 +440,16 @@ mod test {
         );
 
         assert_eq!(
+            extract_station_config("ATIS Senaki-Kolkhi 251"),
+            Some(StationConfig {
+                name: "Senaki-Kolkhi".to_string(),
+                atis: 251_000_000,
+                traffic: None,
+                voice: None,
+            })
+        );
+
+        assert_eq!(
             extract_station_config("ATIS Kutaisi 251.000, TRAFFIC 123.45"),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
@@ -466,6 +476,16 @@ mod test {
                 atis: 251_000_000,
                 traffic: None,
                 voice: Some(VoiceKind::StandardE),
+            })
+        );
+
+        assert_eq!(
+            extract_station_config("ATIS Kutaisi 131.400"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 131_400_000,
+                traffic: None,
+                voice: None,
             })
         );
     }
