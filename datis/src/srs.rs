@@ -17,13 +17,14 @@ const MAX_FRAME_LENGTH: usize = 1024;
 pub struct AtisSrsClient {
     sguid: String,
     gcloud_key: String,
+    port: u16,
     station: Station,
     exporter: ReportExporter,
     worker: Vec<Worker<()>>,
 }
 
 impl AtisSrsClient {
-    pub fn new(station: Station, exporter: ReportExporter, gcloud_key: String) -> Self {
+    pub fn new(station: Station, exporter: ReportExporter, gcloud_key: String, port: u16) -> Self {
         let sguid = Uuid::new_v4();
         let sguid = base64::encode_config(sguid.as_bytes(), base64::URL_SAFE_NO_PAD);
         assert_eq!(sguid.len(), 22);
@@ -31,6 +32,7 @@ impl AtisSrsClient {
         AtisSrsClient {
             sguid,
             gcloud_key,
+            port,
             station,
             exporter,
             worker: Vec::new(),
@@ -43,7 +45,7 @@ impl AtisSrsClient {
             return Ok(());
         }
 
-        let mut stream = TcpStream::connect("127.0.0.1:5002")?;
+        let mut stream = TcpStream::connect(("127.0.0.1", self.port))?;
         stream.set_nodelay(true)?;
         stream.set_read_timeout(Some(Duration::from_millis(100)))?;
 
@@ -98,8 +100,9 @@ impl AtisSrsClient {
         let gcloud_key = self.gcloud_key.clone();
         let station = self.station.clone();
         let exporter = self.exporter.clone();
+        let srs_port = self.port + 1;
         self.worker.push(Worker::new(move |ctx| {
-            if let Err(err) = audio_broadcast(ctx, sguid, gcloud_key, station, exporter) {
+            if let Err(err) = audio_broadcast(ctx, sguid, gcloud_key, station, exporter, srs_port) {
                 error!("Error starting SRS broadcast: {}", err);
             }
         }));
@@ -202,6 +205,7 @@ fn audio_broadcast(
     gloud_key: String,
     station: Station,
     exporter: ReportExporter,
+    srs_port: u16,
 ) -> Result<(), Error> {
     let interval = Duration::from_secs(60 * 60); // 60min
     let mut interval_start;
@@ -219,7 +223,7 @@ fn audio_broadcast(
         let data = text_to_speech(&gloud_key, &report, station.voice)?;
         let mut data = Cursor::new(data);
 
-        let mut stream = TcpStream::connect("127.0.0.1:5003")?;
+        let mut stream = TcpStream::connect(("127.0.0.1", srs_port))?;
         stream.set_nodelay(true)?;
 
         loop {

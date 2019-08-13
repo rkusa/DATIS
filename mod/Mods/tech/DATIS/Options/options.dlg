@@ -1,5 +1,6 @@
 
 local leftMargin = 56
+local width = 500
 
 -- Skins
 
@@ -72,7 +73,7 @@ dialog = {
                         ["bounds"] = {
                             ["x"] = leftMargin,
                             ["y"] = 30,
-                            ["w"] = 261,
+                            ["w"] = width,
                             ["h"] = 24,
                         }, 
                         ["visible"] = true,
@@ -92,7 +93,7 @@ dialog = {
                         ["bounds"] = {
                             ["x"] = leftMargin,
                             ["y"] = 95,
-                            ["w"] = 500,
+                            ["w"] = width,
                             ["h"] = 20,
                         },
                         ["enabled"] = true,
@@ -110,7 +111,7 @@ dialog = {
                         ["bounds"] = {
                             ["x"] = leftMargin,
                             ["y"] = 130,
-                            ["w"] = 500,
+                            ["w"] = width,
                             ["h"] = 20,
                         },
                     },
@@ -119,14 +120,61 @@ dialog = {
                 },
 
 				-----------------------------------------------
+				-- SRS Server Port (5001)
+				-----------------------------------------------
+
+				["srsPortLabel"] = {
+					["params"] = {
+						["bounds"] = {
+							["x"] = leftMargin,
+							["y"] = 190,
+							["w"] = 200,
+							["h"] = 20,
+						},
+						["enabled"] = true,
+						["text"] = "$DATIS_SRS_SERVER_PORT",
+						["tooltip"] = "",
+						["visible"] = true,
+						["zindex"] = 0,
+					},
+					["skin"] = LabelSkin,
+					["type"] = "Static",
+				},
+
+				["srsPortEditBox"] = {
+					["params"] = {
+						["acceptDecimalPoint"] = false,
+						["bounds"] = {
+							["x"] = 200 + leftMargin,
+							["y"] = 190,
+							["w"] = width - 200,
+							["h"] = 20,
+						},
+						["enabled"] = true,
+						["multiline"] = false,
+						["numeric"] = true,
+						["password"] = false,
+						["readOnly"] = false,
+						["text"] = "",
+						["textWrapping"] = true,
+						["tooltip"] = "",
+						["visible"] = true,
+						["zindex"] = 0,
+						["tabOrder"] = 0,
+					},
+					["skin"] = EditBoxSkin,
+					["type"] = "EditBox",
+				},
+
+				-----------------------------------------------
 				-- [ ] Debug Logging
 				-----------------------------------------------
 				["debugLoggingEnabledCheckbox"] = {
 					["params"] = {
 						["bounds"] = {
 							["x"] = leftMargin,
-							["y"] = 190,
-							["w"] = 500,
+							["y"] = 250,
+							["w"] = width,
 							["h"] = 20,
 						},
 						["enabled"] = true,
@@ -145,8 +193,8 @@ dialog = {
 					["params"] = {
 						["bounds"] = {
 							["x"] = leftMargin,
-							["y"] = 210,
-							["w"] = 500,
+							["y"] = 270,
+							["w"] = width,
 							["h"] = 40,
 						},
 						["enabled"] = true,

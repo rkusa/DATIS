@@ -31,6 +31,17 @@ impl Datis {
             access_key
         };
 
+        // read srs server port
+        let srs_port = {
+            // OptionsData.getPlugin("DATIS", "srsPort")
+            let mut options_data: LuaTable<_> = get!(lua, "OptionsData")?;
+            let mut get_plugin: LuaFunction<_> = get!(options_data, "getPlugin")?;
+
+            let port: u16 = get_plugin.call_with_args(("DATIS", "srsPort"))?;
+            info!("Using SRS Server port: {}", port);
+            port
+        };
+
         // read `package.cpath`
         let cpath = {
             let mut package: LuaTable<_> = get!(lua, "package")?;
@@ -280,7 +291,9 @@ impl Datis {
         Ok(Datis {
             clients: stations
                 .into_iter()
-                .map(|station| AtisSrsClient::new(station, export.clone(), gcloud_key.clone()))
+                .map(|station| {
+                    AtisSrsClient::new(station, export.clone(), gcloud_key.clone(), srs_port)
+                })
                 .collect(),
         })
     }
