@@ -28,20 +28,15 @@ local TitleSkin = {
 
 -- Content
 
-dialog =
-{
-    ["children"] =
-    {
-        ["containerPlugin"] =
-        {
-            ["children"] =
-            {
+dialog = {
+    ["children"] = {
+        ["containerPlugin"] = {
+            ["children"] =  {
 
             ----------------------------------------
             -- Title
             ----------------------------------------
-                ["nameLabel"] =
-                {
+                ["nameLabel"] = {
                     ["params"] = {
                         ["enabled"] = true,
                         ["bounds"] = {
@@ -93,21 +88,20 @@ dialog =
                     ["skin"] = EditBoxSkin,
                     ["type"] = "EditBox",
                 },
+            
+            -----------------------------------------------
 
             },
             ["type"] = "Panel",
-            ["skin"] =
-            {
+            ["skin"] = {
                 ["params"] =
                 {
                     ["name"] = "panelSkin",
                 },
             },
-            ["params"] =
-            {
+            ["params"] = {
                 ["enabled"] = true,
-                ["bounds"] =
-                {
+                ["bounds"] = {
                     ["x"] = 0,
                     ["y"] = 0,
                     ["w"] = 974,
@@ -121,10 +115,8 @@ dialog =
         },
     },
     ["type"] = "Window",
-    ["skin"] =
-    {
-        ["params"] =
-        {
+    ["skin"] = {
+        ["params"] = {
             ["name"] = "windowSkin",
         }, 
     }, 
