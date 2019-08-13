@@ -39,6 +39,17 @@ pub fn init(lua: &mut Lua<'_>) -> Result<String, Error> {
     use log4rs::append::file::FileAppender;
     use log4rs::config::{Appender, Config, Logger, Root};
 
+    // read whether debug logging is enabled
+    let is_debug_loglevel = {
+        // OptionsData.getPlugin("DATIS", "debugLoggingEnabled")
+        let mut options_data: LuaTable<_> = get!(lua, "OptionsData")?;
+        let mut get_plugin: LuaFunction<_> = get!(options_data, "getPlugin")?;
+
+        let is_debug_loglevel: bool =
+            get_plugin.call_with_args(("DATIS", "debugLoggingEnabled"))?;
+        is_debug_loglevel
+    };
+
     let mut lfs: LuaTable<_> = get!(lua, "lfs")?;
     let mut writedir: LuaFunction<_> = get!(lfs, "writedir")?;
     let writedir: String = writedir.call()?;
@@ -53,7 +64,14 @@ pub fn init(lua: &mut Lua<'_>) -> Result<String, Error> {
 
         let config = Config::builder()
             .appender(Appender::builder().build("file", Box::new(requests)))
-            .logger(Logger::builder().build("datis", LevelFilter::Info))
+            .logger(Logger::builder().build(
+                "datis",
+                if is_debug_loglevel {
+                    LevelFilter::Debug
+                } else {
+                    LevelFilter::Info
+                },
+            ))
             .build(Root::builder().appender("file").build(LevelFilter::Off))
             .unwrap();
 

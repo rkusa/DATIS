@@ -4,27 +4,57 @@ local leftMargin = 56
 -- Skins
 
 local EditBoxSkin = {
-        ["params"] = {
-            ["name"] = "editBoxSkin_login",
-        }
+    ["params"] = {
+        ["name"] = "editBoxSkin_login",
     }
+}
+
+local CheckBoxSkin = {
+    ["params"] = {
+        ["name"] = "checkBoxSkin_options",
+    }
+}
 
 local TitleSkin = {
-        ["params"] = {
-            ["name"] = "staticOptionsTitleSkin",
-        },
-        ["states"] = {
-            ["released"] = {
-                [1] = {
-                    ["text"] = {
-                        ["horzAlign"] = {
-                            ["type"] = "min"
-                        }
+    ["params"] = {
+        ["name"] = "staticOptionsTitleSkin",
+    },
+    ["states"] = {
+        ["released"] = {
+            [1] = {
+                ["text"] = {
+                    ["horzAlign"] = {
+                        ["type"] = "min"
                     }
                 }
             }
         }
     }
+}
+
+local LabelSkin = {
+    ["params"] = {
+        ["name"] = "staticOptionsCaptionSkin",
+    }
+}
+
+local HelpSkin = {
+    ["params"] = {
+        ["name"] = "staticSkin2",
+    },
+    ["states"] = {
+        ["released"] = {
+            [1] = {
+                ["text"] = {
+                    ["fontSize"] = 10,
+                    ["horzAlign"] = {
+                        ["type"] = "min"
+                    }
+                }
+            }
+        }
+    }
+}
 
 -- Content
 
@@ -33,10 +63,10 @@ dialog = {
         ["containerPlugin"] = {
             ["children"] =  {
 
-            ----------------------------------------
-            -- Title
-            ----------------------------------------
-                ["nameLabel"] = {
+                ----------------------------------------
+                -- Title
+                ----------------------------------------
+                ["datisTitleLabel"] = {
                     ["params"] = {
                         ["enabled"] = true,
                         ["bounds"] = {
@@ -54,17 +84,16 @@ dialog = {
                     ["type"] = "Static",
                 }, 
 
-            -----------------------------------------------
-            -- Google Cloud Access Key
-            -----------------------------------------------
-
+                -----------------------------------------------
+                -- Google Cloud Access Key
+                -----------------------------------------------
                 ["gcloudAccessKeyLabel"] = {
                     ["params"] = {
                         ["bounds"] = {
                             ["x"] = leftMargin,
                             ["y"] = 95,
                             ["w"] = 500,
-                            ["h"] = 25,
+                            ["h"] = 20,
                         },
                         ["enabled"] = true,
                         ["text"] = "$DATIS_CLOUD_ACCESS_KEY",
@@ -72,7 +101,7 @@ dialog = {
                         ["visible"] = true,
                         ["zindex"] = 0,
                     },
-                    ["skin"] = OptionLabelSkin,
+                    ["skin"] = LabelSkin,
                     ["type"] = "Static",
                 },
 
@@ -88,14 +117,54 @@ dialog = {
                     ["skin"] = EditBoxSkin,
                     ["type"] = "EditBox",
                 },
+
+				-----------------------------------------------
+				-- [ ] Debug Logging
+				-----------------------------------------------
+				["debugLoggingEnabledCheckbox"] = {
+					["params"] = {
+						["bounds"] = {
+							["x"] = leftMargin,
+							["y"] = 190,
+							["w"] = 500,
+							["h"] = 20,
+						},
+						["enabled"] = true,
+						["state"] = false,
+						["text"] = "$DATIS_DEBUG_LOGGING",
+						["tooltip"] = "",
+						["visible"] = true,
+						["zindex"] = 0,
+						["tabOrder"] = 0,
+					},
+					["skin"] = CheckBoxSkin,
+					["type"] = "CheckBox",
+				},
+
+				["debugLoggingEnabledHelpLabel"] = {
+					["params"] = {
+						["bounds"] = {
+							["x"] = leftMargin,
+							["y"] = 210,
+							["w"] = 500,
+							["h"] = 40,
+						},
+						["enabled"] = true,
+						["text"] = "$DATIS_DEBUG_LOGGING_HELP",
+						["tooltip"] = "",
+						["visible"] = true,
+						["zindex"] = 0,
+					},
+					["skin"] = HelpSkin,
+					["type"] = "Static",
+				},
             
             -----------------------------------------------
 
             },
             ["type"] = "Panel",
             ["skin"] = {
-                ["params"] =
-                {
+                ["params"] = {
                     ["name"] = "panelSkin",
                 },
             },
