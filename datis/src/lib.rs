@@ -104,12 +104,14 @@ pub extern "C" fn start(state: *mut ffi::lua_State) -> c_int {
                 Ok(mut datis) => {
                     for client in datis.clients.iter_mut() {
                         if let Err(err) = client.start() {
+                            error!("Error starting SRS Client: {}", err.to_string());
                             return report_error(state, &err.to_string());
                         }
                     }
                     DATIS = Some(datis);
                 }
                 Err(err) => {
+                    error!("Error initializing DATIS: {}", err.to_string());
                     return report_error(state, &err.to_string());
                 }
             }
