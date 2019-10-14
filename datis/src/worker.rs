@@ -20,8 +20,7 @@ enum Command {
 impl<T> Worker<T> {
     pub fn new<F>(f: F) -> Self
     where
-        F: FnOnce(Context) -> T,
-        F: Send + 'static,
+        F: Send + 'static + FnOnce(Context) -> T,
         T: Send + 'static,
     {
         let (tx, rx) = channel();
