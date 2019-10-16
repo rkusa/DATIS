@@ -7,6 +7,7 @@ use crate::error::Error;
 use crate::export::ReportExporter;
 use crate::station::{Position, Station};
 use crate::tts::text_to_speech;
+use crate::weather::Weather;
 use crate::worker::{Context, Worker};
 use byteorder::{LittleEndian, WriteBytesExt};
 use ogg::reading::PacketReader;
@@ -14,17 +15,22 @@ use uuid::Uuid;
 
 const MAX_FRAME_LENGTH: usize = 1024;
 
-pub struct AtisSrsClient {
+pub struct AtisSrsClient<W: Weather + Clone> {
     sguid: String,
     gcloud_key: String,
     port: u16,
-    station: Station,
+    station: Station<W>,
     exporter: ReportExporter,
     worker: Vec<Worker<()>>,
 }
 
-impl AtisSrsClient {
-    pub fn new(station: Station, exporter: ReportExporter, gcloud_key: String, port: u16) -> Self {
+impl<W: Weather + Clone + Send + 'static> AtisSrsClient<W> {
+    pub fn new(
+        station: Station<W>,
+        exporter: ReportExporter,
+        gcloud_key: String,
+        port: u16,
+    ) -> Self {
         let sguid = Uuid::new_v4();
         let sguid = base64::encode_config(sguid.as_bytes(), base64::URL_SAFE_NO_PAD);
         assert_eq!(sguid.len(), 22);
@@ -119,10 +125,10 @@ impl AtisSrsClient {
     }
 }
 
-fn srs_update(
+fn srs_update<W: Weather + Clone>(
     ctx: &Context,
     sguid: &str,
-    station: &Station,
+    station: &Station<W>,
     srs_sync_port: u16,
 ) -> Result<bool, Error> {
     let mut stream = TcpStream::connect(("127.0.0.1", srs_sync_port))?;
@@ -222,11 +228,11 @@ fn srs_update(
     }
 }
 
-fn audio_broadcast(
+fn audio_broadcast<W: Weather + Clone>(
     ctx: &Context,
     sguid: &str,
     gloud_key: &str,
-    station: &Station,
+    station: &Station<W>,
     exporter: &ReportExporter,
     srs_port: u16,
 ) -> Result<bool, Error> {
@@ -238,7 +244,9 @@ fn audio_broadcast(
 
         let report = station.generate_report(report_ix, true)?;
         let report_textual = station.generate_report(report_ix, false)?;
-        exporter.export(&station.name, report_textual);
+        if let Err(err) = exporter.export(&station.name, report_textual) {
+            error!("Error exporting report: {}", err);
+        }
 
         report_ix += 1;
         debug!("Report: {}", report);

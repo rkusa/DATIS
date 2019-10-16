@@ -90,3 +90,12 @@ pub fn text_to_speech(gcloud_key: &str, text: &str, voice: VoiceKind) -> Result<
         Err(Error::GcloudTTL(err))
     }
 }
+
+use std::str::FromStr;
+impl FromStr for VoiceKind {
+    type Err = serde_json::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_value(json!(s))
+    }
+}

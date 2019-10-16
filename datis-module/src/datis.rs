@@ -2,16 +2,17 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::error::Error;
-use crate::export::ReportExporter;
-use crate::srs::AtisSrsClient;
-use crate::station::*;
-use crate::tts::VoiceKind;
-use crate::weather::*;
+use crate::weather::DcsWeather;
+use datis_core::export::ReportExporter;
+use datis_core::station::*;
+use datis_core::tts::VoiceKind;
+use datis_core::weather::*;
+use datis_core::AtisSrsClient;
 use hlua51::{Lua, LuaFunction, LuaTable};
 use regex::{Regex, RegexBuilder};
 
 pub struct Datis {
-    pub clients: Vec<AtisSrsClient>,
+    pub clients: Vec<AtisSrsClient<DcsWeather>>,
 }
 
 impl Datis {
@@ -181,7 +182,7 @@ impl Datis {
         }
 
         // extract the current mission's weather kind and static weather configuration
-        let (weather_kind, static_weather) = {
+        let (clouds, visibility) = {
             // read `_current_mission.mission.weather`
             let mut current_mission: LuaTable<_> = get!(lua, "_current_mission")?;
             let mut mission: LuaTable<_> = get!(current_mission, "mission")?;
@@ -189,34 +190,32 @@ impl Datis {
 
             // read `_current_mission.mission.weather.atmosphere_type`
             let atmosphere_type: f64 = get!(weather, "atmosphere_type")?;
-            let weather_kind = if atmosphere_type == 0.0 {
-                WeatherKind::Static
-            } else {
-                WeatherKind::Dynamic
-            };
+            let is_dynamic = atmosphere_type != 0.0;
 
-            let static_clouds = {
-                let mut clouds: LuaTable<_> = get!(weather, "clouds")?;
-                Clouds {
-                    base: get!(clouds, "base")?,
-                    density: get!(clouds, "density")?,
-                    thickness: get!(clouds, "thickness")?,
-                    iprecptns: get!(clouds, "iprecptns")?,
+            let clouds = {
+                if is_dynamic {
+                    None
+                } else {
+                    let mut clouds: LuaTable<_> = get!(weather, "clouds")?;
+                    Some(Clouds {
+                        base: get!(clouds, "base")?,
+                        density: get!(clouds, "density")?,
+                        thickness: get!(clouds, "thickness")?,
+                        iprecptns: get!(clouds, "iprecptns")?,
+                    })
                 }
             };
 
-            let visibility: u32 = {
-                let mut visibility: LuaTable<_> = get!(weather, "visibility")?;
-                get!(visibility, "distance")?
+            let visibility: Option<u32> = {
+                if is_dynamic {
+                    None
+                } else {
+                    let mut visibility: LuaTable<_> = get!(weather, "visibility")?;
+                    Some(get!(visibility, "distance")?)
+                }
             };
 
-            (
-                weather_kind,
-                StaticWeather {
-                    clouds: static_clouds,
-                    visibility,
-                },
-            )
+            (clouds, visibility)
         };
 
         // YOLO initialize the atmosphere, because DCS initializes it only after hitting the
@@ -231,11 +230,11 @@ impl Datis {
         }
 
         // initialize the dynamic weather component
-        let dynamic_weather = DynamicWeather::create(&cpath)?;
+        let weather = DcsWeather::create(&cpath, clouds, visibility)?;
 
         // combine the frequencies that have extracted from the mission's situation with their
         // corresponding airfield
-        let mut stations: Vec<Station> = frequencies
+        let mut stations: Vec<Station<DcsWeather>> = frequencies
             .into_iter()
             .filter_map(|(name, freq)| {
                 airfields.remove(&name).map(|airfield| Station {
@@ -244,9 +243,7 @@ impl Datis {
                     traffic_freq: freq.traffic,
                     voice: VoiceKind::StandardC,
                     airfield,
-                    weather_kind,
-                    static_weather: static_weather.clone(),
-                    dynamic_weather: dynamic_weather.clone(),
+                    weather: weather.clone(),
                 })
             })
             .collect();
@@ -266,9 +263,7 @@ impl Datis {
                         traffic_freq: config.traffic,
                         voice: config.voice.unwrap_or(VoiceKind::StandardC),
                         airfield,
-                        weather_kind,
-                        static_weather: static_weather.clone(),
-                        dynamic_weather: dynamic_weather.clone(),
+                        weather: weather.clone(),
                     }
                 })
             })
@@ -367,7 +362,7 @@ fn extract_station_config(config: &str) -> Option<StationConfig> {
             .map(|freq| (f64::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64);
         let voice = caps
             .get(8)
-            .and_then(|s| serde_json::from_value(json!(s.as_str())).ok());
+            .and_then(|s| VoiceKind::from_str(s.as_str()).ok());
         StationConfig {
             name: name.to_string(),
             atis: atis_freq,
@@ -380,7 +375,7 @@ fn extract_station_config(config: &str) -> Option<StationConfig> {
 #[cfg(test)]
 mod test {
     use super::{extract_frequencies, extract_station_config, StationConfig};
-    use crate::tts::VoiceKind;
+    use datis_core::tts::VoiceKind;
 
     #[test]
     fn test_mission_situation_extraction() {
