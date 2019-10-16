@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "datis-cmd",
     "datis-core",
     "datis-module",
 ]

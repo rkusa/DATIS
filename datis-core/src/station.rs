@@ -13,7 +13,7 @@ pub struct Station<W: Weather + Clone> {
     pub weather: W,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Position {
     pub x: f64,
     #[serde(rename = "z")]

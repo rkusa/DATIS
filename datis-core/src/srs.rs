@@ -20,14 +20,14 @@ pub struct AtisSrsClient<W: Weather + Clone> {
     gcloud_key: String,
     port: u16,
     station: Station<W>,
-    exporter: ReportExporter,
+    exporter: Option<ReportExporter>,
     worker: Vec<Worker<()>>,
 }
 
 impl<W: Weather + Clone + Send + 'static> AtisSrsClient<W> {
     pub fn new(
         station: Station<W>,
-        exporter: ReportExporter,
+        exporter: Option<ReportExporter>,
         gcloud_key: String,
         port: u16,
     ) -> Self {
@@ -86,7 +86,7 @@ impl<W: Weather + Clone + Send + 'static> AtisSrsClient<W> {
                     &sguid,
                     &gcloud_key,
                     &station,
-                    &exporter,
+                    exporter.as_ref(),
                     srs_voice_port,
                 ) {
                     Ok(false) => return,
@@ -103,6 +103,7 @@ impl<W: Weather + Clone + Send + 'static> AtisSrsClient<W> {
                 }
             }
         }));
+
         Ok(())
     }
 
@@ -233,7 +234,7 @@ fn audio_broadcast<W: Weather + Clone>(
     sguid: &str,
     gloud_key: &str,
     station: &Station<W>,
-    exporter: &ReportExporter,
+    exporter: Option<&ReportExporter>,
     srs_port: u16,
 ) -> Result<bool, Error> {
     let interval = Duration::from_secs(60 * 60); // 60min
@@ -244,8 +245,10 @@ fn audio_broadcast<W: Weather + Clone>(
 
         let report = station.generate_report(report_ix, true)?;
         let report_textual = station.generate_report(report_ix, false)?;
-        if let Err(err) = exporter.export(&station.name, report_textual) {
-            error!("Error exporting report: {}", err);
+        if let Some(exporter) = exporter {
+            if let Err(err) = exporter.export(&station.name, report_textual) {
+                error!("Error exporting report: {}", err);
+            }
         }
 
         report_ix += 1;

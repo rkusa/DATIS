@@ -287,7 +287,7 @@ impl Datis {
             clients: stations
                 .into_iter()
                 .map(|station| {
-                    AtisSrsClient::new(station, export.clone(), gcloud_key.clone(), srs_port)
+                    AtisSrsClient::new(station, Some(export.clone()), gcloud_key.clone(), srs_port)
                 })
                 .collect(),
         })
