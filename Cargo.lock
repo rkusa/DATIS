@@ -256,7 +256,7 @@ dependencies = [
 
 [[package]]
 name = "datis"
-version = "0.1.0"
+version = "0.10.0-beta1"
 dependencies = [
  "const-cstr 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "datis-core 0.9.1",
