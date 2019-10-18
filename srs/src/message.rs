@@ -1,0 +1,188 @@
+use std::fmt;
+
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MsgType {
+    Update,
+    Sync,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Coalition {
+    Blue,
+    Red,
+}
+
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+pub struct Position {
+    pub x: f64,
+    #[serde(rename = "z")]
+    pub y: f64,
+    #[serde(rename = "y")]
+    pub alt: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Radio {
+    pub enc: bool,
+    pub enc_key: u8,
+    pub enc_mode: u8,
+    pub freq_max: f64,   // 1.0,
+    pub freq_min: f64,   // 1.0,
+    pub freq: f64,       // 1.0,
+    pub modulation: u8,  // 3,
+    pub name: String,    // "No Radio",
+    pub sec_freq: f64,   // 0.0,
+    pub volume: f32,     // 1.0,
+    pub freq_mode: u8,   // 0,
+    pub vol_mode: u8,    // 0,
+    pub expansion: bool, // false,
+    pub channel: i32,    // -1,
+    pub simul: bool,     // false
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RadioInfo {
+    pub name: String,
+    pub pos: Position,
+    pub ptt: bool,
+    pub radios: Vec<Radio>,
+    pub control: u8,
+    pub selected: usize,
+    pub unit: String,
+    pub unit_id: usize,
+    pub simultaneous_transmission: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct Client {
+    pub client_guid: String,
+    pub name: String,
+    pub position: Position,
+    pub coalition: Coalition,
+    pub radio_info: Option<RadioInfo>,
+    // ClientChannelId
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct Message {
+    pub client: Option<Client>,
+    pub msg_type: MsgType,
+    // Clients
+    // ServerSettings
+    // ExternalAWACSModePassword
+    pub version: String,
+}
+
+impl ::serde::Serialize for MsgType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ::serde::Serializer,
+    {
+        // Serialize the enum as a u64.
+        serializer.serialize_u64(match *self {
+            MsgType::Update => 1,
+            MsgType::Sync => 2,
+        })
+    }
+}
+
+impl<'de> ::serde::Deserialize<'de> for MsgType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: ::serde::Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'de> ::serde::de::Visitor<'de> for Visitor {
+            type Value = MsgType;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("positive integer")
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<MsgType, E>
+            where
+                E: ::serde::de::Error,
+            {
+                // Rust does not come with a simple way of converting a
+                // number to an enum, so use a big `match`.
+                match value {
+                    1 => Ok(MsgType::Update),
+                    2 => Ok(MsgType::Sync),
+                    _ => Err(E::custom(format!(
+                        "unknown {} value: {}",
+                        stringify!(MsgType),
+                        value
+                    ))),
+                }
+            }
+        }
+
+        // Deserialize the enum from a u64.
+        deserializer.deserialize_u64(Visitor)
+    }
+}
+
+impl ::serde::Serialize for Coalition {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ::serde::Serializer,
+    {
+        // Serialize the enum as a u64.
+        serializer.serialize_u64(match *self {
+            Coalition::Blue => 2,
+            Coalition::Red => 1,
+        })
+    }
+}
+
+impl<'de> ::serde::Deserialize<'de> for Coalition {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: ::serde::Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'de> ::serde::de::Visitor<'de> for Visitor {
+            type Value = Coalition;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("positive integer")
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<Coalition, E>
+            where
+                E: ::serde::de::Error,
+            {
+                // Rust does not come with a simple way of converting a
+                // number to an enum, so use a big `match`.
+                match value {
+                    1 => Ok(Coalition::Red),
+                    2 => Ok(Coalition::Blue),
+                    _ => Err(E::custom(format!(
+                        "unknown {} value: {}",
+                        stringify!(Coalition),
+                        value
+                    ))),
+                }
+            }
+        }
+
+        // Deserialize the enum from a u64.
+        deserializer.deserialize_u64(Visitor)
+    }
+}
+
+pub fn create_sguid() -> String {
+    let sguid = Uuid::new_v4();
+    let sguid = base64::encode_config(sguid.as_bytes(), base64::URL_SAFE_NO_PAD);
+    assert_eq!(sguid.len(), 22);
+    sguid
+}
