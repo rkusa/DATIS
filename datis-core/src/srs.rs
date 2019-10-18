@@ -198,7 +198,7 @@ fn srs_update<W: Weather + Clone>(
                     radio_info: None,
                 }),
                 msg_type: MsgType::Update,
-                version: "1.5.6.0",
+                version: "1.7.0.0",
             };
 
             serde_json::to_writer(&mut stream, &upd_msg)?;
