@@ -24,8 +24,8 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::with_name("frequency")
                 .short("f")
                 .long("freq")
-                .default_value("255000000")
-                .help("Sets the SRS frequency (in Hz, e.g. 255000000 for 255MHz)")
+                .default_value("251000000")
+                .help("Sets the SRS frequency (in Hz, e.g. 251000000 for 251MHz)")
                 .takes_value(true),
         )
         .arg(

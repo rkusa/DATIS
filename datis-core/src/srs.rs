@@ -1,5 +1,5 @@
 use std::io::{self, Cursor, Write};
-use std::net::TcpStream;
+use std::net::{TcpStream, UdpSocket};
 use std::time::{Duration, Instant};
 use std::{fmt, thread};
 
@@ -78,7 +78,7 @@ impl<W: Weather + Clone + Send + 'static> AtisSrsClient<W> {
         let gcloud_key = self.gcloud_key.clone();
         let station = self.station.clone();
         let exporter = self.exporter.clone();
-        let srs_voice_port = self.port + 1;
+        let srs_voice_port = self.port;
         self.worker.push(Worker::new(move |ctx| {
             loop {
                 match audio_broadcast(
@@ -92,7 +92,7 @@ impl<W: Weather + Clone + Send + 'static> AtisSrsClient<W> {
                     Ok(false) => return,
                     Ok(true) => {}
                     Err(err) => {
-                        error!("Error sending ATIS report to SRS: {}", err);
+                        error!("Error sending ATIS report to SRS (UDP port {}): {}", srs_voice_port, err);
                     }
                 }
 
@@ -176,7 +176,7 @@ fn srs_update<W: Weather + Clone>(
             }),
         }),
         msg_type: MsgType::Sync,
-        version: "1.6.0.0",
+        version: "1.7.0.0",
     };
 
     serde_json::to_writer(&stream, &sync_msg)?;
@@ -240,6 +240,7 @@ fn audio_broadcast<W: Weather + Clone>(
     let interval = Duration::from_secs(60 * 60); // 60min
     let mut interval_start;
     let mut report_ix = 0;
+    let mut packet_nr: u64 = 1;
     loop {
         interval_start = Instant::now();
 
@@ -257,10 +258,13 @@ fn audio_broadcast<W: Weather + Clone>(
         let data = text_to_speech(&gloud_key, &report, station.voice)?;
         let mut data = Cursor::new(data);
 
-        let mut stream = TcpStream::connect(("127.0.0.1", srs_port))?;
-        stream.set_nodelay(true)?;
-        stream.set_read_timeout(Some(Duration::from_millis(10)))?;
-        let mut sink = io::sink();
+        let srs_addr = ("127.0.0.1", srs_port);
+        let socket = UdpSocket::bind("127.0.0.1:0")?;
+        socket.set_read_timeout(Some(Duration::from_millis(10)))?;
+
+        // Excess bytes are discarded, when receiving messages longer than our buffer. Since we want to discard the whole
+        // message anyway, a buffer with a length 1 is fine here.
+        let mut sink = [0; 1];
 
         loop {
             let elapsed = Instant::now() - interval_start;
@@ -273,24 +277,18 @@ fn audio_broadcast<W: Weather + Clone>(
             let start = Instant::now();
             let mut size = 0;
             let mut audio = PacketReader::new(data);
-            let mut id: u64 = 1;
             while let Some(pck) = audio.read_packet()? {
                 let pck_size = pck.data.len();
                 if pck_size == 0 {
                     continue;
                 }
                 size += pck_size;
-                let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
-                stream.write_all(&frame)?;
-                id += 1;
+                let frame = pack_frame(&sguid, packet_nr, station.atis_freq, &pck.data)?;
+                socket.send_to(&frame, srs_addr)?;
+                packet_nr = packet_nr.wrapping_add(1);
 
-                // check whether the TCP connection is still alive (by trying to read and it and expect it to time out)
-                match io::copy(&mut stream, &mut sink) {
-                    Ok(bytes_read) if bytes_read == 0 => {
-                        // the connection has been closed by SRS
-                        warn!("SRS voice connection has been closed, restarting broadcast ...");
-                        return Ok(true);
-                    }
+                // read and discard pending datagrams
+                match socket.recv_from(&mut sink) {
                     Err(err) => match err.kind() {
                         io::ErrorKind::TimedOut => {}
                         _ => {

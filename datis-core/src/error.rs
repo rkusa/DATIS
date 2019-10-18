@@ -4,7 +4,7 @@ use std::{error, fmt};
 pub enum Error {
     // TODO: improve by including information about the global/key that was not defined
     Undefined(String),
-    Tcp(std::io::Error),
+    Io(std::io::Error),
     Json(serde_json::error::Error),
     Request(reqwest::Error),
     Base64Decode(base64::DecodeError),
@@ -44,7 +44,7 @@ impl error::Error for Error {
 
         match *self {
             Undefined(_) => "Trying to access lua gobal or table key that does not exist",
-            Tcp(_) => "Error establishing TCP connection to SRS",
+            Io(_) => "Error connecting/sending data to SRS",
             Json(_) => "Error serializing/deserializing JSON RPC message",
             Request(_) => "Error sending TTS request",
             Base64Decode(_) => "Error decoding TTS audio content",
@@ -54,11 +54,11 @@ impl error::Error for Error {
         }
     }
 
-    fn cause(&self) -> Option<&dyn error::Error> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         use self::Error::*;
 
         match *self {
-            Tcp(ref err) => Some(err),
+            Io(ref err) => Some(err),
             Json(ref err) => Some(err),
             Request(ref err) => Some(err),
             Base64Decode(ref err) => Some(err),
@@ -71,7 +71,7 @@ impl error::Error for Error {
 
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
-        Error::Tcp(err)
+        Error::Io(err)
     }
 }
 
