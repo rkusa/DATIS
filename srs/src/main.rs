@@ -3,6 +3,7 @@ extern crate log;
 
 mod message;
 mod messages_codec;
+mod voice_codec;
 
 use std::time::Duration;
 

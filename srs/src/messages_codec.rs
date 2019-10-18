@@ -42,7 +42,7 @@ impl Encoder for MessagesCodec {
     type Item = Message;
     type Error = MessagesCodecError;
 
-    fn encode(&mut self, msg: Self::Item, buf: &mut BytesMut) -> Result<(), MessagesCodecError> {
+    fn encode(&mut self, msg: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
         let json = serde_json::to_string(&msg)?;
         self.lines_codec.encode(json, buf)?;
         Ok(())
