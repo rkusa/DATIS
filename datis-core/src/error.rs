@@ -24,7 +24,9 @@ impl fmt::Display for Error {
                 "Error: Trying to access undefined lua global or table key: {}",
                 key
             )?,
-            GcloudTTL(json) => write!(f, "Error calling Gcloud TTS service: {}", json.to_string(),)?,
+            GcloudTTL(json) => {
+                write!(f, "Error calling Gcloud TTS service: {}", json.to_string(),)?
+            }
             _ => write!(f, "Error: {}", self.description())?,
         }
 

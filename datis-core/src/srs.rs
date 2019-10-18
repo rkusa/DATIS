@@ -92,7 +92,10 @@ impl<W: Weather + Clone + Send + 'static> AtisSrsClient<W> {
                     Ok(false) => return,
                     Ok(true) => {}
                     Err(err) => {
-                        error!("Error sending ATIS report to SRS (UDP port {}): {}", srs_voice_port, err);
+                        error!(
+                            "Error sending ATIS report to SRS (UDP port {}): {}",
+                            srs_voice_port, err
+                        );
                     }
                 }
 
