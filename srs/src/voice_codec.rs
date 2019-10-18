@@ -22,24 +22,28 @@ impl AudioCodec {
     }
 }
 
+pub enum Modulation {
+    AM,
+    FM,
+    Intercom,
+    Disabled,
+}
+
+pub enum Encryption {
+    None,
+    JustOverlay,
+    Full,
+    CockpitToggleOverlayCode,
+}
+
 pub struct Frequency {
-    // Frequency
     pub freq: f64,
-    // Modulation
-    //    AM = 0,
-    //    FM = 1,
-    //    INTERCOM = 2,
-    //    DISABLED = 3
-    pub modulation: u8,
-    // Encryption
-    //    NO_ENCRYPTION = 0,
-    //    ENCRYPTION_JUST_OVERLAY = 1,
-    //    ENCRYPTION_FULL = 2,
-    //    ENCRYPTION_COCKPIT_TOGGLE_OVERLAY_CODE = 3
-    pub encryption: u8,
+    pub modulation: Modulation,
+    pub encryption: Encryption,
 }
 
 pub struct VoicePacket {
+    // TODO: use Bytes instead?
     pub audio_part: Vec<u8>,
     pub frequencies: Vec<Frequency>,
     pub unit_id: u32,
@@ -66,8 +70,20 @@ impl Decoder for AudioCodec {
             let mut frequencies = Vec::new();
             while len_before - rd.position() < len_frequencies {
                 let freq = rd.read_f64::<LittleEndian>()?;
-                let modulation = rd.read_u8()?;
-                let encryption = rd.read_u8()?;
+                let modulation = match rd.read_u8()? {
+                    0 => Modulation::AM,
+                    1 => Modulation::FM,
+                    2 => Modulation::Intercom,
+                    3 => Modulation::Disabled,
+                    _ => Modulation::AM,
+                };
+                let encryption = match rd.read_u8()? {
+                    0 => Encryption::None,
+                    1 => Encryption::JustOverlay,
+                    2 => Encryption::Full,
+                    3 => Encryption::CockpitToggleOverlayCode,
+                    _ => Encryption::None,
+                };
                 frequencies.push(Frequency {
                     freq,
                     modulation,
@@ -116,8 +132,19 @@ impl Encoder for AudioCodec {
         let len_before = wd.position();
         for f in packet.frequencies {
             wd.write_f64::<LittleEndian>(f.freq)?;
-            wd.write_u8(f.modulation)?;
-            wd.write_u8(f.encryption)?;
+
+            wd.write_u8(match f.modulation {
+                Modulation::AM => 0,
+                Modulation::FM => 1,
+                Modulation::Intercom => 2,
+                Modulation::Disabled => 3,
+            })?;
+            wd.write_u8(match f.encryption {
+                Encryption::None => 0,
+                Encryption::JustOverlay => 1,
+                Encryption::Full => 2,
+                Encryption::CockpitToggleOverlayCode => 3,
+            })?;
         }
 
         let len_frequency = wd.position() - len_before;
