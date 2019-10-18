@@ -81,7 +81,7 @@ pub fn text_to_speech(gcloud_key: &str, text: &str, voice: VoiceKind) -> Result<
     );
     let client = reqwest::Client::new();
     let mut res = client.post(&url).json(&payload).send()?;
-    if res.status() == StatusCode::Ok {
+    if res.status() == StatusCode::OK {
         let data: TextToSpeechResponse = res.json()?;
         let data = base64::decode(&data.audio_content)?;
         Ok(data)

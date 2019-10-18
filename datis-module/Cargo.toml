@@ -8,7 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-const-cstr = "0.1"
+const-cstr = "0.3"
 datis-core = { path = "../datis-core" }
 hlua51 = { git = "https://github.com/rkusa/hlua51.git" }
 libc = "0.2"

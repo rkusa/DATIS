@@ -3,6 +3,5 @@
 !.gitkeep
 target
 **/*.rs.bk
-Cargo.lock
 /mod/Mods/tech/DATIS/bin/datis.dll
 /mod/*.zip
