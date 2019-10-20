@@ -1416,6 +1416,7 @@ dependencies = [
  "serde_json 1.0.41 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.2.0-alpha.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-codec 0.2.0-alpha.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-net 0.2.0-alpha.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

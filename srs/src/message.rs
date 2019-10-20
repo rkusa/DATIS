@@ -54,7 +54,7 @@ pub struct RadioInfo {
     pub control: u8,
     pub selected: usize,
     pub unit: String,
-    pub unit_id: usize,
+    pub unit_id: u32,
     pub simultaneous_transmission: bool,
 }
 
