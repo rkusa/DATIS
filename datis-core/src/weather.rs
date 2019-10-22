@@ -1,7 +1,5 @@
-use std::error;
-
 pub trait Weather {
-    fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, Box<dyn error::Error>>;
+    fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error>;
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -27,7 +25,7 @@ pub struct WeatherInfo {
 pub struct StaticWeather;
 
 impl Weather for StaticWeather {
-    fn get_at(&self, _x: f64, _y: f64, _alt: f64) -> Result<WeatherInfo, Box<dyn error::Error>> {
+    fn get_at(&self, _x: f64, _y: f64, _alt: f64) -> Result<WeatherInfo, anyhow::Error> {
         Ok(WeatherInfo {
             clouds: None,
             visibility: None,

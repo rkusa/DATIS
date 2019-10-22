@@ -1,4 +1,3 @@
-use crate::error::Error;
 use reqwest::StatusCode;
 use serde_json::Value;
 
@@ -61,7 +60,11 @@ pub enum VoiceKind {
     WavenetF,
 }
 
-pub fn text_to_speech(gcloud_key: &str, text: &str, voice: VoiceKind) -> Result<Vec<u8>, Error> {
+pub fn text_to_speech(
+    gcloud_key: &str,
+    text: &str,
+    voice: VoiceKind,
+) -> Result<Vec<u8>, anyhow::Error> {
     let payload = TextToSpeechRequest {
         audio_config: AudioConfig {
             audio_encoding: "OGG_OPUS",
@@ -87,7 +90,7 @@ pub fn text_to_speech(gcloud_key: &str, text: &str, voice: VoiceKind) -> Result<
         Ok(data)
     } else {
         let err: Value = res.json()?;
-        Err(Error::GcloudTTL(err))
+        Err(anyhow!("Gcloud TTL error: {}", err))
     }
 }
 

@@ -1,16 +1,18 @@
-use crate::error::Error;
+use std::sync::Arc;
+
 use crate::tts::VoiceKind;
 use crate::utils::{pronounce_number, round};
 use crate::weather::{Clouds, Weather};
+use anyhow::Context;
 
-#[derive(Debug, Clone)]
-pub struct Station<W: Weather + Clone> {
+#[derive(Clone)]
+pub struct Station {
     pub name: String,
     pub atis_freq: u64,
     pub traffic_freq: Option<u64>,
     pub voice: VoiceKind,
     pub airfield: Airfield,
-    pub weather: W,
+    pub weather: Arc<dyn Weather>,
 }
 
 #[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
@@ -29,8 +31,8 @@ pub struct Airfield {
     pub runways: Vec<String>,
 }
 
-impl<W: Weather + Clone> Station<W> {
-    pub fn generate_report(&self, report_nr: usize, spoken: bool) -> Result<String, Error> {
+impl Station {
+    pub fn generate_report(&self, report_nr: usize, spoken: bool) -> Result<String, anyhow::Error> {
         #[cfg(not(test))]
         let _break = if spoken {
             "<break time=\"500ms\"/>\n"
@@ -49,7 +51,7 @@ impl<W: Weather + Clone> Station<W> {
                 self.airfield.position.y,
                 self.airfield.position.alt,
             )
-            .map_err(Error::Weather)?;
+            .context("failed to retrieve weather")?;
         let mut report = if spoken { "<speak>\n" } else { "" }.to_string();
 
         report += &format!(

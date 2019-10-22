@@ -4,18 +4,18 @@
 extern crate log;
 #[macro_use]
 extern crate const_cstr;
+#[macro_use]
+extern crate anyhow;
 
 #[macro_use]
 mod macros;
-mod datis;
-mod error;
+mod mission;
 mod weather;
 
 use std::ffi::CString;
 use std::ptr;
 
-use crate::datis::Datis;
-use crate::error::Error;
+use datis_core::Datis;
 use hlua51::{Lua, LuaFunction, LuaTable};
 use libc::c_int;
 use lua51_sys as ffi;
@@ -23,7 +23,7 @@ use lua51_sys as ffi;
 static mut INITIALIZED: bool = false;
 static mut DATIS: Option<Datis> = None;
 
-pub fn init(lua: &mut Lua<'_>) -> Result<String, Error> {
+pub fn init(lua: &mut Lua<'_>) -> Result<String, anyhow::Error> {
     // init logging
     use log::LevelFilter;
     use log4rs::append::file::FileAppender;
@@ -35,8 +35,9 @@ pub fn init(lua: &mut Lua<'_>) -> Result<String, Error> {
         let mut options_data: LuaTable<_> = get!(lua, "OptionsData")?;
         let mut get_plugin: LuaFunction<_> = get!(options_data, "getPlugin")?;
 
-        let is_debug_loglevel: bool =
-            get_plugin.call_with_args(("DATIS", "debugLoggingEnabled"))?;
+        let is_debug_loglevel: bool = get_plugin
+            .call_with_args(("DATIS", "debugLoggingEnabled"))
+            .map_err(|_| anyhow!("failed to read plugin setting debugLoggingEnabled"))?;
         is_debug_loglevel
     };
 
@@ -90,14 +91,20 @@ pub extern "C" fn start(state: *mut ffi::lua_State) -> c_int {
 
             info!("Starting DATIS version {} ...", env!("CARGO_PKG_VERSION"));
 
-            match Datis::create(lua, log_dir) {
-                Ok(mut datis) => {
-                    for client in datis.clients.iter_mut() {
-                        if let Err(err) = client.start() {
-                            error!("Error starting SRS Client: {}", err.to_string());
-                            return report_error(state, &err.to_string());
-                        }
-                    }
+            match mission::extract(lua).and_then(
+                |mission::Info {
+                     stations,
+                     gcloud_key,
+                     srs_port,
+                 }| {
+                    let mut datis = Datis::new(stations)?;
+                    datis.set_port(srs_port);
+                    datis.set_gcloud_key(gcloud_key);
+                    datis.set_log_dir(log_dir);
+                    Ok(datis)
+                },
+            ) {
+                Ok(datis) => {
                     DATIS = Some(datis);
                 }
                 Err(err) => {
@@ -106,18 +113,24 @@ pub extern "C" fn start(state: *mut ffi::lua_State) -> c_int {
                 }
             }
         }
+
+        if let Err(err) = DATIS.as_mut().unwrap().start() {
+            error!("Error starting SRS Client: {}", err.to_string());
+            return report_error(state, &err.to_string());
+        }
     }
 
     0
 }
 
 #[no_mangle]
-pub extern "C" fn stop(_state: *mut ffi::lua_State) -> c_int {
+pub extern "C" fn stop(state: *mut ffi::lua_State) -> c_int {
     unsafe {
         if let Some(datis) = DATIS.take() {
             info!("Stopping ...");
-            for client in datis.clients.into_iter() {
-                client.stop()
+            if let Err(err) = datis.stop() {
+                error!("Error stopping SRS Client: {}", err.to_string());
+                return report_error(state, &err.to_string());
             }
         }
     }
@@ -126,12 +139,13 @@ pub extern "C" fn stop(_state: *mut ffi::lua_State) -> c_int {
 }
 
 #[no_mangle]
-pub extern "C" fn pause(_state: *mut ffi::lua_State) -> c_int {
+pub extern "C" fn pause(state: *mut ffi::lua_State) -> c_int {
     unsafe {
         if let Some(ref mut datis) = DATIS {
-            debug!("Pausing ...");
-            for client in &datis.clients {
-                client.pause()
+            info!("Pausing ...");
+            if let Err(err) = datis.pause() {
+                error!("Error pausing SRS Client: {}", err.to_string());
+                return report_error(state, &err.to_string());
             }
         }
     }
@@ -140,12 +154,13 @@ pub extern "C" fn pause(_state: *mut ffi::lua_State) -> c_int {
 }
 
 #[no_mangle]
-pub extern "C" fn unpause(_state: *mut ffi::lua_State) -> c_int {
+pub extern "C" fn unpause(state: *mut ffi::lua_State) -> c_int {
     unsafe {
         if let Some(ref mut datis) = DATIS {
-            debug!("Unpausing ...");
-            for client in &datis.clients {
-                client.unpause()
+            info!("Resuming ...");
+            if let Err(err) = datis.resume() {
+                error!("Error resuming SRS Client: {}", err.to_string());
+                return report_error(state, &err.to_string());
             }
         }
     }

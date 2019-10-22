@@ -16,3 +16,4 @@ log = "0.4"
 log4rs = "0.8"
 lua51-sys = { git = "https://github.com/rkusa/hlua51.git" }
 regex = "1"
+anyhow = "1.0"

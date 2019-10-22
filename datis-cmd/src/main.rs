@@ -2,12 +2,13 @@
 extern crate log;
 
 use std::str::FromStr;
+use std::sync::Arc;
 
 use clap::{App, Arg};
 use datis_core::station::{Airfield, Position, Station};
 use datis_core::tts::VoiceKind;
 use datis_core::weather::StaticWeather;
-use datis_core::AtisSrsClient;
+use datis_core::Datis;
 use dotenv::dotenv;
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -56,10 +57,12 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             position: Position::default(),
             runways: vec![String::from("09"), String::from("26")],
         },
-        weather: StaticWeather,
+        weather: Arc::new(StaticWeather),
     };
-    let mut client = AtisSrsClient::new(station, None, gcloud_key.to_string(), 5002);
-    client.start()?;
+    let mut datis = Datis::new(vec![station])?;
+    datis.set_port(5002);
+    datis.set_gcloud_key(gcloud_key);
+    datis.start()?;
 
     let (tx, rx) = std::sync::mpsc::channel();
     ctrlc::set_handler(move || {
@@ -68,7 +71,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     .expect("Error setting Ctrl-C handler");
 
     rx.recv().unwrap();
-    client.stop();
+    datis.stop()?;
 
     Ok(())
 }

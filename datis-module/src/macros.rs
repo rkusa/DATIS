@@ -6,6 +6,7 @@ macro_rules! cstr {
 
 macro_rules! get {
     ($o:expr, $k:expr) => {
-        $o.get($k).ok_or_else(|| Error::Undefined($k.to_string()))
+        $o.get($k)
+            .ok_or_else(|| anyhow!("Trying to access undefined lua global or table key: {}", $k))
     };
 }

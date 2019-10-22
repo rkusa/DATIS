@@ -5,13 +5,13 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::BytesMut;
 use tokio_codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-pub struct AudioCodec {
+pub struct VoiceCodec {
     inner: LengthDelimitedCodec,
 }
 
-impl AudioCodec {
+impl VoiceCodec {
     pub fn new() -> Self {
-        AudioCodec {
+        VoiceCodec {
             inner: LengthDelimitedCodec::builder()
                 .length_field_offset(0)
                 .length_field_length(2)
@@ -51,7 +51,7 @@ pub struct VoicePacket {
     pub sguid: [u8; 22],
 }
 
-impl Decoder for AudioCodec {
+impl Decoder for VoiceCodec {
     type Item = VoicePacket;
     type Error = io::Error;
 
@@ -112,7 +112,7 @@ impl Decoder for AudioCodec {
     }
 }
 
-impl Encoder for AudioCodec {
+impl Encoder for VoiceCodec {
     type Item = VoicePacket;
     type Error = io::Error;
 
