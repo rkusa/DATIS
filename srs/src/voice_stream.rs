@@ -97,15 +97,13 @@ impl Sink<Vec<u8>> for VoiceStream {
             }],
             unit_id: self.client.unit.as_ref().map(|u| u.id).unwrap_or(0),
             packet_id: self.packet_id,
-            sguid: sguid,
+            sguid,
         };
 
         let s = self.get_mut();
         s.packet_id = s.packet_id.wrapping_add(1);
 
-        Pin::new(&mut s.voice_stream)
-            .start_send((packet, s.addr))
-            .map_err(|err| err.into())
+        Pin::new(&mut s.voice_stream).start_send((packet, s.addr))
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {

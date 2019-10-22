@@ -32,8 +32,8 @@ impl Weather for StaticWeather {
             wind_speed: 5.0,
             wind_dir: (330.0f64).to_radians(),
             temperature: 22.0,
-            pressure_qnh: 101500.0,
-            pressure_qfe: 101500.0,
+            pressure_qnh: 101_500.0,
+            pressure_qfe: 101_500.0,
         })
     }
 }
