@@ -1,12 +1,15 @@
+use std::net::SocketAddr;
+
 use crate::message::{create_sguid, Position};
 use crate::voice_stream::VoiceStream;
-use tokio_net::ToSocketAddrs;
 
+#[derive(Debug, Clone)]
 pub struct UnitInfo {
     pub id: u32,
     pub name: String,
 }
 
+#[derive(Debug, Clone)]
 pub struct Client {
     pub sguid: String,
     pub name: String,
@@ -26,23 +29,18 @@ impl Client {
         }
     }
 
-    pub fn with_position(mut self, pos: Position) -> Self {
+    pub fn set_position(&mut self, pos: Position) {
         self.pos = pos;
-        self
     }
 
-    pub fn for_unit(mut self, id: u32, name: &str) -> Self {
+    pub fn set_unit(&mut self, id: u32, name: &str) {
         self.unit = Some(UnitInfo {
             id,
             name: name.to_string(),
         });
-        self
     }
 
-    pub async fn start<A: ToSocketAddrs + Copy>(
-        self,
-        addr: A,
-    ) -> Result<VoiceStream, anyhow::Error> {
+    pub async fn start(self, addr: SocketAddr) -> Result<VoiceStream, anyhow::Error> {
         let stream = VoiceStream::new(self, addr).await?;
         Ok(stream)
     }

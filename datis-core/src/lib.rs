@@ -15,21 +15,21 @@ pub mod tts;
 mod utils;
 pub mod weather;
 
-use std::io::{self, Cursor, Write};
-use std::net::UdpSocket;
+use std::io::Cursor;
+use std::mem;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::{Duration, Instant};
-use std::{mem, thread};
 
 use crate::export::ReportExporter;
 use crate::station::Station;
 use crate::tts::text_to_speech;
-use byteorder::{LittleEndian, WriteBytesExt};
+use futures::future;
+use futures_util::sink::SinkExt;
+use futures_util::stream::{SplitSink, SplitStream, StreamExt};
 use ogg::reading::PacketReader;
-use srs::Client;
+use srs::{Client, VoiceStream};
 use tokio::runtime::Runtime;
 use tokio::timer::delay_for;
-
-const MAX_FRAME_LENGTH: usize = 1024;
 
 pub struct Datis {
     stations: Vec<Station>,
@@ -73,11 +73,10 @@ impl Datis {
         self.started = true;
 
         for station in &mut self.stations {
-            let name = format!("ATIS {}", station.name);
             self.runtime.spawn(spawn(
-                name,
-                station.atis_freq,
+                station.clone(),
                 self.port,
+                self.exporter.clone(),
                 self.gcloud_key.clone(),
             ));
         }
@@ -104,41 +103,74 @@ impl Datis {
     }
 }
 
-async fn spawn(name: String, freq: u64, port: u16, gcloud_key: Option<String>) {
+async fn spawn(
+    station: Station,
+    port: u16,
+    exporter: Option<ReportExporter>,
+    gcloud_key: Option<String>,
+) {
+    let name = format!("ATIS {}", station.name);
     debug!("Connecting {} to 127.0.0.1:{}", name, port);
 
     loop {
-        if let Err(err) = run(&name, freq, port, gcloud_key.as_ref().map(|x| &**x)).await {
+        if let Err(err) = run(
+            &station,
+            port,
+            exporter.as_ref(),
+            gcloud_key.as_ref().map(|x| &**x),
+        )
+        .await
+        {
             error!("ATIS {} failed: {}", name, err);
-            info!("Restarting ATIS in 10 seconds ...");
-            delay_for(Duration::from_secs(10)).await;
         }
+
+        info!("Restarting ATIS in 10 seconds ...");
+        delay_for(Duration::from_secs(10)).await;
     }
 }
 
 async fn run(
-    name: &str,
-    freq: u64,
+    station: &Station,
     port: u16,
+    exporter: Option<&ReportExporter>,
     gcloud_key: Option<&str>,
 ) -> Result<(), anyhow::Error> {
-    let client = Client::new(name, freq);
-    let stream = client.start(("127.0.0.1", port)).await?;
+    let name = format!("ATIS {}", station.name);
+    let mut client = Client::new(&name, station.atis_freq);
+    client.set_position(station.airfield.position.clone());
+    // TODO: set unit
+
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
+    let (sink, stream) = client.start(addr).await?.split();
+
+    let rx = recv_voice_packets(stream);
+    let tx = audio_broadcast(sink, station, exporter, gcloud_key);
+
+    future::try_join(rx, tx).await?;
+
     Ok(())
 }
 
-#[allow(unused)]
-fn audio_broadcast(
-    sguid: &str,
-    gloud_key: &str,
+async fn recv_voice_packets(mut stream: SplitStream<VoiceStream>) -> Result<(), anyhow::Error> {
+    while let Some(packet) = stream.next().await {
+        packet?;
+        // we are currently not interested in the received voice packets, so simply discard them
+    }
+
+    Ok(())
+}
+
+async fn audio_broadcast(
+    mut sink: SplitSink<VoiceStream, Vec<u8>>,
     station: &Station,
     exporter: Option<&ReportExporter>,
-    srs_port: u16,
+    gcloud_key: Option<&str>,
 ) -> Result<bool, anyhow::Error> {
+    let gcloud_key = gcloud_key.ok_or_else(|| anyhow!("Gcloud key is not set"))?;
     let interval = Duration::from_secs(60 * 60); // 60min
     let mut interval_start;
     let mut report_ix = 0;
-    let mut packet_nr: u64 = 1;
+
     loop {
         interval_start = Instant::now();
 
@@ -153,16 +185,8 @@ fn audio_broadcast(
         report_ix += 1;
         debug!("Report: {}", report);
 
-        let data = text_to_speech(&gloud_key, &report, station.voice)?;
+        let data = text_to_speech(&gcloud_key, &report, station.voice)?;
         let mut data = Cursor::new(data);
-
-        let srs_addr = ("127.0.0.1", srs_port);
-        let socket = UdpSocket::bind("127.0.0.1:0")?;
-        socket.set_read_timeout(Some(Duration::from_millis(10)))?;
-
-        // Excess bytes are discarded, when receiving messages longer than our buffer. Since we want to discard the whole
-        // message anyway, a buffer with a length 1 is fine here.
-        let mut sink = [0; 1];
 
         loop {
             let elapsed = Instant::now() - interval_start;
@@ -175,38 +199,23 @@ fn audio_broadcast(
             let start = Instant::now();
             let mut size = 0;
             let mut audio = PacketReader::new(data);
+
             while let Some(pck) = audio.read_packet()? {
                 let pck_size = pck.data.len();
                 if pck_size == 0 {
                     continue;
                 }
                 size += pck_size;
-                let frame = pack_frame(&sguid, packet_nr, station.atis_freq, &pck.data)?;
-                socket.send_to(&frame, srs_addr)?;
-                packet_nr = packet_nr.wrapping_add(1);
 
-                // read and discard pending datagrams
-                match socket.recv_from(&mut sink) {
-                    Err(err) => match err.kind() {
-                        io::ErrorKind::TimedOut => {}
-                        _ => {
-                            return Err(err.into());
-                        }
-                    },
-                    _ => {}
-                }
+                sink.send(pck.data).await?;
 
                 // wait for the current ~playtime before sending the next package
                 let secs = (size * 8) as f64 / 1024.0 / 32.0; // 32 kBit/s
                 let playtime = Duration::from_millis((secs * 1000.0) as u64);
                 let elapsed = start.elapsed();
                 if playtime > elapsed {
-                    thread::sleep(playtime - elapsed);
+                    delay_for(playtime - elapsed).await;
                 }
-
-                // if ctx.should_stop() {
-                //     return Ok(false);
-                // }
             }
 
             debug!("TOTAL SIZE: {}", size);
@@ -218,68 +227,10 @@ fn audio_broadcast(
             let playtime = Duration::from_millis((secs * 1000.0) as u64);
             let elapsed = Instant::now() - start;
             if playtime > elapsed {
-                thread::sleep(playtime - elapsed);
+                delay_for(playtime - elapsed).await;
             }
-
-            // if ctx.should_stop_timeout(Duration::from_secs(3)) {
-            //     return Ok(false);
-            // }
 
             data = audio.into_inner();
         }
     }
-
-    //    Ok(())
-}
-
-#[allow(unused)]
-fn pack_frame(sguid: &str, id: u64, freq: u64, rd: &[u8]) -> Result<Vec<u8>, io::Error> {
-    let mut frame = Cursor::new(Vec::with_capacity(MAX_FRAME_LENGTH));
-
-    // header segment will be written at the end
-    frame.set_position(6);
-
-    // - AUDIO SEGMENT
-    let len_before = frame.position();
-    // AudioPart1
-    frame.write_all(&rd)?;
-    let len_audio_part = frame.position() - len_before;
-
-    // - FREQUENCY SEGMENT
-    let len_before = frame.position();
-    // Frequency
-    frame.write_f64::<LittleEndian>(freq as f64)?;
-    // Modulation
-    //    AM = 0,
-    //    FM = 1,
-    //    INTERCOM = 2,
-    //    DISABLED = 3
-    frame.write_all(&[0])?;
-    // Encryption
-    //    NO_ENCRYPTION = 0,
-    //    ENCRYPTION_JUST_OVERLAY = 1,
-    //    ENCRYPTION_FULL = 2,
-    //    ENCRYPTION_COCKPIT_TOGGLE_OVERLAY_CODE = 3
-    frame.write_all(&[0])?;
-    let len_frequency = frame.position() - len_before;
-
-    // - FIXED SEGMENT
-    // UnitId
-    frame.write_u32::<LittleEndian>(0)?;
-    // PacketId
-    frame.write_u64::<LittleEndian>(id)?;
-    // GUID
-    frame.write_all(sguid.as_bytes())?;
-
-    // - HEADER SEGMENT
-    let len_packet = frame.get_ref().len();
-    frame.set_position(0);
-    // Packet Length
-    frame.write_u16::<LittleEndian>(len_packet as u16)?;
-    // AudioPart1 Length
-    frame.write_u16::<LittleEndian>(len_audio_part as u16)?;
-    // FrequencyPart Length
-    frame.write_u16::<LittleEndian>(len_frequency as u16)?;
-
-    Ok(frame.into_inner())
 }

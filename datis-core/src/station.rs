@@ -4,6 +4,7 @@ use crate::tts::VoiceKind;
 use crate::utils::{pronounce_number, round};
 use crate::weather::{Clouds, Weather};
 use anyhow::Context;
+pub use srs::message::Position;
 
 #[derive(Clone)]
 pub struct Station {
@@ -12,16 +13,7 @@ pub struct Station {
     pub traffic_freq: Option<u64>,
     pub voice: VoiceKind,
     pub airfield: Airfield,
-    pub weather: Arc<dyn Weather>,
-}
-
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
-pub struct Position {
-    pub x: f64,
-    #[serde(rename = "z")]
-    pub y: f64,
-    #[serde(rename = "y")]
-    pub alt: f64,
+    pub weather: Arc<dyn Weather + Send + Sync>,
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -22,6 +22,7 @@ impl VoiceCodec {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum Modulation {
     AM,
     FM,
@@ -29,6 +30,7 @@ pub enum Modulation {
     Disabled,
 }
 
+#[derive(Debug, Clone)]
 pub enum Encryption {
     None,
     JustOverlay,
@@ -36,12 +38,14 @@ pub enum Encryption {
     CockpitToggleOverlayCode,
 }
 
+#[derive(Debug, Clone)]
 pub struct Frequency {
     pub freq: f64,
     pub modulation: Modulation,
     pub encryption: Encryption,
 }
 
+#[derive(Debug)]
 pub struct VoicePacket {
     // TODO: use Bytes instead?
     pub audio_part: Vec<u8>,

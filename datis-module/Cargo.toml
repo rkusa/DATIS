@@ -8,6 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
+anyhow = "1.0"
 const-cstr = "0.3"
 datis-core = { path = "../datis-core" }
 hlua51 = { git = "https://github.com/rkusa/hlua51.git" }
@@ -16,4 +17,3 @@ log = "0.4"
 log4rs = "0.8"
 lua51-sys = { git = "https://github.com/rkusa/hlua51.git" }
 regex = "1"
-anyhow = "1.0"

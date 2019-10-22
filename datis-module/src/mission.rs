@@ -240,7 +240,8 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
     }
 
     // initialize the dynamic weather component
-    let weather: Arc<dyn Weather> = Arc::new(DcsWeather::create(&cpath, clouds, visibility)?);
+    let weather: Arc<dyn Weather + Send + Sync> =
+        Arc::new(DcsWeather::create(&cpath, clouds, visibility)?);
 
     // combine the frequencies that have extracted from the mission's situation with their
     // corresponding airfield

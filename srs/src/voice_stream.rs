@@ -1,5 +1,6 @@
 use std::future::Future;
 use std::io;
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
@@ -7,25 +8,28 @@ use std::time::Duration;
 use crate::client::Client;
 use crate::message::{Client as MsgClient, Coalition, Message, MsgType, Radio, RadioInfo};
 use crate::messages_codec::{MessagesCodec, MessagesCodecError};
-use crate::voice_codec::{VoiceCodec, VoicePacket};
+use crate::voice_codec::*;
 use futures::future::{self, FutureExt};
+use futures::sink::Sink;
 use futures::stream::{Stream, StreamExt};
 use futures_util::sink::SinkExt;
 use futures_util::stream::{SplitSink, SplitStream};
 use tokio::net::{TcpStream, UdpFramed, UdpSocket};
 use tokio::timer::delay_for;
 use tokio_codec::Framed;
-use tokio_net::ToSocketAddrs;
 
 const SRS_VERSION: &str = "1.7.0.0";
 
 pub struct VoiceStream {
+    addr: SocketAddr,
     voice_stream: UdpFramed<VoiceCodec>,
     heartbeat: Pin<Box<dyn Send + Future<Output = Result<((), ()), MessagesCodecError>>>>,
+    client: Client,
+    packet_id: u64,
 }
 
 impl VoiceStream {
-    pub async fn new<A: ToSocketAddrs + Copy>(client: Client, addr: A) -> Result<Self, io::Error> {
+    pub async fn new(client: Client, addr: SocketAddr) -> Result<Self, io::Error> {
         let tcp = TcpStream::connect(addr).await?;
         let (sink, stream) = Framed::new(tcp, MessagesCodec::new()).split();
 
@@ -33,11 +37,14 @@ impl VoiceStream {
         udp.connect(addr).await?;
         let voice_stream = UdpFramed::new(udp, VoiceCodec::new());
 
-        let heartbeat = future::try_join(recv_updates(stream), send_updates(client, sink));
+        let heartbeat = future::try_join(recv_updates(stream), send_updates(client.clone(), sink));
 
         Ok(VoiceStream {
+            addr,
             voice_stream,
             heartbeat: Box::pin(heartbeat),
+            client,
+            packet_id: 1,
         })
     }
 }
@@ -69,10 +76,53 @@ impl Stream for VoiceStream {
     }
 }
 
+impl Sink<Vec<u8>> for VoiceStream {
+    type Error = io::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_stream).poll_ready(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Vec<u8>) -> Result<(), Self::Error> {
+        let mut sguid = [0; 22];
+        sguid.clone_from_slice(self.client.sguid.as_bytes());
+
+        let packet = VoicePacket {
+            audio_part: item,
+            frequencies: vec![Frequency {
+                freq: self.client.freq as f64,
+                modulation: Modulation::AM,
+                encryption: Encryption::None,
+            }],
+            unit_id: self.client.unit.as_ref().map(|u| u.id).unwrap_or(0),
+            packet_id: self.packet_id,
+            sguid: sguid,
+        };
+
+        let s = self.get_mut();
+        s.packet_id = s.packet_id.wrapping_add(1);
+
+        Pin::new(&mut s.voice_stream)
+            .start_send((packet, s.addr))
+            .map_err(|err| err.into())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_stream).poll_flush(cx)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_stream).poll_close(cx)
+    }
+}
+
 async fn recv_updates(
     mut stream: SplitStream<Framed<TcpStream, MessagesCodec>>,
 ) -> Result<(), MessagesCodecError> {
-    while let Some(msg) = stream.next().await {
+    while let Some(_) = stream.next().await {
         // discard messages for now
     }
 
