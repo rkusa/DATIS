@@ -185,7 +185,7 @@ async fn audio_broadcast(
         report_ix += 1;
         debug!("Report: {}", report);
 
-        let data = text_to_speech(&gcloud_key, &report, station.voice)?;
+        let data = text_to_speech(&gcloud_key, &report, station.voice).await?;
         let mut data = Cursor::new(data);
 
         loop {

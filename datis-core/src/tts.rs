@@ -60,7 +60,7 @@ pub enum VoiceKind {
     WavenetF,
 }
 
-pub fn text_to_speech(
+pub async fn text_to_speech(
     gcloud_key: &str,
     text: &str,
     voice: VoiceKind,
@@ -83,13 +83,13 @@ pub fn text_to_speech(
         gcloud_key
     );
     let client = reqwest::Client::new();
-    let mut res = client.post(&url).json(&payload).send()?;
+    let res = client.post(&url).json(&payload).send().await?;
     if res.status() == StatusCode::OK {
-        let data: TextToSpeechResponse = res.json()?;
+        let data: TextToSpeechResponse = res.json().await?;
         let data = base64::decode(&data.audio_content)?;
         Ok(data)
     } else {
-        let err: Value = res.json()?;
+        let err: Value = res.json().await?;
         Err(anyhow!("Gcloud TTL error: {}", err))
     }
 }
