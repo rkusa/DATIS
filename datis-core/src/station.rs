@@ -187,6 +187,7 @@ mod test {
     use super::*;
     use crate::tts::VoiceKind;
     use crate::weather::StaticWeather;
+    use std::sync::Arc;
 
     #[test]
     fn test_active_runway() {
@@ -204,7 +205,7 @@ mod test {
                 },
                 runways: vec![String::from("04"), String::from("22R")],
             },
-            weather: StaticWeather,
+            weather: Arc::new(StaticWeather),
         };
 
         assert_eq!(station.get_active_runway(0.0), Some("04"));
@@ -233,7 +234,7 @@ mod test {
                 },
                 runways: vec![String::from("04"), String::from("22")],
             },
-            weather: StaticWeather,
+            weather: Arc::new(StaticWeather),
         };
 
         let report = station.generate_report(26, true).unwrap();
