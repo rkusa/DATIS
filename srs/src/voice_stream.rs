@@ -9,7 +9,7 @@ use crate::client::Client;
 use crate::message::{Client as MsgClient, Coalition, Message, MsgType, Radio, RadioInfo};
 use crate::messages_codec::{MessagesCodec, MessagesCodecError};
 use crate::voice_codec::*;
-use futures::future::{self, FutureExt};
+use futures::future::{self, Either, FutureExt, TryFutureExt};
 use futures::sink::Sink;
 use futures::stream::{Stream, StreamExt};
 use futures_util::sink::SinkExt;
@@ -23,7 +23,7 @@ const SRS_VERSION: &str = "1.7.0.0";
 pub struct VoiceStream {
     addr: SocketAddr,
     voice_stream: UdpFramed<VoiceCodec>,
-    heartbeat: Pin<Box<dyn Send + Future<Output = Result<((), ()), MessagesCodecError>>>>,
+    heartbeat: Pin<Box<dyn Send + Future<Output = Result<(), MessagesCodecError>>>>,
     client: Client,
     packet_id: u64,
 }
@@ -37,7 +37,14 @@ impl VoiceStream {
         udp.connect(addr).await?;
         let voice_stream = UdpFramed::new(udp, VoiceCodec::new());
 
-        let heartbeat = future::try_join(recv_updates(stream), send_updates(client.clone(), sink));
+        let a = Box::pin(recv_updates(stream));
+        let b = Box::pin(send_updates(client.clone(), sink));
+        let heartbeat = future::try_select(a, b)
+            .map_ok(|_| ())
+            .map_err(|err| match err {
+                Either::Left((err, _)) => err,
+                Either::Right((err, _)) => err,
+            });
 
         Ok(VoiceStream {
             addr,
@@ -67,8 +74,9 @@ impl Stream for VoiceStream {
         match s.heartbeat.poll_unpin(cx) {
             Poll::Pending => {}
             Poll::Ready(Err(err)) => return Poll::Ready(Some(Err(err.into()))),
-            Poll::Ready(Ok(_)) => {
-                return Poll::Ready(Some(Err(anyhow!("TCP connection was closed unexpectedly"))))
+            Poll::Ready(Ok(asd)) => {
+                debug!("WTF {:?}", asd);
+                return Poll::Ready(Some(Err(anyhow!("TCP connection was closed unexpectedly"))));
             }
         }
 
@@ -120,8 +128,9 @@ impl Sink<Vec<u8>> for VoiceStream {
 async fn recv_updates(
     mut stream: SplitStream<Framed<TcpStream, MessagesCodec>>,
 ) -> Result<(), MessagesCodecError> {
-    while let Some(_) = stream.next().await {
+    while let Some(msg) = stream.next().await {
         // discard messages for now
+        msg?;
     }
 
     Ok(())
@@ -132,15 +141,13 @@ async fn send_updates(
     mut sink: SplitSink<Framed<TcpStream, MessagesCodec>, Message>,
 ) -> Result<(), MessagesCodecError> {
     // send initial SYNC message
-    debug!("Sending sync message");
-
     let sync_msg = create_sync_message(&client);
     sink.send(sync_msg).await?;
 
     loop {
         delay_for(Duration::from_secs(5)).await;
 
-        debug!("Sending update message");
+        // Sending update message
         let upd_msg = create_update_message(&client);
         sink.send(upd_msg).await?;
     }

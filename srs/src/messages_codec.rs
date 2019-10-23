@@ -66,7 +66,15 @@ impl fmt::Display for MessagesCodecError {
     }
 }
 
-impl error::Error for MessagesCodecError {}
+impl error::Error for MessagesCodecError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            MessagesCodecError::Json(ref err) => Some(err),
+            MessagesCodecError::LinesCodec(ref err) => Some(err),
+            MessagesCodecError::Io(ref err) => Some(err),
+        }
+    }
+}
 
 impl From<io::Error> for MessagesCodecError {
     fn from(err: io::Error) -> Self {

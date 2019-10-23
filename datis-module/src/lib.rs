@@ -63,6 +63,22 @@ pub fn init(lua: &mut Lua<'_>) -> Result<String, anyhow::Error> {
                     LevelFilter::Info
                 },
             ))
+            .logger(Logger::builder().build(
+                "datis_core",
+                if is_debug_loglevel {
+                    LevelFilter::Debug
+                } else {
+                    LevelFilter::Info
+                },
+            ))
+            .logger(Logger::builder().build(
+                "srs",
+                if is_debug_loglevel {
+                    LevelFilter::Debug
+                } else {
+                    LevelFilter::Info
+                },
+            ))
             .build(Root::builder().appender("file").build(LevelFilter::Off))
             .unwrap();
 

@@ -6,11 +6,17 @@ use uuid::Uuid;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MsgType {
     Update,
+    Ping,
     Sync,
+    RadioUpdate,
+    ServerSettings,
+    ClientDisconnect,
+    VersionMismatch,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Coalition {
+    Spectator,
     Blue,
     Red,
 }
@@ -87,8 +93,13 @@ impl ::serde::Serialize for MsgType {
     {
         // Serialize the enum as a u64.
         serializer.serialize_u64(match *self {
-            MsgType::Update => 1,
+            MsgType::Update => 0,
+            MsgType::Ping => 1,
             MsgType::Sync => 2,
+            MsgType::RadioUpdate => 3,
+            MsgType::ServerSettings => 4,
+            MsgType::ClientDisconnect => 5,
+            MsgType::VersionMismatch => 6,
         })
     }
 }
@@ -114,8 +125,13 @@ impl<'de> ::serde::Deserialize<'de> for MsgType {
                 // Rust does not come with a simple way of converting a
                 // number to an enum, so use a big `match`.
                 match value {
-                    1 => Ok(MsgType::Update),
+                    0 => Ok(MsgType::Update),
+                    1 => Ok(MsgType::Ping),
                     2 => Ok(MsgType::Sync),
+                    3 => Ok(MsgType::RadioUpdate),
+                    4 => Ok(MsgType::ServerSettings),
+                    5 => Ok(MsgType::ClientDisconnect),
+                    6 => Ok(MsgType::VersionMismatch),
                     _ => Err(E::custom(format!(
                         "unknown {} value: {}",
                         stringify!(MsgType),
@@ -137,8 +153,9 @@ impl ::serde::Serialize for Coalition {
     {
         // Serialize the enum as a u64.
         serializer.serialize_u64(match *self {
-            Coalition::Blue => 2,
+            Coalition::Spectator => 0,
             Coalition::Red => 1,
+            Coalition::Blue => 2,
         })
     }
 }
@@ -164,6 +181,7 @@ impl<'de> ::serde::Deserialize<'de> for Coalition {
                 // Rust does not come with a simple way of converting a
                 // number to an enum, so use a big `match`.
                 match value {
+                    0 => Ok(Coalition::Spectator),
                     1 => Ok(Coalition::Red),
                     2 => Ok(Coalition::Blue),
                     _ => Err(E::custom(format!(

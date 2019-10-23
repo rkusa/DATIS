@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 use crate::export::ReportExporter;
 use crate::station::Station;
 use crate::tts::text_to_speech;
-use futures::future;
+use futures::future::{self, Either};
 use futures_util::sink::SinkExt;
 use futures_util::stream::{SplitSink, SplitStream, StreamExt};
 use ogg::reading::PacketReader;
@@ -121,10 +121,10 @@ async fn spawn(
         )
         .await
         {
-            error!("ATIS {} failed: {}", name, err);
+            error!("{} failed: {:?}", name, err);
         }
 
-        info!("Restarting ATIS in 10 seconds ...");
+        info!("Restarting ATIS {} in 10 seconds ...", station.name);
         delay_for(Duration::from_secs(10)).await;
     }
 }
@@ -143,12 +143,14 @@ async fn run(
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
     let (sink, stream) = client.start(addr).await?.split();
 
-    let rx = recv_voice_packets(stream);
-    let tx = audio_broadcast(sink, station, exporter, gcloud_key);
+    let rx = Box::pin(recv_voice_packets(stream));
+    let tx = Box::pin(audio_broadcast(sink, station, exporter, gcloud_key));
 
-    future::try_join(rx, tx).await?;
-
-    Ok(())
+    match future::try_select(rx, tx).await {
+        Err(Either::Left((err, _))) => Err(err.into()),
+        Err(Either::Right((err, _))) => Err(err.into()),
+        _ => Ok(()),
+    }
 }
 
 async fn recv_voice_packets(mut stream: SplitStream<VoiceStream>) -> Result<(), anyhow::Error> {
