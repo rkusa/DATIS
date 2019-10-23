@@ -202,6 +202,8 @@ async fn audio_broadcast(
             let mut size = 0;
             let mut audio = PacketReader::new(data);
 
+            let mut frame_count = 0;
+
             while let Some(pck) = audio.read_packet()? {
                 let pck_size = pck.data.len();
                 if pck_size == 0 {
@@ -212,27 +214,36 @@ async fn audio_broadcast(
                 sink.send(pck.data).await?;
 
                 // wait for the current ~playtime before sending the next package
-                let secs = (size * 8) as f64 / 1024.0 / 32.0; // 32 kBit/s
-                let playtime = Duration::from_millis((secs * 1000.0) as u64);
+                frame_count += 1;
+                let playtime = Duration::from_millis(frame_count * 20); // 20m per frame count
                 let elapsed = start.elapsed();
                 if playtime > elapsed {
                     delay_for(playtime - elapsed).await;
                 }
             }
 
-            debug!("TOTAL SIZE: {}", size);
+            let playtime = Duration::from_millis(frame_count * 20); // 20m per frame count
+            let elapsed = start.elapsed();
+            debug!(
+                "elapsed {:?}, {} frames, size {} bytes",
+                elapsed, frame_count, size
+            );
 
-            // 32 kBit/s
-            let secs = (size * 8) as f64 / 1024.0 / 32.0;
-            debug!("SECONDS: {}", secs);
-
-            let playtime = Duration::from_millis((secs * 1000.0) as u64);
-            let elapsed = Instant::now() - start;
             if playtime > elapsed {
                 delay_for(playtime - elapsed).await;
             }
+
+            // postpone the next playback of the report by some seconds ...
+            delay_for(Duration::from_secs(3)).await;
 
             data = audio.into_inner();
         }
     }
 }
+
+// fn playtime(size: usize) -> Duration {
+//     // bits per sample * samples per sec (in kHz) * nr. of channels
+//     let bitrate = 16 * 16 * 1; // kbps
+//     let x = bitrate / 1024 * 8; // byte per sec
+//     return Duration::from_millis(size);
+// }
