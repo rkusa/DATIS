@@ -5,7 +5,7 @@ use crate::error::Error;
 use crate::weather::DcsWeather;
 use datis_core::export::ReportExporter;
 use datis_core::station::*;
-use datis_core::tts::VoiceKind;
+use datis_core::tts::TextToSpeechProvider;
 use datis_core::weather::*;
 use datis_core::AtisSrsClient;
 use hlua51::{Lua, LuaFunction, LuaTable};
@@ -241,7 +241,7 @@ impl Datis {
                     name,
                     atis_freq: freq.atis,
                     traffic_freq: freq.traffic,
-                    voice: VoiceKind::StandardC,
+                    tts: TextToSpeechProvider::default(),
                     airfield,
                     weather: weather.clone(),
                 })
@@ -261,7 +261,9 @@ impl Datis {
                         name: config.name,
                         atis_freq: config.atis,
                         traffic_freq: config.traffic,
-                        voice: config.voice.unwrap_or(VoiceKind::StandardC),
+                        tts: config
+                            .tts
+                            .unwrap_or_else(|| TextToSpeechProvider::default()),
                         airfield,
                         weather: weather.clone(),
                     }
@@ -273,7 +275,7 @@ impl Datis {
         for station in &stations {
             debug!(
                 "  - {} (Freq: {}, Voice: {:?})",
-                station.name, station.atis_freq, station.voice
+                station.name, station.atis_freq, station.tts
             );
         }
 
@@ -307,7 +309,7 @@ struct StationConfig {
     name: String,
     atis: u64,
     traffic: Option<u64>,
-    voice: Option<VoiceKind>,
+    tts: Option<TextToSpeechProvider>,
 }
 
 fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
@@ -325,13 +327,13 @@ fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
                     name,
                     atis: freq,
                     traffic: None,
-                    voice: None,
+                    tts: None,
                 },
             )
         })
         .collect();
 
-    // extract optional traffic frquencies
+    // extract optional traffic frequencies
     let re = Regex::new(r"TRAFFIC ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
     for caps in re.captures_iter(situation) {
         let name = caps.get(1).unwrap().as_str();
@@ -348,7 +350,7 @@ fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
 
 fn extract_station_config(config: &str) -> Option<StationConfig> {
     let re = RegexBuilder::new(
-        r"ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?(,[ ]?VOICE ([a-zA-Z-]+))?",
+        r"ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?(,[ ]?VOICE ([a-zA-Z-:]+))?",
     )
     .case_insensitive(true)
     .build()
@@ -360,22 +362,22 @@ fn extract_station_config(config: &str) -> Option<StationConfig> {
         let traffic_freq = caps
             .get(5)
             .map(|freq| (f64::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64);
-        let voice = caps
+        let tts = caps
             .get(8)
-            .and_then(|s| VoiceKind::from_str(s.as_str()).ok());
+            .and_then(|s| TextToSpeechProvider::from_str(s.as_str()).ok());
         StationConfig {
             name: name.to_string(),
             atis: atis_freq,
             traffic: traffic_freq,
-            voice,
+            tts,
         }
     })
 }
 
 #[cfg(test)]
 mod test {
-    use super::{extract_frequencies, extract_station_config, StationConfig};
-    use datis_core::tts::VoiceKind;
+    use super::*;
+    use datis_core::tts::{gcloud, TextToSpeechProvider};
 
     #[test]
     fn test_mission_situation_extraction() {
@@ -398,7 +400,7 @@ mod test {
                         name: "Mineralnye Vody".to_string(),
                         atis: 251_000_000,
                         traffic: None,
-                        voice: None,
+                        tts: None,
                     }
                 ),
                 (
@@ -407,7 +409,7 @@ mod test {
                         name: "Batumi".to_string(),
                         atis: 131_500_000,
                         traffic: Some(255_000_000),
-                        voice: None,
+                        tts: None,
                     }
                 ),
                 (
@@ -416,7 +418,7 @@ mod test {
                         name: "Senaki-Kolkhi".to_string(),
                         atis: 145_000_000,
                         traffic: None,
-                        voice: None,
+                        tts: None,
                     }
                 )
             ]
@@ -433,7 +435,7 @@ mod test {
                 name: "Kutaisi".to_string(),
                 atis: 251_000_000,
                 traffic: None,
-                voice: None,
+                tts: None,
             })
         );
 
@@ -443,7 +445,7 @@ mod test {
                 name: "Mineralnye Vody".to_string(),
                 atis: 251_000_000,
                 traffic: None,
-                voice: None,
+                tts: None,
             })
         );
 
@@ -453,7 +455,7 @@ mod test {
                 name: "Senaki-Kolkhi".to_string(),
                 atis: 251_000_000,
                 traffic: None,
-                voice: None,
+                tts: None,
             })
         );
 
@@ -463,7 +465,7 @@ mod test {
                 name: "Kutaisi".to_string(),
                 atis: 251_000_000,
                 traffic: Some(123_450_000),
-                voice: None,
+                tts: None,
             })
         );
 
@@ -473,7 +475,9 @@ mod test {
                 name: "Kutaisi".to_string(),
                 atis: 251_000_000,
                 traffic: Some(123_450_000),
-                voice: Some(VoiceKind::StandardE),
+                tts: Some(TextToSpeechProvider::GoogleCloud {
+                    voice: gcloud::VoiceKind::StandardE
+                }),
             })
         );
 
@@ -483,7 +487,9 @@ mod test {
                 name: "Kutaisi".to_string(),
                 atis: 251_000_000,
                 traffic: None,
-                voice: Some(VoiceKind::StandardE),
+                tts: Some(TextToSpeechProvider::GoogleCloud {
+                    voice: gcloud::VoiceKind::StandardE
+                }),
             })
         );
 
@@ -493,7 +499,22 @@ mod test {
                 name: "Kutaisi".to_string(),
                 atis: 131_400_000,
                 traffic: None,
-                voice: None,
+                tts: None,
+            })
+        );
+    }
+
+    #[test]
+    fn test_cloud_provider_prefix_extraction() {
+        assert_eq!(
+            extract_station_config("ATIS Kutaisi 131.400, VOICE GC:en-US-Standard-D"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 131_400_000,
+                traffic: None,
+                tts: Some(TextToSpeechProvider::GoogleCloud {
+                    voice: gcloud::VoiceKind::StandardD
+                }),
             })
         );
     }

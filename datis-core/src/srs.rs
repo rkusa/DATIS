@@ -6,7 +6,7 @@ use std::{fmt, thread};
 use crate::error::Error;
 use crate::export::ReportExporter;
 use crate::station::{Position, Station};
-use crate::tts::text_to_speech;
+use crate::tts::{gcloud, TextToSpeechProvider};
 use crate::weather::Weather;
 use crate::worker::{Context, Worker};
 use byteorder::{LittleEndian, WriteBytesExt};
@@ -258,7 +258,11 @@ fn audio_broadcast<W: Weather + Clone>(
         report_ix += 1;
         debug!("Report: {}", report);
 
-        let data = text_to_speech(&gloud_key, &report, station.voice)?;
+        let data = match station.tts {
+            TextToSpeechProvider::GoogleCloud { voice } => {
+                gcloud::text_to_speech(&gloud_key, &report, voice)?
+            }
+        };
         let mut data = Cursor::new(data);
 
         let srs_addr = ("127.0.0.1", srs_port);

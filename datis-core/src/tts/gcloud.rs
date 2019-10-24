@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::error::Error;
 use reqwest::StatusCode;
 use serde_json::Value;
@@ -91,7 +93,6 @@ pub fn text_to_speech(gcloud_key: &str, text: &str, voice: VoiceKind) -> Result<
     }
 }
 
-use std::str::FromStr;
 impl FromStr for VoiceKind {
     type Err = serde_json::Error;
 

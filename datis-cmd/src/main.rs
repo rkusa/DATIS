@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use clap::{App, Arg};
 use datis_core::station::{Airfield, Position, Station};
-use datis_core::tts::VoiceKind;
+use datis_core::tts::TextToSpeechProvider;
 use datis_core::weather::StaticWeather;
 use datis_core::AtisSrsClient;
 use dotenv::dotenv;
@@ -50,7 +50,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         name: String::from("Test Station"),
         atis_freq: freq,
         traffic_freq: None,
-        voice: VoiceKind::StandardB,
+        tts: TextToSpeechProvider::default(),
         airfield: Airfield {
             name: String::from("Test"),
             position: Position::default(),
