@@ -20,6 +20,7 @@ use std::io::Cursor;
 use std::mem;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::pin::Pin;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 use crate::export::ReportExporter;
@@ -126,11 +127,23 @@ impl Datis {
                         TextToSpeechConfig::AmazonWebServices(AmazonWebServicesConfig {
                             key: key.clone(),
                             secret: secret.clone(),
-                            region: region.clone(),
+                            region: match rusoto_core::Region::from_str(region) {
+                                Ok(region) => region,
+                                Err(err) => {
+                                    error!(
+                                        "Cannot start {} due to invalid AWS region {}: {}",
+                                        station.name, region, err
+                                    );
+                                    continue;
+                                }
+                            },
                             voice,
                         })
                     } else {
-                        error!("Cannot start {} with TTS provider {:?} due to missing AWS key, secret or region", station.name, station.tts);
+                        error!(
+                            "Cannot start {} due to missing AWS key, secret or region",
+                            station.name
+                        );
                         continue;
                     }
                 }

@@ -1,9 +1,8 @@
-use std::env;
 use std::str::FromStr;
 
-use futures::compat::Future01CompatExt;
+use rusoto_core::request::HttpClient;
 use rusoto_core::Region;
-use rusoto_credential::{EnvironmentProvider, ProvideAwsCredentials};
+use rusoto_credential::StaticProvider;
 use rusoto_polly::{Polly, PollyClient, SynthesizeSpeechInput};
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
@@ -31,57 +30,32 @@ pub struct AmazonWebServicesConfig {
     pub voice: VoiceKind,
     pub key: String,
     pub secret: String,
-    pub region: String,
+    pub region: Region,
 }
 
 pub async fn text_to_speech(
     tts: &str,
     config: &AmazonWebServicesConfig,
 ) -> Result<Vec<i16>, anyhow::Error> {
-    //credentials
-    env::set_var("AWS_ACCESS_KEY_ID", &config.key);
-    env::set_var("AWS_SECRET_ACCESS_KEY", &config.secret);
-    //this is new line
-    env::set_var("AWS_REGION", &config.region);
-
-    //put them into a class
-    let _creds = EnvironmentProvider::default()
-        .credentials()
-        .compat()
-        .await?;
-
-    //Add output format
-    let output_format = "pcm";
-
-    //Add text type
-    let txt_type: Option<String> = Some(String::from("ssml"));
-
-    //log request string
-    debug!("Sending polly this ssml string {}.", String::from(tts));
+    let dispatcher = HttpClient::new()?;
+    let creds = StaticProvider::new(config.key.clone(), config.secret.clone(), None, None);
 
     //Build text_to_speech request
-    let _text_to_speech_request = SynthesizeSpeechInput {
-        language_code: Option::default(),
-        lexicon_names: Option::default(),
-        output_format: String::from(output_format),
-        sample_rate: Option::default(),
-        speech_mark_types: Option::default(),
-        text: String::from(tts),
-        text_type: txt_type,
+    let req = SynthesizeSpeechInput {
+        engine: None, // TODO: allow usage of neural engine (only available for certain voices and regions!)
+        language_code: None,
+        lexicon_names: None,
+        output_format: "pcm".to_string(),
+        sample_rate: None, // defaults to 16,000
+        speech_mark_types: None,
+        text: tts.to_string(),
+        text_type: Some("ssml".to_string()),
         voice_id: config.voice.to_string(),
     };
 
-    //build client which seems to default to the credential provider
-    //let _polly_client = PollyClient::new(Region::UsEast1);
-    //new line to test region env variable
-    let _polly_client = PollyClient::new(Region::default());
-
-    //write log
-    debug!("Sending request to Amazon.");
-    //post request
-    let response = _polly_client
-        .synthesize_speech(_text_to_speech_request)
-        .sync()?;
+    let client = PollyClient::new_with(dispatcher, creds, config.region.clone());
+    // FIXME: use await once rusoto migrated to std futures (https://github.com/rusoto/rusoto/pull/1498)
+    let response = client.synthesize_speech(req).sync()?;
 
     let audio_stream = response
         .audio_stream
