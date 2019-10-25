@@ -402,7 +402,7 @@ fn extract_station_config(config: &str) -> Option<StationConfig> {
 #[cfg(test)]
 mod test {
     use super::{extract_frequencies, extract_station_config, StationConfig};
-    use datis_core::tts::VoiceKind;
+    use datis_core::tts::{aws, gcloud, TextToSpeechProvider};
 
     #[test]
     fn test_mission_situation_extraction() {
