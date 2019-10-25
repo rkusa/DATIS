@@ -4,7 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.10.0-beta1] - 2019-10-18
+## [1.0.0-alpha.1] - 2019-10-18
+
+Moving to `1.0.0` as encouraged by semantic versioning.
+
+### Added
+- Support to AWS Polly as an additional TTS service (implemented by @16AGR-Durham)
+
+### Changed
+- Upgraded to the SRS 1.7.0.0 network changes. DATIS now acts as a 1.7.0.0 SRS client.
+- The internals of DATIS are no based on async Rust. With that, DATIS does not create two threads for each ATIS station anymore (max. number of threads is now the number of cores available to the system).
+
+## [0.10.0-beta.1] - 2019-10-18
 ### Changed
 - Upgraded to the SRS 1.7.0.0 network changes. DATIS now acts as a 1.7.0.0 SRS client.
 
