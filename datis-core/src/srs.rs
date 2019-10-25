@@ -7,10 +7,10 @@ use crate::error::Error;
 use crate::export::ReportExporter;
 use crate::polly::polly_tts;
 use crate::station::{Position, Station};
-use crate::tts::text_to_speech;
+use crate::tts::{gcloud, TextToSpeechProvider};
 use crate::weather::Weather;
 use crate::worker::{Context, Worker};
-use audiopus::{coder::Encoder, Application, Bitrate, Channels, SampleRate};
+use audiopus::{coder::Encoder, Application, Channels, SampleRate};
 use byteorder::{LittleEndian, WriteBytesExt};
 use ogg::reading::PacketReader;
 use uuid::Uuid;
@@ -286,7 +286,11 @@ fn audio_broadcast<W: Weather + Clone>(
         if use_polly {
             polly_data = polly_tts(&report, "Brian", &amzn_private, &amzn_secret, &amzn_region)?;
         } else {
-            data = text_to_speech(&gloud_key, &report, station.voice)?;
+            data = match station.tts {
+                TextToSpeechProvider::GoogleCloud { voice } => {
+                    gcloud::text_to_speech(&gloud_key, &report, voice)?
+                }
+            };
         }
         let mut data = Cursor::new(data);
 

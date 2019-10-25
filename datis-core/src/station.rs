@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::tts::VoiceKind;
+use crate::tts::TextToSpeechProvider;
 use crate::utils::{pronounce_number, round};
 use crate::weather::{Clouds, Weather};
 
@@ -8,7 +8,7 @@ pub struct Station<W: Weather + Clone> {
     pub name: String,
     pub atis_freq: u64,
     pub traffic_freq: Option<u64>,
-    pub voice: VoiceKind,
+    pub tts: TextToSpeechProvider,
     pub airfield: Airfield,
     pub weather: W,
 }
@@ -191,7 +191,7 @@ static PHONETIC_ALPHABET: &'static [&str] = &[
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::tts::VoiceKind;
+    use crate::tts::TextToSpeechProvider;
     use crate::weather::StaticWeather;
 
     #[test]
@@ -200,7 +200,7 @@ mod test {
             name: String::from("Kutaisi"),
             atis_freq: 251_000_000,
             traffic_freq: None,
-            voice: VoiceKind::StandardC,
+            tts: TextToSpeechProvider::default(),
             airfield: Airfield {
                 name: String::from("Kutaisi"),
                 position: Position {
@@ -229,7 +229,7 @@ mod test {
             name: String::from("Kutaisi"),
             atis_freq: 251_000_000,
             traffic_freq: Some(249_500_000),
-            voice: VoiceKind::StandardC,
+            tts: TextToSpeechProvider::default(),
             airfield: Airfield {
                 name: String::from("Kutaisi"),
                 position: Position {
