@@ -12,4 +12,4 @@ jobs:
     - name: Switch to Rust beta
       run: rustup override set beta
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test

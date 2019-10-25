@@ -20,9 +20,9 @@ Example Report:
 
 ## Sub-Projects
 
-- [**datis-core**](./datis-core) - The core functionality: generating the report and talking to SRS.
-- [**datis-cmd**](./datis-cmd) - A utility to start DATIS from the command line. Mostly intended for testing-purposes.
-- [**datis-module**](./datis-module) - A Lua module that can be integrated into DCS to automatically start ATIS stations.
+- [**datis-core**](./crates/datis-core) - The core functionality: generating the report and talking to SRS.
+- [**datis-cmd**](./crates/datis-cmd) - A utility to start DATIS from the command line. Mostly intended for testing-purposes.
+- [**datis-module**](./crates/datis-module) - A Lua module that can be integrated into DCS to automatically start ATIS stations.
 
 ## Installation
 
