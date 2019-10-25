@@ -31,7 +31,7 @@ use crate::tts::{
     TextToSpeechConfig, TextToSpeechProvider,
 };
 use audiopus::{coder::Encoder, Application, Channels, SampleRate};
-use futures::future::{self, Either};
+use futures::future::{self, abortable, AbortHandle, Either, FutureExt};
 use futures_util::sink::SinkExt;
 use futures_util::stream::{SplitSink, SplitStream, StreamExt};
 use ogg::reading::PacketReader;
@@ -47,6 +47,7 @@ pub struct Datis {
     port: u16,
     runtime: Runtime,
     started: bool,
+    abort_handles: Vec<AbortHandle>,
 }
 
 struct AwsConfig {
@@ -65,6 +66,7 @@ impl Datis {
             port: 5002,
             runtime: Runtime::new()?,
             started: false,
+            abort_handles: Vec::new(),
         })
     }
 
@@ -148,12 +150,15 @@ impl Datis {
                     }
                 }
             };
-            self.runtime.spawn(spawn(
+
+            let (f, abort_handle) = abortable(spawn(
                 station.clone(),
                 self.port,
                 config,
                 self.exporter.clone(),
             ));
+            self.abort_handles.push(abort_handle);
+            self.runtime.spawn(f.map(|_| ()));
         }
 
         Ok(())
@@ -168,6 +173,11 @@ impl Datis {
     }
 
     pub fn pause(&mut self) -> Result<(), anyhow::Error> {
+        let abort_handles = mem::replace(&mut self.abort_handles, Vec::new());
+        for handle in abort_handles {
+            handle.abort();
+        }
+
         let rt = mem::replace(&mut self.runtime, Runtime::new()?);
         rt.shutdown_now();
         debug!("Shut down all ATIS stations");
