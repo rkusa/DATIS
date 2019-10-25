@@ -1,7 +1,5 @@
-use std::error;
 use std::sync::{Arc, Mutex};
 
-use crate::error::Error;
 use datis_core::weather::{Clouds, Weather, WeatherInfo};
 use hlua51::{Lua, LuaFunction, LuaTable};
 
@@ -20,7 +18,7 @@ impl DcsWeather {
         cpath: &str,
         clouds: Option<Clouds>,
         visibility: Option<u32>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, anyhow::Error> {
         let mut lua = Lua::new();
         lua.openlibs();
 
@@ -40,7 +38,7 @@ impl DcsWeather {
         }))))
     }
 
-    fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, Error> {
+    fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error> {
         let mut inner = self.0.lock().unwrap();
         let clouds = inner.clouds.clone();
         let visibility = inner.visibility;
@@ -49,11 +47,15 @@ impl DcsWeather {
         let mut get_weather: LuaFunction<_> = get!(inner.lua, "getWeather")?;
 
         let pressure_qnh: f64 = {
-            let mut weather: LuaTable<_> = get_weather.call_with_args((x, y, 0))?;
+            let mut weather: LuaTable<_> = get_weather
+                .call_with_args((x, y, 0))
+                .map_err(|_| anyhow!("failed to call lua function getWeather"))?;
             get!(weather, "pressure")
         }?;
 
-        let mut weather: LuaTable<_> = get_weather.call_with_args((x, y, alt))?;
+        let mut weather: LuaTable<_> = get_weather
+            .call_with_args((x, y, alt))
+            .map_err(|_| anyhow!("failed to call lua function getWeather"))?;
         let wind_speed: f64 = get!(weather, "windSpeed")?;
         let mut wind_dir: f64 = get!(weather, "windDir")?; // in knots
         let temperature: f64 = get!(weather, "temp")?;
@@ -80,7 +82,7 @@ impl DcsWeather {
 }
 
 impl Weather for DcsWeather {
-    fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, Box<dyn error::Error>> {
+    fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error> {
         let info = DcsWeather::get_at(self, x, y, alt)?;
         Ok(info)
     }

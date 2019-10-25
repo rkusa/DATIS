@@ -1,25 +1,19 @@
-use crate::error::Error;
+use std::sync::Arc;
+
 use crate::tts::TextToSpeechProvider;
 use crate::utils::{pronounce_number, round};
 use crate::weather::{Clouds, Weather};
+use anyhow::Context;
+pub use srs::message::Position;
 
-#[derive(Debug, Clone)]
-pub struct Station<W: Weather + Clone> {
+#[derive(Clone)]
+pub struct Station {
     pub name: String,
     pub atis_freq: u64,
     pub traffic_freq: Option<u64>,
     pub tts: TextToSpeechProvider,
     pub airfield: Airfield,
-    pub weather: W,
-}
-
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
-pub struct Position {
-    pub x: f64,
-    #[serde(rename = "z")]
-    pub y: f64,
-    #[serde(rename = "y")]
-    pub alt: f64,
+    pub weather: Arc<dyn Weather + Send + Sync>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -29,8 +23,8 @@ pub struct Airfield {
     pub runways: Vec<String>,
 }
 
-impl<W: Weather + Clone> Station<W> {
-    pub fn generate_report(&self, report_nr: usize, spoken: bool) -> Result<String, Error> {
+impl Station {
+    pub fn generate_report(&self, report_nr: usize, spoken: bool) -> Result<String, anyhow::Error> {
         #[cfg(not(test))]
         let _break = if spoken {
             "<break time=\"500ms\"/>\n"
@@ -49,7 +43,7 @@ impl<W: Weather + Clone> Station<W> {
                 self.airfield.position.y,
                 self.airfield.position.alt,
             )
-            .map_err(Error::Weather)?;
+            .context("failed to retrieve weather")?;
         let mut report = if spoken { "<speak>\n" } else { "" }.to_string();
 
         report += &format!(
@@ -182,7 +176,7 @@ fn get_clouds_report(clouds: Clouds, spoken: bool) -> Option<String> {
     }
 }
 
-static PHONETIC_ALPHABET: &'static [&str] = &[
+static PHONETIC_ALPHABET: &[&str] = &[
     "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett",
     "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango",
     "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu",
@@ -193,6 +187,7 @@ mod test {
     use super::*;
     use crate::tts::TextToSpeechProvider;
     use crate::weather::StaticWeather;
+    use std::sync::Arc;
 
     #[test]
     fn test_active_runway() {
@@ -210,7 +205,7 @@ mod test {
                 },
                 runways: vec![String::from("04"), String::from("22R")],
             },
-            weather: StaticWeather,
+            weather: Arc::new(StaticWeather),
         };
 
         assert_eq!(station.get_active_runway(0.0), Some("04"));
@@ -239,7 +234,7 @@ mod test {
                 },
                 runways: vec![String::from("04"), String::from("22")],
             },
-            weather: StaticWeather,
+            weather: Arc::new(StaticWeather),
         };
 
         let report = station.generate_report(26, true).unwrap();

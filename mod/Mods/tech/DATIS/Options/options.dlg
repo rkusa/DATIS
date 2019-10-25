@@ -133,7 +133,7 @@ dialog = {
 				-- Amazon Access Key
 				-----------------------------------------------
 
-				["amznAccessKeyLabel"] = {
+				["awsAccessKeyLabel"] = {
 					["params"] = {
 						["bounds"] = {
 							["x"] = leftMargin,
@@ -151,7 +151,7 @@ dialog = {
 					["type"] = "Static",
 				},
 
-				["amznAccessKeyEditBox"] = {
+				["awsAccessKeyEditBox"] = {
 					["params"] = {
 						["acceptDecimalPoint"] = false,
 						["bounds"] = {
@@ -180,7 +180,7 @@ dialog = {
 				-- Amazon Private Key
 				-----------------------------------------------
 
-				["amznPrivateKeyLabel"] = {
+				["awsPrivateKeyLabel"] = {
 					["params"] = {
 						["bounds"] = {
 							["x"] = leftMargin,
@@ -198,7 +198,7 @@ dialog = {
 					["type"] = "Static",
 				},
 
-				["amznPrivateKeyEditBox"] = {
+				["awsPrivateKeyEditBox"] = {
 					["params"] = {
 						["acceptDecimalPoint"] = false,
 						["bounds"] = {
@@ -227,7 +227,7 @@ dialog = {
 				-- Amazon Region
 				-----------------------------------------------
 
-				["amznRegionLabel"] = {
+				["awsRegionLabel"] = {
 					["params"] = {
 						["bounds"] = {
 							["x"] = leftMargin,
@@ -245,7 +245,7 @@ dialog = {
 					["type"] = "Static",
 				},
 
-				["amznRegionComboList"] = {
+				["awsRegionComboList"] = {
 					["params"] = {
 						["bounds"] = {
 								["x"] = 200 + leftMargin,
@@ -263,7 +263,7 @@ dialog = {
 					["type"] = "ComboList",
 				},
 
-				["amznRegionText"] = {
+				["awsRegionText"] = {
 					["params"] = {
 						["bounds"] = {
 							["x"] = leftMargin,

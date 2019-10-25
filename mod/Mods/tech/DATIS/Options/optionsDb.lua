@@ -2,9 +2,9 @@ local DbOption = require("Options.DbOption")
 
 return {
     gcloudAccessKey = DbOption.new():setValue(""):editbox(),
-    amznAccessKey = DbOption.new():setValue(""):editbox(),
-    amznPrivateKey = DbOption.new():setValue(""):editbox(),
-    amznRegion = DbOption.new():setValue("UsEast1"):combo({
+    awsAccessKey = DbOption.new():setValue(""):editbox(),
+    awsPrivateKey = DbOption.new():setValue(""):editbox(),
+    awsRegion = DbOption.new():setValue("UsEast1"):combo({
         DbOption.Item(_('ApEast1')):Value('ApEast1'),
         DbOption.Item(_('ApNortheast1')):Value('ApNortheast1'),
         DbOption.Item(_('ApSoutheast1')):Value('ApSoutheast1'),

@@ -1,8 +1,13 @@
 use std::str::FromStr;
 
-use crate::error::Error;
 use reqwest::StatusCode;
 use serde_json::Value;
+
+#[derive(Clone)]
+pub struct GoogleCloudConfig {
+    pub voice: VoiceKind,
+    pub key: String,
+}
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -63,7 +68,10 @@ pub enum VoiceKind {
     WavenetF,
 }
 
-pub fn text_to_speech(gcloud_key: &str, text: &str, voice: VoiceKind) -> Result<Vec<u8>, Error> {
+pub async fn text_to_speech(
+    text: &str,
+    config: &GoogleCloudConfig,
+) -> Result<Vec<u8>, anyhow::Error> {
     let payload = TextToSpeechRequest {
         audio_config: AudioConfig {
             audio_encoding: "OGG_OPUS",
@@ -73,23 +81,23 @@ pub fn text_to_speech(gcloud_key: &str, text: &str, voice: VoiceKind) -> Result<
         input: Input { ssml: text },
         voice: Voice {
             language_code: "en-US",
-            name: voice,
+            name: config.voice,
         },
     };
 
     let url = format!(
         "https://texttospeech.googleapis.com/v1/text:synthesize?key={}",
-        gcloud_key
+        config.key
     );
     let client = reqwest::Client::new();
-    let mut res = client.post(&url).json(&payload).send()?;
+    let res = client.post(&url).json(&payload).send().await?;
     if res.status() == StatusCode::OK {
-        let data: TextToSpeechResponse = res.json()?;
+        let data: TextToSpeechResponse = res.json().await?;
         let data = base64::decode(&data.audio_content)?;
         Ok(data)
     } else {
-        let err: Value = res.json()?;
-        Err(Error::GcloudTTL(err))
+        let err: Value = res.json().await?;
+        Err(anyhow!("Gcloud TTL error: {}", err))
     }
 }
 

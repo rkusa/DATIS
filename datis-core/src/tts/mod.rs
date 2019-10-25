@@ -10,6 +10,12 @@ pub enum TextToSpeechProvider {
     AmazonWebServices { voice: aws::VoiceKind },
 }
 
+#[derive(Clone)]
+pub enum TextToSpeechConfig {
+    GoogleCloud(gcloud::GoogleCloudConfig),
+    AmazonWebServices(aws::AmazonWebServicesConfig),
+}
+
 impl Default for TextToSpeechProvider {
     fn default() -> Self {
         TextToSpeechProvider::GoogleCloud {
