@@ -115,6 +115,6 @@ impl FromStr for VoiceKind {
 
 impl ToString for VoiceKind {
     fn to_string(&self) -> String {
-        serde_json::to_string(self).unwrap()
+        format!("{:?}", self)
     }
 }

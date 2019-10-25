@@ -48,10 +48,7 @@ pub fn init(lua: &mut Lua<'_>) -> Result<String, anyhow::Error> {
     if unsafe { !INITIALIZED } {
         let log_file = writedir.clone() + "Logs\\DATIS.log";
 
-        let requests = FileAppender::builder()
-            .append(false)
-            .build(log_file)
-            .unwrap();
+        let requests = FileAppender::builder().append(false).build(log_file)?;
 
         let config = Config::builder()
             .appender(Appender::builder().build("file", Box::new(requests)))
@@ -79,10 +76,9 @@ pub fn init(lua: &mut Lua<'_>) -> Result<String, anyhow::Error> {
                     LevelFilter::Info
                 },
             ))
-            .build(Root::builder().appender("file").build(LevelFilter::Off))
-            .unwrap();
+            .build(Root::builder().appender("file").build(LevelFilter::Off))?;
 
-        log4rs::init_config(config).unwrap();
+        log4rs::init_config(config)?;
     }
 
     unsafe {

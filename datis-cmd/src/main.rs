@@ -15,11 +15,11 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
     env_logger::Builder::new()
-        .filter_level(log::LevelFilter::Debug)
+        .filter_level(log::LevelFilter::Info)
         .try_init()
         .unwrap();
 
-    let matches = App::new("dcs-radio-station")
+    let matches = App::new("datis-cmd")
         .version(env!("CARGO_PKG_VERSION"))
         .arg(
             Arg::with_name("frequency")
@@ -30,10 +30,37 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("gcloud_key")
+            Arg::with_name("tts")
                 .required(true)
+                .long("tts")
+                .default_value("GC:en-US-Standard-C")
+                .help("Sets the TTS provider and voice to be used")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("gcloud_key")
                 .long("gcloud")
-                .env("GCLOUD_KEY"),
+                .env("GCLOUD_KEY")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("aws_key")
+                .long("aws-key")
+                .env("AWS_ACCESS_KEY_ID")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("aws_secret")
+                .long("aws-secret")
+                .env("AWS_SECRET_ACCESS_KEY")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("aws_region")
+                .long("aws-region")
+                .env("AWS_REGION")
+                .default_value("EuCentral1")
+                .takes_value(true),
         )
         .get_matches();
 
@@ -44,14 +71,21 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         error!("The provided frequency is not a valid number");
         return Ok(());
     };
-    // Calling .unwrap() is safe here because "gcloud_key" is required
-    let gcloud_key = matches.value_of("gcloud_key").unwrap();
+
+    let tts = matches.value_of("tts").unwrap();
+    let tts = match TextToSpeechProvider::from_str(&tts) {
+        Ok(tts) => tts,
+        Err(err) => {
+            error!("The privided TTS provider/voice is invalid: {}", err);
+            return Ok(());
+        }
+    };
 
     let station = Station {
         name: String::from("Test Station"),
         atis_freq: freq,
         traffic_freq: None,
-        tts: TextToSpeechProvider::default(),
+        tts: tts,
         airfield: Airfield {
             name: String::from("Test"),
             position: Position::default(),
@@ -61,7 +95,19 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let mut datis = Datis::new(vec![station])?;
     datis.set_port(5002);
-    datis.set_gcloud_key(gcloud_key);
+
+    if let Some(key) = matches.value_of("gcloud_key") {
+        datis.set_gcloud_key(key);
+    }
+
+    if let (Some(key), Some(secret), Some(region)) = (
+        matches.value_of("aws_key"),
+        matches.value_of("aws_secret"),
+        matches.value_of("aws_region"),
+    ) {
+        datis.set_aws_keys(key, secret, region);
+    }
+
     datis.start()?;
 
     let (tx, rx) = std::sync::mpsc::channel();

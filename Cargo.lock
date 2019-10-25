@@ -362,11 +362,11 @@ dependencies = [
 
 [[package]]
 name = "datis"
-version = "0.10.0-beta1"
+version = "1.0.0-alpha.1"
 dependencies = [
  "anyhow 1.0.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "const-cstr 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "datis-core 0.9.1",
+ "datis-core 1.0.0-alpha.1",
  "hlua51 0.4.1 (git+https://github.com/rkusa/hlua51.git)",
  "libc 0.2.65 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -377,11 +377,11 @@ dependencies = [
 
 [[package]]
 name = "datis-cmd"
-version = "0.1.0"
+version = "1.0.0-alpha.1"
 dependencies = [
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ctrlc 3.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "datis-core 0.9.1",
+ "datis-core 1.0.0-alpha.1",
  "dotenv 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -389,7 +389,7 @@ dependencies = [
 
 [[package]]
 name = "datis-core"
-version = "0.9.1"
+version = "1.0.0-alpha.1"
 dependencies = [
  "anyhow 1.0.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "audiopus 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -405,7 +405,7 @@ dependencies = [
  "rusoto_polly 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.41 (registry+https://github.com/rust-lang/crates.io-index)",
- "srs 0.1.0",
+ "srs 1.0.0-alpha.1",
  "tokio 0.2.0-alpha.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1810,7 +1810,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "srs"
-version = "0.1.0"
+version = "1.0.0-alpha.1"
 dependencies = [
  "anyhow 1.0.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
