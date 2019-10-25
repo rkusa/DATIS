@@ -1,6 +1,7 @@
+--DATIS OPTIONS PAGE
 
 local leftMargin = 56
-local width = 500
+local width = 600
 
 -- Skins
 
@@ -57,6 +58,12 @@ local HelpSkin = {
     }
 }
 
+local ComboListSkin = {
+		["params"] = {
+			["name"] = "comboListSkin_options",
+		}
+	}
+
 -- Content
 
 dialog = {
@@ -75,7 +82,7 @@ dialog = {
                             ["y"] = 30,
                             ["w"] = width,
                             ["h"] = 24,
-                        }, 
+                        },
                         ["visible"] = true,
                         ["tooltip"] = "",
                         ["zindex"] = 0,
@@ -83,7 +90,7 @@ dialog = {
                     },
                     ["skin"] = TitleSkin,
                     ["type"] = "Static",
-                }, 
+                },
 
                 -----------------------------------------------
                 -- Google Cloud Access Key
@@ -109,15 +116,170 @@ dialog = {
                 ["gcloudAccessKeyEditBox"] = {
                     ["params"] = {
                         ["bounds"] = {
-                            ["x"] = leftMargin,
-                            ["y"] = 130,
-                            ["w"] = width,
+                            ["x"] = 200 + leftMargin,
+                            ["y"] = 95,
+                            ["w"] = width - 200,
                             ["h"] = 20,
                         },
+						["zindex"] = 0,
+						["tabOrder"] = 0,
                     },
                     ["skin"] = EditBoxSkin,
                     ["type"] = "EditBox",
+					["enabled"] = true
                 },
+
+				-----------------------------------------------
+				-- Amazon Access Key
+				-----------------------------------------------
+
+				["amznAccessKeyLabel"] = {
+					["params"] = {
+						["bounds"] = {
+							["x"] = leftMargin,
+							["y"] = 145,
+							["w"] = 200,
+							["h"] = 20,
+						},
+						["enabled"] = true,
+						["text"] = "$DATIS_AMZN_ACCESS_KEY",
+						["tooltip"] = "",
+						["visible"] = true,
+						["zindex"] = 0,
+					},
+					["skin"] = LabelSkin,
+					["type"] = "Static",
+				},
+
+				["amznAccessKeyEditBox"] = {
+					["params"] = {
+						["acceptDecimalPoint"] = false,
+						["bounds"] = {
+							["x"] = 200 + leftMargin,
+							["y"] = 145,
+							["w"] = width - 200,
+							["h"] = 20,
+						},
+						["enabled"] = true,
+						["multiline"] = false,
+						["numeric"] = true,
+						["password"] = false,
+						["readOnly"] = false,
+						["text"] = "",
+						["textWrapping"] = true,
+						["tooltip"] = "",
+						["visible"] = true,
+						["zindex"] = 0,
+						["tabOrder"] = 1,
+					},
+					["skin"] = EditBoxSkin,
+					["type"] = "EditBox",
+				},
+
+				-----------------------------------------------
+				-- Amazon Private Key
+				-----------------------------------------------
+
+				["amznPrivateKeyLabel"] = {
+					["params"] = {
+						["bounds"] = {
+							["x"] = leftMargin,
+							["y"] = 195,
+							["w"] = 200,
+							["h"] = 20,
+						},
+						["enabled"] = true,
+						["text"] = "$DATIS_AMZN_PRIVATE_KEY",
+						["tooltip"] = "",
+						["visible"] = true,
+						["zindex"] = 0,
+					},
+					["skin"] = LabelSkin,
+					["type"] = "Static",
+				},
+
+				["amznPrivateKeyEditBox"] = {
+					["params"] = {
+						["acceptDecimalPoint"] = false,
+						["bounds"] = {
+							["x"] = 200 + leftMargin,
+							["y"] = 195,
+							["w"] = width - 200,
+							["h"] = 20,
+						},
+						["enabled"] = true,
+						["multiline"] = false,
+						["numeric"] = true,
+						["password"] = true,
+						["readOnly"] = false,
+						["text"] = "",
+						["textWrapping"] = true,
+						["tooltip"] = "",
+						["visible"] = true,
+						["zindex"] = 0,
+						["tabOrder"] = 2,
+					},
+					["skin"] = EditBoxSkin,
+					["type"] = "EditBox",
+				},
+
+				-----------------------------------------------
+				-- Amazon Region
+				-----------------------------------------------
+
+				["amznRegionLabel"] = {
+					["params"] = {
+						["bounds"] = {
+							["x"] = leftMargin,
+							["y"] = 245,
+							["w"] = 200,
+							["h"] = 20,
+						},
+						["enabled"] = true,
+						["text"] = "$DATIS_AMZN_REGION",
+						["tooltip"] = "",
+						["visible"] = true,
+						["zindex"] = 0,
+					},
+					["skin"] = LabelSkin,
+					["type"] = "Static",
+				},
+
+				["amznRegionComboList"] = {
+					["params"] = {
+						["bounds"] = {
+								["x"] = 200 + leftMargin,
+								["y"] = 245,
+								["w"] = 151,
+								["h"] = 25,
+							},
+							["enabled"] = true,
+							["tooltip"] = "",
+							["visible"] = true,
+							["zindex"] = 0,
+							["tabOrder"] = 3,
+					},
+					["skin"] = ComboListSkin,
+					["type"] = "ComboList",
+				},
+
+				["amznRegionText"] = {
+					["params"] = {
+						["bounds"] = {
+							["x"] = leftMargin,
+							["y"] = 275,
+							["w"] = 900,
+							["h"] = 20,
+						},
+						["enabled"] = true,
+						["text"] = "$DATIS_AMZN_REGION_TEXT",
+						["tooltip"] = "",
+						["visible"] = true,
+						["zindex"] = 0,
+					},
+					["skin"] = HelpSkin,
+					["type"] = "Static",
+				},
 
 				-----------------------------------------------
 				-- SRS Server Port (5001)
@@ -127,7 +289,7 @@ dialog = {
 					["params"] = {
 						["bounds"] = {
 							["x"] = leftMargin,
-							["y"] = 190,
+							["y"] = 325,
 							["w"] = 200,
 							["h"] = 20,
 						},
@@ -146,7 +308,7 @@ dialog = {
 						["acceptDecimalPoint"] = false,
 						["bounds"] = {
 							["x"] = 200 + leftMargin,
-							["y"] = 190,
+							["y"] = 325,
 							["w"] = width - 200,
 							["h"] = 20,
 						},
@@ -160,7 +322,7 @@ dialog = {
 						["tooltip"] = "",
 						["visible"] = true,
 						["zindex"] = 0,
-						["tabOrder"] = 0,
+						["tabOrder"] = 4,
 					},
 					["skin"] = EditBoxSkin,
 					["type"] = "EditBox",
@@ -173,7 +335,7 @@ dialog = {
 					["params"] = {
 						["bounds"] = {
 							["x"] = leftMargin,
-							["y"] = 250,
+							["y"] = 375,
 							["w"] = width,
 							["h"] = 20,
 						},
@@ -193,7 +355,7 @@ dialog = {
 					["params"] = {
 						["bounds"] = {
 							["x"] = leftMargin,
-							["y"] = 270,
+							["y"] = 395,
 							["w"] = width,
 							["h"] = 40,
 						},
@@ -206,7 +368,7 @@ dialog = {
 					["skin"] = HelpSkin,
 					["type"] = "Static",
 				},
-            
+
             -----------------------------------------------
 
             },
@@ -223,7 +385,7 @@ dialog = {
                     ["y"] = 0,
                     ["w"] = 974,
                     ["h"] = 600,
-                }, 
+                },
                 ["visible"] = true,
                 ["tooltip"] = "",
                 ["zindex"] = 2,
@@ -235,8 +397,8 @@ dialog = {
     ["skin"] = {
         ["params"] = {
             ["name"] = "windowSkin",
-        }, 
-    }, 
+        },
+    },
     ["params"] = {
         ["bounds"] = {
             ["h"] = 851,
@@ -251,5 +413,5 @@ dialog = {
         ["modal"] = false,
         ["text"] = "New dialog",
         ["zOrder"] = 1,
-    }, 
-} 
+    },
+}

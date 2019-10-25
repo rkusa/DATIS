@@ -14,6 +14,7 @@ mod macros;
 mod datis;
 mod error;
 mod export;
+mod polly;
 mod srs;
 mod station;
 mod tts;

@@ -24,7 +24,11 @@ pub enum Error {
     Base64Decode(base64::DecodeError),
     Ogg(ogg::reading::OggReadError),
     GcloudAccessKeyMissing,
+    AmazonAccessKeyMissing,
+    AmazonSecretKeyMissing,
+    AmazonRegionMissing,
     GcloudTTL(serde_json::Value),
+    PollyTTS(String),
 }
 
 impl fmt::Display for Error {
@@ -70,7 +74,11 @@ impl error::Error for Error {
             Base64Decode(_) => "Error decoding TTS audio content",
             Ogg(_) => "Error decoding OGG audio stream",
             GcloudAccessKeyMissing => "Google Cloud Access key is not set",
+            AmazonAccessKeyMissing => "Amazon access key is not set",
+            AmazonSecretKeyMissing => "Amazon secret key is not set",
+            AmazonRegionMissing => "Amazon region is not set",
             GcloudTTL(_) => "Error calling Gcloud TTS service",
+            PollyTTS(_) => "Error calling Amazon Polly service",
         }
     }
 

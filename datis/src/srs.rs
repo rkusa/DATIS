@@ -5,18 +5,24 @@ use std::{fmt, thread};
 
 use crate::error::Error;
 use crate::export::ReportExporter;
+use crate::polly::polly_tts;
 use crate::station::{Position, Station};
 use crate::tts::text_to_speech;
 use crate::worker::{Context, Worker};
 use byteorder::{LittleEndian, WriteBytesExt};
 use ogg::reading::PacketReader;
 use uuid::Uuid;
+//use opus
+use audiopus::{coder::Encoder, Application, Bitrate, Channels, SampleRate};
 
 const MAX_FRAME_LENGTH: usize = 1024;
 
 pub struct AtisSrsClient {
     sguid: String,
     gcloud_key: String,
+    amzn_private: String,
+    amzn_secret: String,
+    amzn_region: String,
     port: u16,
     station: Station,
     exporter: ReportExporter,
@@ -24,7 +30,15 @@ pub struct AtisSrsClient {
 }
 
 impl AtisSrsClient {
-    pub fn new(station: Station, exporter: ReportExporter, gcloud_key: String, port: u16) -> Self {
+    pub fn new(
+        station: Station,
+        exporter: ReportExporter,
+        gcloud_key: String,
+        amzn_private: String,
+        amzn_secret: String,
+        amzn_region: String,
+        port: u16,
+    ) -> Self {
         let sguid = Uuid::new_v4();
         let sguid = base64::encode_config(sguid.as_bytes(), base64::URL_SAFE_NO_PAD);
         assert_eq!(sguid.len(), 22);
@@ -32,6 +46,9 @@ impl AtisSrsClient {
         AtisSrsClient {
             sguid,
             gcloud_key,
+            amzn_private,
+            amzn_secret,
+            amzn_region,
             port,
             station,
             exporter,
@@ -98,11 +115,24 @@ impl AtisSrsClient {
         // spawn audio broadcast thread
         let sguid = self.sguid.clone();
         let gcloud_key = self.gcloud_key.clone();
+        let amzn_private = self.amzn_private.clone();
+        let amzn_secret = self.amzn_secret.clone();
+        let amzn_region = self.amzn_region.clone();
         let station = self.station.clone();
         let exporter = self.exporter.clone();
         let srs_port = self.port + 1;
         self.worker.push(Worker::new(move |ctx| {
-            if let Err(err) = audio_broadcast(ctx, sguid, gcloud_key, station, exporter, srs_port) {
+            if let Err(err) = audio_broadcast(
+                ctx,
+                sguid,
+                gcloud_key,
+                amzn_private,
+                amzn_secret,
+                amzn_region,
+                station,
+                exporter,
+                srs_port,
+            ) {
                 error!("Error starting SRS broadcast: {}", err);
             }
         }));
@@ -203,6 +233,9 @@ fn audio_broadcast(
     ctx: Context,
     sguid: String,
     gloud_key: String,
+    amzn_private: String,
+    amzn_secret: String,
+    amzn_region: String,
     station: Station,
     exporter: ReportExporter,
     srs_port: u16,
@@ -220,7 +253,16 @@ fn audio_broadcast(
         report_ix += 1;
         debug!("Report: {}", report);
 
-        let data = text_to_speech(&gloud_key, &report, station.voice)?;
+        //here comes Polly
+        let mut data: Vec<u8> = Vec::new();
+        let mut polly_data: Vec<i16> = Vec::new();
+        let use_polly = true;
+
+        if use_polly {
+            polly_data = polly_tts(&report, "Brian", &amzn_private, &amzn_secret, &amzn_region)?;
+        } else {
+            data = text_to_speech(&gloud_key, &report, station.voice)?;
+        }
         let mut data = Cursor::new(data);
 
         let mut stream = TcpStream::connect(("127.0.0.1", srs_port))?;
@@ -233,23 +275,102 @@ fn audio_broadcast(
                 break;
             }
 
-            data.set_position(0);
-            let start = Instant::now();
-            let mut size = 0;
-            let mut audio = PacketReader::new(data);
-            let mut id: u64 = 1;
-            while let Some(pck) = audio.read_packet()? {
-                let pck_size = pck.data.len();
-                if pck_size == 0 {
-                    continue;
+            if use_polly {
+                //info!("Sending polly to srs for station {}, on frequency {}.", station.airfield.name, station.atis_freq);
+
+                let mut size = 0;
+                let mut id: u64 = 1;
+                let enc = Encoder::new(SampleRate::Hz16000, Channels::Mono, Application::Voip);
+                let enc = enc.unwrap();
+
+                const MONO_20MS: usize = 16000 * 1 * 20 / 1000;
+                const SRS_DELAY_FACTOR: u64 = 40; //divide by 100 so it's actually 0.4
+                let mut start_pos = 0;
+                let mut end_pos = MONO_20MS;
+                let mut output = [0; 256];
+                let mut srs_out = true;
+
+                while start_pos < polly_data.len() {
+                    //cut off the last frame
+                    if end_pos > polly_data.len() {
+                        srs_out = false;
+                        start_pos += MONO_20MS;
+                        end_pos += MONO_20MS;
+                    }
+
+                    //play out to srs
+                    if srs_out {
+                        // encode to opus
+                        let bytes_written = enc
+                            .encode(&polly_data[start_pos..end_pos], &mut output)
+                            .expect("opus encoding");
+                        start_pos += MONO_20MS;
+                        end_pos += MONO_20MS;
+                        //pack frame
+                        let frame =
+                            pack_frame(&sguid, id, station.atis_freq, &output[..bytes_written])?;
+                        stream.write(&frame).expect("Failed to send stream to SRS!");
+                        size = bytes_written;
+                        id += 1;
+                    }
+
+                    if srs_out {
+                        //Flexing the sleep time based on the size of the opus packet written
+                        let this_delay = (size as f64 * SRS_DELAY_FACTOR as f64) / 100 as f64;
+                        //info!("Size = {}, Delay = {} for iteration {}.",size, this_delay, counter);
+                        thread::sleep(Duration::from_micros(1000 * this_delay as u64));
+                    }
+
+                    if ctx.should_stop() {
+                        return Ok(());
+                    }
                 }
-                size += pck_size;
-                let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
-                stream.write_all(&frame)?;
-                id += 1;
+                //info!("Returning Ok from polly playback fork.");
+                //inserting 3000 ms break between broadcasts as we still cut off the transmission too early
+                stream.flush().expect("Error flushing stream");
+                thread::sleep(Duration::from_millis(3000 as u64));
+
+                if ctx.should_stop_timeout(Duration::from_secs(5)) {
+                    return Ok(());
+                }
+
+            //return Ok(());
+            } else {
+                data.set_position(0);
+                let start = Instant::now();
+                let mut size = 0;
+                let mut audio = PacketReader::new(data);
+                let mut id: u64 = 1;
+                while let Some(pck) = audio.read_packet()? {
+                    let pck_size = pck.data.len();
+                    if pck_size == 0 {
+                        continue;
+                    }
+                    size += pck_size;
+                    //let frame: Vec<u8> = Vec::new();
+                    let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
+                    stream.write_all(&frame)?;
+                    id += 1;
+
+                    // 32 kBit/s
+                    let secs = (size * 8) as f64 / 1024.0 / 32.0;
+
+                    let playtime = Duration::from_millis((secs * 1000.0) as u64);
+                    let elapsed = Instant::now() - start;
+                    if playtime > elapsed {
+                        thread::sleep(playtime - elapsed);
+                    }
+
+                    if ctx.should_stop() {
+                        return Ok(());
+                    }
+                }
+
+                debug!("TOTAL SIZE: {}", size);
 
                 // 32 kBit/s
                 let secs = (size * 8) as f64 / 1024.0 / 32.0;
+                debug!("SECONDS: {}", secs);
 
                 let playtime = Duration::from_millis((secs * 1000.0) as u64);
                 let elapsed = Instant::now() - start;
@@ -257,32 +378,14 @@ fn audio_broadcast(
                     thread::sleep(playtime - elapsed);
                 }
 
-                if ctx.should_stop() {
+                if ctx.should_stop_timeout(Duration::from_secs(3)) {
                     return Ok(());
                 }
+
+                data = audio.into_inner();
             }
-
-            debug!("TOTAL SIZE: {}", size);
-
-            // 32 kBit/s
-            let secs = (size * 8) as f64 / 1024.0 / 32.0;
-            debug!("SECONDS: {}", secs);
-
-            let playtime = Duration::from_millis((secs * 1000.0) as u64);
-            let elapsed = Instant::now() - start;
-            if playtime > elapsed {
-                thread::sleep(playtime - elapsed);
-            }
-
-            if ctx.should_stop_timeout(Duration::from_secs(3)) {
-                return Ok(());
-            }
-
-            data = audio.into_inner();
         }
     }
-
-    //    Ok(())
 }
 
 fn pack_frame(sguid: &str, id: u64, freq: u64, rd: &[u8]) -> Result<Vec<u8>, io::Error> {

@@ -31,6 +31,43 @@ impl Datis {
             access_key
         };
 
+        //read amzn access key
+        let amzn_access_key = {
+            let mut options_data: LuaTable<_> = get!(lua, "OptionsData")?;
+            let mut get_plugin: LuaFunction<_> = get!(options_data, "getPlugin")?;
+
+            let access_key: String = get_plugin.call_with_args(("DATIS", "amznAccessKey"))?;
+            if access_key.is_empty() {
+                return Err(Error::AmazonAccessKeyMissing);
+            }
+            info!("AMZN access key = {}", access_key);
+            access_key
+        };
+
+        //read amzn private key
+        let amzn_private_key = {
+            let mut options_data: LuaTable<_> = get!(lua, "OptionsData")?;
+            let mut get_plugin: LuaFunction<_> = get!(options_data, "getPlugin")?;
+
+            let access_key: String = get_plugin.call_with_args(("DATIS", "amznPrivateKey"))?;
+            if access_key.is_empty() {
+                return Err(Error::AmazonSecretKeyMissing);
+            }
+            access_key
+        };
+
+        //read amzn endpoint
+        let amzn_endpoint = {
+            let mut options_data: LuaTable<_> = get!(lua, "OptionsData")?;
+            let mut get_plugin: LuaFunction<_> = get!(options_data, "getPlugin")?;
+
+            let access_key: String = get_plugin.call_with_args(("DATIS", "amznRegion"))?;
+            if access_key.is_empty() {
+                return Err(Error::AmazonRegionMissing);
+            }
+            access_key
+        };
+
         // read srs server port
         let srs_port = {
             // OptionsData.getPlugin("DATIS", "srsPort")
@@ -292,7 +329,15 @@ impl Datis {
             clients: stations
                 .into_iter()
                 .map(|station| {
-                    AtisSrsClient::new(station, export.clone(), gcloud_key.clone(), srs_port)
+                    AtisSrsClient::new(
+                        station,
+                        export.clone(),
+                        gcloud_key.clone(),
+                        amzn_access_key.clone(),
+                        amzn_private_key.clone(),
+                        amzn_endpoint.clone(),
+                        srs_port,
+                    )
                 })
                 .collect(),
         })
