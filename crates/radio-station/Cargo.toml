@@ -1,0 +1,18 @@
+[package]
+name = "dcs-radio-station"
+version = "1.0.0-alpha.1"
+authors = ["Markus Ast <m@rkusa.st>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0"
+async-std = "0.99"
+clap = "2.32"
+env_logger = "0.5"
+futures-preview = "=0.3.0-alpha.19"
+futures-util-preview = "=0.3.0-alpha.19"
+log = "0.4"
+ogg = "0.7"
+ogg_metadata = "0.4"
+srs = { path = "../srs" }
+tokio = "0.2.0-alpha.6"

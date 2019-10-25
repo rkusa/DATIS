@@ -3,5 +3,6 @@ members = [
     "crates/datis-cmd",
     "crates/datis-core",
     "crates/datis-module",
+    "crates/radio-station",
     "crates/srs",
 ]
