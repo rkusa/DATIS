@@ -5,11 +5,17 @@ authors = ["Markus Ast <m@rkusa.st>"]
 edition = "2018"
 
 [dependencies]
+audiopus = "0.1"
 base64 = "0.10"
 byteorder = "1.2"
+bytes = "0.4"
+futures = "0.1.29"
 log = "0.4"
 ogg = "0.7"
 reqwest = "0.9"
+rusoto_core = "0.40.0"
+rusoto_credential = "0.40.0"
+rusoto_polly = "0.40.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "0.8", features = ["v4"] }

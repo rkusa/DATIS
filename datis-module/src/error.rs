@@ -19,6 +19,9 @@ pub enum Error {
     // TODO: improve by including information about the global/key that was not defined
     Undefined(String),
     GcloudAccessKeyMissing,
+    AmazonAccessKeyMissing,
+    AmazonSecretKeyMissing,
+    AmazonRegionMissing,
 }
 
 impl fmt::Display for Error {
@@ -56,6 +59,9 @@ impl error::Error for Error {
             GetPluginArgs(_) => "Error pushing Lua function arguments for OptionsData.getPlugin",
             Undefined(_) => "Trying to access lua gobal or table key that does not exist",
             GcloudAccessKeyMissing => "Google Cloud Access key is not set",
+            AmazonAccessKeyMissing => "Amazon access key is not set",
+            AmazonSecretKeyMissing => "Amazon secret key is not set",
+            AmazonRegionMissing => "Amazon region is not set",
         }
     }
 

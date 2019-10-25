@@ -58,7 +58,15 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         weather: StaticWeather,
     };
-    let mut client = AtisSrsClient::new(station, None, gcloud_key.to_string(), 5002);
+    let mut client = AtisSrsClient::new(
+        station,
+        None,
+        gcloud_key.to_string(),
+        String::new(),
+        String::new(),
+        String::new(),
+        5002,
+    );
     client.start()?;
 
     let (tx, rx) = std::sync::mpsc::channel();

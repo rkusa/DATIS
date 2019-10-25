@@ -15,5 +15,6 @@ pub mod tts;
 mod utils;
 pub mod weather;
 mod worker;
+mod polly;
 
 pub use srs::AtisSrsClient;

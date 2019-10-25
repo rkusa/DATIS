@@ -10,6 +10,7 @@ pub enum Error {
     Base64Decode(base64::DecodeError),
     Ogg(ogg::reading::OggReadError),
     GcloudTTL(serde_json::Value),
+    PollyTTS(String),
     Weather(Box<dyn error::Error>),
 }
 
@@ -52,6 +53,7 @@ impl error::Error for Error {
             Base64Decode(_) => "Error decoding TTS audio content",
             Ogg(_) => "Error decoding OGG audio stream",
             GcloudTTL(_) => "Error calling Gcloud TTS service",
+            PollyTTS(_) => "Error calling Amazon Polly service",
             Weather(_) => "Error getting current weather",
         }
     }
