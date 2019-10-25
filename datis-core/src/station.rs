@@ -26,11 +26,7 @@ pub struct Airfield {
 impl Station {
     pub fn generate_report(&self, report_nr: usize, spoken: bool) -> Result<String, anyhow::Error> {
         #[cfg(not(test))]
-        let _break = if spoken {
-            "<break time=\"500ms\"/>\n"
-        } else {
-            ""
-        };
+        let _break = if spoken { "\n" } else { "" };
         #[cfg(test)]
         let _break = if spoken { "| " } else { "" };
 
