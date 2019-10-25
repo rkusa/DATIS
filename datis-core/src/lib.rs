@@ -15,11 +15,8 @@ pub mod tts;
 mod utils;
 pub mod weather;
 
-use std::future::Future;
-use std::io::Cursor;
 use std::mem;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::pin::Pin;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 
@@ -30,11 +27,9 @@ use crate::tts::{
     gcloud::{self, GoogleCloudConfig},
     TextToSpeechConfig, TextToSpeechProvider,
 };
-use audiopus::{coder::Encoder, Application, Channels, SampleRate};
 use futures::future::{self, abortable, AbortHandle, Either, FutureExt};
 use futures_util::sink::SinkExt;
 use futures_util::stream::{SplitSink, SplitStream, StreamExt};
-use ogg::reading::PacketReader;
 use srs::{Client, VoiceStream};
 use tokio::runtime::Runtime;
 use tokio::timer::delay_for;
@@ -222,14 +217,7 @@ async fn run(
     let (sink, stream) = client.start(addr).await?.split();
 
     let rx = Box::pin(recv_voice_packets(stream));
-    let tx: Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + Send>> = match tts_config {
-        TextToSpeechConfig::GoogleCloud(config) => {
-            Box::pin(audio_broadcast_gcloud(sink, station, config, exporter))
-        }
-        TextToSpeechConfig::AmazonWebServices(config) => {
-            Box::pin(audio_broadcast_aws(sink, station, config, exporter))
-        }
-    };
+    let tx = Box::pin(audio_broadcast(sink, station, tts_config, exporter));
 
     match future::try_select(rx, tx).await {
         Err(Either::Left((err, _))) => Err(err.into()),
@@ -247,10 +235,10 @@ async fn recv_voice_packets(mut stream: SplitStream<VoiceStream>) -> Result<(), 
     Ok(())
 }
 
-async fn audio_broadcast_gcloud(
+async fn audio_broadcast(
     mut sink: SplitSink<VoiceStream, Vec<u8>>,
     station: &Station,
-    tts_config: &GoogleCloudConfig,
+    tts_config: &TextToSpeechConfig,
     exporter: Option<&ReportExporter>,
 ) -> Result<(), anyhow::Error> {
     let interval = Duration::from_secs(60 * 60); // 60min
@@ -271,8 +259,14 @@ async fn audio_broadcast_gcloud(
         report_ix += 1;
         debug!("Report: {}", report);
 
-        let data = gcloud::text_to_speech(&report, tts_config).await?;
-        let mut data = Cursor::new(data);
+        let frames = match tts_config {
+            TextToSpeechConfig::GoogleCloud(config) => {
+                gcloud::text_to_speech(&report, config).await?
+            }
+            TextToSpeechConfig::AmazonWebServices(config) => {
+                aws::text_to_speech(&report, config).await?
+            }
+        };
 
         loop {
             let elapsed = Instant::now() - interval_start;
@@ -281,122 +275,21 @@ async fn audio_broadcast_gcloud(
                 break;
             }
 
-            data.set_position(0);
             let start = Instant::now();
-            let mut size = 0;
-            let mut audio = PacketReader::new(data);
 
-            let mut frame_count = 0;
-
-            while let Some(pck) = audio.read_packet()? {
-                let pck_size = pck.data.len();
-                if pck_size == 0 {
-                    continue;
-                }
-                size += pck_size;
-
-                sink.send(pck.data).await?;
+            for (i, frame) in frames.iter().enumerate() {
+                sink.send(frame.to_vec()).await?;
 
                 // wait for the current ~playtime before sending the next package
-                frame_count += 1;
-                let playtime = Duration::from_millis(frame_count * 20); // 20m per frame count
+                let playtime = Duration::from_millis((i as u64 + 1) * 20); // 20m per frame count
                 let elapsed = start.elapsed();
                 if playtime > elapsed {
                     delay_for(playtime - elapsed).await;
                 }
             }
 
-            let playtime = Duration::from_millis(frame_count * 20); // 20m per frame count
-            let elapsed = start.elapsed();
-            debug!(
-                "elapsed {:?}, {} frames, size {} bytes",
-                elapsed, frame_count, size
-            );
-
-            if playtime > elapsed {
-                delay_for(playtime - elapsed).await;
-            }
-
             // postpone the next playback of the report by some seconds ...
             delay_for(Duration::from_secs(3)).await;
-
-            data = audio.into_inner();
-        }
-    }
-}
-
-async fn audio_broadcast_aws(
-    mut sink: SplitSink<VoiceStream, Vec<u8>>,
-    station: &Station,
-    tts_config: &AmazonWebServicesConfig,
-    exporter: Option<&ReportExporter>,
-) -> Result<(), anyhow::Error> {
-    let interval = Duration::from_secs(60 * 60); // 60min
-    let mut interval_start;
-    let mut report_ix = 0;
-
-    loop {
-        interval_start = Instant::now();
-
-        let report = station.generate_report(report_ix, true)?;
-        let report_textual = station.generate_report(report_ix, false)?;
-        if let Some(exporter) = exporter {
-            if let Err(err) = exporter.export(&station.name, report_textual) {
-                error!("Error exporting report: {}", err);
-            }
-        }
-
-        report_ix += 1;
-        debug!("Report: {}", report);
-
-        let data = aws::text_to_speech(&report, &tts_config).await?;
-        let enc = Encoder::new(SampleRate::Hz16000, Channels::Mono, Application::Voip)?;
-
-        loop {
-            let elapsed = Instant::now() - interval_start;
-            if elapsed > interval {
-                // every 60min, generate a new report
-                break;
-            }
-
-            let mut size = 0;
-            const MONO_20MS: usize = 16000 * 1 * 20 / 1000;
-            const SRS_DELAY_FACTOR: u64 = 40; //divide by 100 so it's actually 0.4
-            let mut start_pos = 0;
-            let mut end_pos = MONO_20MS;
-            let mut output = [0; 256];
-            let mut srs_out = true;
-
-            while start_pos < data.len() {
-                //cut off the last frame
-                if end_pos > data.len() {
-                    srs_out = false;
-                    start_pos += MONO_20MS;
-                    end_pos += MONO_20MS;
-                }
-
-                //play out to srs
-                if srs_out {
-                    // encode to opus
-                    let bytes_written = enc.encode(&data[start_pos..end_pos], &mut output)?;
-                    start_pos += MONO_20MS;
-                    end_pos += MONO_20MS;
-
-                    //pack frame
-                    sink.send(output[..bytes_written].to_vec()).await?;
-
-                    size = bytes_written;
-                }
-
-                if srs_out {
-                    //Flexing the sleep time based on the size of the opus packet written
-                    let this_delay = (size as f64 * SRS_DELAY_FACTOR as f64) / 100 as f64;
-                    delay_for(Duration::from_micros(1000 * this_delay as u64)).await;
-                }
-            }
-
-            //inserting 3000 ms break between broadcasts as we still cut off the transmission too early
-            delay_for(Duration::from_millis(3000 as u64)).await;
         }
     }
 }

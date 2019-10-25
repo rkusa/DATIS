@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use audiopus::{coder::Encoder, Application, Channels, SampleRate};
 use rusoto_core::request::HttpClient;
 use rusoto_core::Region;
 use rusoto_credential::StaticProvider;
@@ -36,7 +37,7 @@ pub struct AmazonWebServicesConfig {
 pub async fn text_to_speech(
     tts: &str,
     config: &AmazonWebServicesConfig,
-) -> Result<Vec<i16>, anyhow::Error> {
+) -> Result<Vec<Vec<u8>>, anyhow::Error> {
     let dispatcher = HttpClient::new()?;
     let creds = StaticProvider::new(config.key.clone(), config.secret.clone(), None, None);
 
@@ -60,8 +61,22 @@ pub async fn text_to_speech(
     let audio_stream = response
         .audio_stream
         .ok_or_else(|| anyhow!("Polly response did not contain an audio stream"))?;
-    let i16_stream = vector_i16(audio_stream);
-    Ok(i16_stream)
+    let audio_stream = vector_i16(audio_stream);
+
+    const MONO_20MS: usize = 16000 * 1 * 20 / 1000;
+    let enc = Encoder::new(SampleRate::Hz16000, Channels::Mono, Application::Voip)?;
+    let mut pos = 0;
+    let mut output = [0; 256];
+    let mut frames = Vec::new();
+
+    while pos + MONO_20MS < audio_stream.len() {
+        let len = enc.encode(&audio_stream[pos..(pos + MONO_20MS)], &mut output)?;
+        frames.push(output[..len].to_vec());
+
+        pos += MONO_20MS;
+    }
+
+    Ok(frames)
 }
 
 fn vector_i16(byte_stream: bytes::Bytes) -> Vec<i16> {

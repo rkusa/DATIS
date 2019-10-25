@@ -1,5 +1,7 @@
+use std::io::Cursor;
 use std::str::FromStr;
 
+use ogg::reading::PacketReader;
 use reqwest::StatusCode;
 use serde_json::Value;
 
@@ -71,7 +73,7 @@ pub enum VoiceKind {
 pub async fn text_to_speech(
     text: &str,
     config: &GoogleCloudConfig,
-) -> Result<Vec<u8>, anyhow::Error> {
+) -> Result<Vec<Vec<u8>>, anyhow::Error> {
     let payload = TextToSpeechRequest {
         audio_config: AudioConfig {
             audio_encoding: "OGG_OPUS",
@@ -91,14 +93,23 @@ pub async fn text_to_speech(
     );
     let client = reqwest::Client::new();
     let res = client.post(&url).json(&payload).send().await?;
-    if res.status() == StatusCode::OK {
-        let data: TextToSpeechResponse = res.json().await?;
-        let data = base64::decode(&data.audio_content)?;
-        Ok(data)
-    } else {
+    if res.status() != StatusCode::OK {
         let err: Value = res.json().await?;
-        Err(anyhow!("Gcloud TTL error: {}", err))
+        return Err(anyhow!("Gcloud TTL error: {}", err));
     }
+
+    let data: TextToSpeechResponse = res.json().await?;
+    let data = base64::decode(&data.audio_content)?;
+    let data = Cursor::new(data);
+
+    let mut frames = Vec::new();
+
+    let mut audio = PacketReader::new(data);
+    while let Some(pck) = audio.read_packet()? {
+        frames.push(pck.data.to_vec())
+    }
+
+    Ok(frames)
 }
 
 impl FromStr for VoiceKind {
