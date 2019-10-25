@@ -4,96 +4,96 @@ local datis = nil
 local isStarted = false
 
 function datis_start()
-	if not DCS.isServer() then
-		log.write("[DATIS]", log.WARNING, "Starting DATIS skipped for not being the Server ...")
-		return
-	end
+  if not DCS.isServer() then
+    log.write("[DATIS]", log.WARNING, "Starting DATIS skipped for not being the Server ...")
+    return
+  end
 
-	log.write("[DATIS]", log.DEBUG, "Starting ...")
-	
-	if _G.Terrain == nil then
-		_G.Terrain = require "terrain"
-	end
+  log.write("[DATIS]", log.DEBUG, "Starting ...")
 
-	if datis == nil then
-		datis = require "datis"
-	end
-	datis.start()
+  if _G.Terrain == nil then
+    _G.Terrain = require "terrain"
+  end
 
-	log.write("[DATIS]", log.INFO, "Started")
+  if datis == nil then
+    datis = require "datis"
+  end
+  datis.start()
 
-	if DCS.getPause() then
-		datis.pause()
-	end
+  log.write("[DATIS]", log.INFO, "Started")
+
+  if DCS.getPause() then
+    datis.pause()
+  end
 end
 
 function datis_stop()
-	if datis ~= nil then
-		datis.stop()
-		datis = nil
-	end
+  if datis ~= nil then
+    datis.stop()
+    datis = nil
+  end
 end
 
 function datis_pause()
-	if datis ~= nil then
-		datis.pause()
-	end
+  if datis ~= nil then
+    datis.pause()
+  end
 end
 
 function datis_unpause()
-	if datis ~= nil then
-		datis.unpause()
-	end
+  if datis ~= nil then
+    datis.unpause()
+  end
 end
 
 function datis_load()
-	log.write("[DATIS]", log.DEBUG, "Loading ...")
+  log.write("[DATIS]", log.DEBUG, "Loading ...")
 
-	local handler = {}
+  local handler = {}
 
-	function handler.onSimulationStop()
-		log.write("[DATIS]", log.DEBUG, "Stopping")
+  function handler.onSimulationStop()
+    log.write("[DATIS]", log.DEBUG, "Stopping")
 
-		local status, err = pcall(datis_stop)
-		if not status then
-			log.write("[DATIS]", log.ERROR, "Stop Error: " .. tostring(err))
-		end
+    local status, err = pcall(datis_stop)
+    if not status then
+      log.write("[DATIS]", log.ERROR, "Stop Error: " .. tostring(err))
+    end
 
-		isStarted = false
-	end
+    isStarted = false
+  end
 
-	function handler.onSimulationPause()
-		log.write("[DATIS]", log.DEBUG, "Pausing")
+  function handler.onSimulationPause()
+    log.write("[DATIS]", log.DEBUG, "Pausing")
 
-		local status, err = pcall(datis_pause)
-		if not status then
-			log.write("[DATIS]", log.ERROR, "Pause Error: " .. tostring(err))
-		end
-	end
+    local status, err = pcall(datis_pause)
+    if not status then
+      log.write("[DATIS]", log.ERROR, "Pause Error: " .. tostring(err))
+    end
+  end
 
-	function handler.onSimulationResume()
-		log.write("[DATIS]", log.DEBUG, "Resuming")
-		
-		if datis == nil and not isStarted then
-			isStarted = true
-			local status, err = pcall(datis_start)
-			if not status then
-				log.write("[DATIS]", log.ERROR, "Start Error: " .. tostring(err))
-			end
-		else
-			local status, err = pcall(datis_unpause)
-			if not status then
-				log.write("[DATIS]", log.ERROR, "Unpause Error: " .. tostring(err))
-			end
-		end
-	end
+  function handler.onSimulationResume()
+    log.write("[DATIS]", log.DEBUG, "Resuming")
 
-	DCS.setUserCallbacks(handler)
+    if datis == nil and not isStarted then
+      isStarted = true
+      local status, err = pcall(datis_start)
+      if not status then
+        log.write("[DATIS]", log.ERROR, "Start Error: " .. tostring(err))
+      end
+    else
+      local status, err = pcall(datis_unpause)
+      if not status then
+        log.write("[DATIS]", log.ERROR, "Unpause Error: " .. tostring(err))
+      end
+    end
+  end
 
-	log.write("[DATIS]", log.INFO, "Loaded")
+  DCS.setUserCallbacks(handler)
+
+  log.write("[DATIS]", log.INFO, "Loaded")
 end
 
 local status, err = pcall(datis_load)
 if not status then
-	log.write("[DATIS]", log.ERROR, "Load Error: " .. tostring(err))
+  log.write("[DATIS]", log.ERROR, "Load Error: " .. tostring(err))
 end
