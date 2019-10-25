@@ -1,3 +1,4 @@
+pub mod aws;
 pub mod gcloud;
 
 use std::fmt;
@@ -6,6 +7,7 @@ use std::str::FromStr;
 #[derive(PartialEq, Clone)]
 pub enum TextToSpeechProvider {
     GoogleCloud { voice: gcloud::VoiceKind },
+    AmazonWebServices { voice: aws::VoiceKind },
 }
 
 impl Default for TextToSpeechProvider {
@@ -22,6 +24,9 @@ impl fmt::Debug for TextToSpeechProvider {
             TextToSpeechProvider::GoogleCloud { voice } => {
                 write!(f, "Google Cloud (Voice: {:?})", voice)
             }
+            TextToSpeechProvider::AmazonWebServices { voice } => {
+                write!(f, "Amazon Web Services (Voice: {:?})", voice)
+            }
         }
     }
 }
@@ -36,6 +41,11 @@ impl FromStr for TextToSpeechProvider {
                 "GC" => {
                     return Ok(TextToSpeechProvider::GoogleCloud {
                         voice: gcloud::VoiceKind::from_str(voice)?,
+                    })
+                }
+                "AWS" => {
+                    return Ok(TextToSpeechProvider::AmazonWebServices {
+                        voice: aws::VoiceKind::from_str(voice)?,
                     })
                 }
                 _ => {}
@@ -60,7 +70,7 @@ mod test {
     mod tts_provider_from_str {
         use std::str::FromStr;
 
-        use crate::tts::{gcloud, TextToSpeechProvider};
+        use crate::tts::{aws, gcloud, TextToSpeechProvider};
 
         #[test]
         fn fallback_on_empty_string() {
@@ -98,6 +108,16 @@ mod test {
                 TextToSpeechProvider::from_str("GC:en-US-Wavenet-B").unwrap(),
                 TextToSpeechProvider::GoogleCloud {
                     voice: gcloud::VoiceKind::WavenetB
+                }
+            )
+        }
+
+        #[test]
+        fn prefix_aws() {
+            assert_eq!(
+                TextToSpeechProvider::from_str("AWS:Brian").unwrap(),
+                TextToSpeechProvider::AmazonWebServices {
+                    voice: aws::VoiceKind::Brian
                 }
             )
         }

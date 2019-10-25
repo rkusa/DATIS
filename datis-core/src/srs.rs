@@ -5,9 +5,8 @@ use std::{fmt, thread};
 
 use crate::error::Error;
 use crate::export::ReportExporter;
-use crate::polly::polly_tts;
 use crate::station::{Position, Station};
-use crate::tts::{gcloud, TextToSpeechProvider};
+use crate::tts::{aws, gcloud, TextToSpeechProvider};
 use crate::weather::Weather;
 use crate::worker::{Context, Worker};
 use audiopus::{coder::Encoder, Application, Channels, SampleRate};
@@ -278,20 +277,21 @@ fn audio_broadcast<W: Weather + Clone>(
         report_ix += 1;
         debug!("Report: {}", report);
 
-        //here comes Polly
         let mut data: Vec<u8> = Vec::new();
         let mut polly_data: Vec<i16> = Vec::new();
-        let use_polly = true;
+        let mut use_polly = false;
 
-        if use_polly {
-            polly_data = polly_tts(&report, "Brian", &amzn_private, &amzn_secret, &amzn_region)?;
-        } else {
-            data = match station.tts {
-                TextToSpeechProvider::GoogleCloud { voice } => {
-                    gcloud::text_to_speech(&gloud_key, &report, voice)?
-                }
-            };
+        match station.tts {
+            TextToSpeechProvider::GoogleCloud { voice } => {
+                data = gcloud::text_to_speech(&gloud_key, &report, voice)?;
+            }
+            TextToSpeechProvider::AmazonWebServices { voice } => {
+                polly_data =
+                    aws::text_to_speech(&report, voice, &amzn_private, &amzn_secret, &amzn_region)?;
+                use_polly = true;
+            }
         }
+
         let mut data = Cursor::new(data);
 
         let srs_addr = ("127.0.0.1", srs_port);

@@ -1,17 +1,37 @@
-//use std
+use std::env;
+use std::str::FromStr;
+
 use crate::error::Error;
 use futures::future::Future;
-use std::default::Default;
-use std::env;
 
 //use rusoto
 use rusoto_core::Region;
 use rusoto_credential::{EnvironmentProvider, ProvideAwsCredentials};
 use rusoto_polly::{Polly, PollyClient, SynthesizeSpeechInput};
 
-pub fn polly_tts(
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
+pub enum VoiceKind {
+    Nicole,
+    Russell,
+    Amy,
+    Emma,
+    Brian,
+    Aditi,
+    Raveena,
+    Ivy,
+    Joanna,
+    Kendra,
+    Kimberly,
+    Salli,
+    Joey,
+    Justin,
+    Matthew,
+    Geraint,
+}
+
+pub fn text_to_speech(
     tts: &str,
-    voice_id: &str,
+    voice_id: VoiceKind,
     aws_access_key: &str,
     aws_secret_key: &str,
     aws_region: &str,
@@ -43,7 +63,7 @@ pub fn polly_tts(
         speech_mark_types: Option::default(),
         text: String::from(tts),
         text_type: txt_type,
-        voice_id: String::from(voice_id),
+        voice_id: voice_id.to_string(),
     };
 
     //build client which seems to default to the credential provider
@@ -84,4 +104,18 @@ fn vector_i16(byte_stream: bytes::Bytes) -> Vec<i16> {
         index_pos += 2;
     }
     return res;
+}
+
+impl FromStr for VoiceKind {
+    type Err = serde_json::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_value(json!(s))
+    }
+}
+
+impl ToString for VoiceKind {
+    fn to_string(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
 }
