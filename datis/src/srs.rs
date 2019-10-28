@@ -260,19 +260,30 @@ fn audio_broadcast(
 
             data.set_position(0);
             let start = Instant::now();
-            let mut size = 0;
             let mut audio = PacketReader::new(data);
             let mut id: u64 = 1;
             while let Some(pck) = audio.read_packet()? {
-                let pck_size = pck.data.len();
-                if pck_size == 0 {
+                if pck.data.len() == 0 {
                     continue;
                 }
-                size += pck_size;
                 let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
                 stream.write_all(&frame)?;
+
+                // wait for the current ~playtime before sending the next package
+                let playtime = Duration::from_millis(id * 20);
+                let elapsed = start.elapsed();
+                if playtime > elapsed {
+                    thread::sleep(playtime - elapsed);
+                }
+
                 id += 1;
 
+                if ctx.should_stop() {
+                    return Ok(false);
+                }
+            }
+
+            'recv: loop {
                 // check whether the TCP connection is still alive (by trying to read and it and expect it to time out)
                 match io::copy(&mut stream, &mut sink) {
                     Ok(bytes_read) if bytes_read == 0 => {
@@ -281,34 +292,18 @@ fn audio_broadcast(
                         return Ok(true);
                     }
                     Err(err) => match err.kind() {
-                        io::ErrorKind::TimedOut => {}
+                        io::ErrorKind::TimedOut => {
+                            break 'recv;
+                        }
                         _ => {
                             return Err(err.into());
                         }
                     },
                     _ => {}
                 }
-
-                // wait for the current ~playtime before sending the next package
-                let secs = (size * 8) as f64 / 1024.0 / 32.0; // 32 kBit/s
-                let playtime = Duration::from_millis((secs * 1000.0) as u64);
-                let elapsed = start.elapsed();
-                if playtime > elapsed {
-                    thread::sleep(playtime - elapsed);
-                }
-
-                if ctx.should_stop() {
-                    return Ok(false);
-                }
             }
 
-            debug!("TOTAL SIZE: {}", size);
-
-            // 32 kBit/s
-            let secs = (size * 8) as f64 / 1024.0 / 32.0;
-            debug!("SECONDS: {}", secs);
-
-            let playtime = Duration::from_millis((secs * 1000.0) as u64);
+            let playtime = Duration::from_millis(id * 20);
             let elapsed = Instant::now() - start;
             if playtime > elapsed {
                 thread::sleep(playtime - elapsed);

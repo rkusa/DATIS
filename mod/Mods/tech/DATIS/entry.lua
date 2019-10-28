@@ -5,7 +5,7 @@ declare_plugin("DATIS", {
       "datis.dll",
   },
 
-  version       = "0.3.0",
+  version       = "0.9.2",
   state         = "installed",
   developerName = "github.com/rkusa",
 
