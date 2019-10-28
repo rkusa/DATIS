@@ -21,7 +21,7 @@ use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 use crate::export::ReportExporter;
-use crate::station::Station;
+use crate::station::{Station, Transmitter};
 use crate::tts::{
     aws::{self, AmazonWebServicesConfig},
     gcloud::{self, GoogleCloudConfig},
@@ -210,7 +210,14 @@ async fn run(
 ) -> Result<(), anyhow::Error> {
     let name = format!("ATIS {}", station.name);
     let mut client = Client::new(&name, station.atis_freq);
-    client.set_position(station.airfield.position.clone());
+    match &station.transmitter {
+        Transmitter::Airfield(airfield) => {
+            client.set_position(airfield.position.clone());
+        }
+        Transmitter::Unit(_unit) => {
+            unimplemented!();
+        }
+    }
     // TODO: set unit
 
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
@@ -248,23 +255,33 @@ async fn audio_broadcast(
     loop {
         interval_start = Instant::now();
 
-        let report = station.generate_report(report_ix, true)?;
-        let report_textual = station.generate_report(report_ix, false)?;
+        let report = match station.generate_report(report_ix)? {
+            Some(report) => report,
+            None => {
+                debug!(
+                    "No report available right for station {}. Trying again in 30 seconds ...",
+                    station.name
+                );
+                // postpone the next playback of the report by some seconds ...
+                delay_for(Duration::from_secs(30)).await;
+                continue;
+            }
+        };
         if let Some(exporter) = exporter {
-            if let Err(err) = exporter.export(&station.name, report_textual) {
+            if let Err(err) = exporter.export(&station.name, report.textual) {
                 error!("Error exporting report: {}", err);
             }
         }
 
         report_ix += 1;
-        debug!("Report: {}", report);
+        debug!("Report: {}", report.spoken);
 
         let frames = match tts_config {
             TextToSpeechConfig::GoogleCloud(config) => {
-                gcloud::text_to_speech(&report, config).await?
+                gcloud::text_to_speech(&report.spoken, config).await?
             }
             TextToSpeechConfig::AmazonWebServices(config) => {
-                aws::text_to_speech(&report, config).await?
+                aws::text_to_speech(&report.spoken, config).await?
             }
         };
 

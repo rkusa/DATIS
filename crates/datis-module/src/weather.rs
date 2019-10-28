@@ -37,7 +37,9 @@ impl DcsWeather {
             visibility,
         }))))
     }
+}
 
+impl Weather for DcsWeather {
     fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error> {
         let mut inner = self.0.lock().unwrap();
         let clouds = inner.clouds.clone();
@@ -79,12 +81,28 @@ impl DcsWeather {
             pressure_qfe,
         })
     }
-}
 
-impl Weather for DcsWeather {
-    fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error> {
-        let info = DcsWeather::get_at(self, x, y, alt)?;
-        Ok(info)
+    fn get_for_unit(&self, name: &str) -> Result<Option<WeatherInfo>, anyhow::Error> {
+        let (x, y, alt) = {
+            let mut inner = self.0.lock().unwrap();
+
+            // call `getUnitPosition(name)`
+            let mut get_unit_position: LuaFunction<_> = get!(inner.lua, "getUnitPosition")?;
+            let mut pos: LuaTable<_> = get_unit_position
+                .call_with_args(name)
+                .map_err(|_| anyhow!("failed to call lua function getUnitPosition"))?;
+            let x: f64 = get!(pos, "x")?;
+            let y: f64 = get!(pos, "y")?;
+            let alt: f64 = get!(pos, "alt")?;
+
+            (x, y, alt)
+        };
+
+        if x == 0.0 && y == 0.0 && alt == 0.0 {
+            Ok(None)
+        } else {
+            Ok(Some(self.get_at(x, y, alt)?))
+        }
     }
 }
 
@@ -120,6 +138,24 @@ static LUA_CODE: &str = r#"
             pressure = pressure,
         }
     end
+
+    getUnitPosition = function(name)
+        local unit = Unit.getByName(name)
+        if unit == nil then
+            return {
+                x = 0,
+                y = 0,
+                alt = 0,
+            }
+        else
+            local pos = unit:getPoint()
+            return {
+                x = pos.x,
+                y = pos.z,
+                alt = pos.y,
+            }
+        end
+    end
 "#;
 
 #[cfg(test)]
@@ -130,6 +166,14 @@ static LUA_CODE: &str = r#"
             windDir = y,
             temp = alt,
             pressure = 42,
+        }
+    end
+
+    function getUnitPosition(name)
+        return {
+            x = 1,
+            y = 2,
+            alt = 3,
         }
     end
 "#;
@@ -152,6 +196,23 @@ mod test {
                 pressure_qnh: 42.0,
                 pressure_qfe: 42.0,
             }
+        );
+    }
+
+    #[test]
+    fn test_get_weather_for_unit() {
+        let dw = DcsWeather::create("", None, None).unwrap();
+        assert_eq!(
+            dw.get_for_unit("foobar").unwrap(),
+            Some(WeatherInfo {
+                clouds: None,
+                visibility: None,
+                wind_speed: 1.0,
+                wind_dir: 294.59155902616465,
+                temperature: 3.0,
+                pressure_qnh: 42.0,
+                pressure_qfe: 42.0,
+            })
         );
     }
 }

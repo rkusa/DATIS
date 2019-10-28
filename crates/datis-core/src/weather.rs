@@ -1,5 +1,6 @@
 pub trait Weather {
     fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error>;
+    fn get_for_unit(&self, name: &str) -> Result<Option<WeatherInfo>, anyhow::Error>;
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -35,5 +36,9 @@ impl Weather for StaticWeather {
             pressure_qnh: 101_500.0,
             pressure_qfe: 101_500.0,
         })
+    }
+
+    fn get_for_unit(&self, _name: &str) -> Result<Option<WeatherInfo>, anyhow::Error> {
+        self.get_at(0.0, 0.0, 0.0).map(|w| Some(w))
     }
 }

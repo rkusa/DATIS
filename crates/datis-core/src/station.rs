@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::tts::TextToSpeechProvider;
 use crate::utils::{pronounce_number, round};
-use crate::weather::{Clouds, Weather};
+use crate::weather::{Clouds, Weather, WeatherInfo};
 use anyhow::Context;
 pub use srs::message::Position;
 
@@ -12,8 +12,8 @@ pub struct Station {
     pub atis_freq: u64,
     pub traffic_freq: Option<u64>,
     pub tts: TextToSpeechProvider,
-    pub airfield: Airfield,
     pub weather: Arc<dyn Weather + Send + Sync>,
+    pub transmitter: Transmitter,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -23,23 +23,64 @@ pub struct Airfield {
     pub runways: Vec<String>,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct Unit {
+    pub name: String,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Transmitter {
+    Airfield(Airfield),
+    Unit(Unit),
+}
+
+pub struct Report {
+    pub textual: String,
+    pub spoken: String,
+}
+
 impl Station {
-    pub fn generate_report(&self, report_nr: usize, spoken: bool) -> Result<String, anyhow::Error> {
+    pub fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
+        let weather = match &self.transmitter {
+            Transmitter::Airfield(airfield) => self
+                .weather
+                .get_at(
+                    airfield.position.x,
+                    airfield.position.y,
+                    airfield.position.alt,
+                )
+                .context("failed to retrieve weather")?,
+            Transmitter::Unit(unit) => {
+                let w = self
+                    .weather
+                    .get_for_unit(&unit.name)
+                    .context("failed to retrieve weather for unit")?;
+                if let Some(w) = w {
+                    w
+                } else {
+                    return Ok(None);
+                }
+            }
+        };
+
+        Ok(Some(Report {
+            textual: self.generate_report_for_weather(report_nr, &weather, false)?,
+            spoken: self.generate_report_for_weather(report_nr, &weather, true)?,
+        }))
+    }
+
+    pub fn generate_report_for_weather(
+        &self,
+        report_nr: usize,
+        weather: &WeatherInfo,
+        spoken: bool,
+    ) -> Result<String, anyhow::Error> {
         #[cfg(not(test))]
         let _break = if spoken { "\n" } else { "" };
         #[cfg(test)]
         let _break = if spoken { "| " } else { "" };
 
         let information_letter = PHONETIC_ALPHABET[report_nr % PHONETIC_ALPHABET.len()];
-
-        let weather = self
-            .weather
-            .get_at(
-                self.airfield.position.x,
-                self.airfield.position.y,
-                self.airfield.position.alt,
-            )
-            .context("failed to retrieve weather")?;
         let mut report = if spoken { "<speak>\n" } else { "" }.to_string();
 
         report += &format!(
@@ -47,11 +88,13 @@ impl Station {
             self.name, information_letter, _break
         );
 
-        if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
-            let rwy = pronounce_number(rwy, spoken);
-            report += &format!("Runway in use is {}. {}", rwy, _break);
-        } else {
-            error!("Could not find active runway for {}", self.name);
+        if let Transmitter::Airfield(airfield) = &self.transmitter {
+            if let Some(rwy) = airfield.get_active_runway(weather.wind_dir) {
+                let rwy = pronounce_number(rwy, spoken);
+                report += &format!("Runway in use is {}. {}", rwy, _break);
+            } else {
+                error!("Could not find active runway for {}", self.name);
+            }
         }
 
         let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
@@ -68,6 +111,7 @@ impl Station {
 
         if let Some(clouds_report) = weather
             .clouds
+            .as_ref()
             .and_then(|clouds| get_clouds_report(clouds, spoken))
         {
             report += &format!("{}. {}", clouds_report, _break);
@@ -116,10 +160,12 @@ impl Station {
 
         Ok(report)
     }
+}
 
+impl Airfield {
     fn get_active_runway(&self, wind_dir: f64) -> Option<&str> {
         let lr: &[_] = &['L', 'R'];
-        for rwy in &self.airfield.runways {
+        for rwy in &self.runways {
             let rwy = rwy.trim_matches(lr);
             if let Ok(mut rwy_dir) = rwy.parse::<f64>() {
                 rwy_dir *= 10.0; // e.g. 04 to 040
@@ -143,7 +189,7 @@ fn get_visibility_report(visibility: u32, spoken: bool) -> String {
     format!("Visibility {}", pronounce_number(visibility, spoken))
 }
 
-fn get_clouds_report(clouds: Clouds, spoken: bool) -> Option<String> {
+fn get_clouds_report(clouds: &Clouds, spoken: bool) -> Option<String> {
     let density = match clouds.density {
         2..=5 => Some("few"),
         6..=7 => Some("scattered"),
@@ -187,31 +233,24 @@ mod test {
 
     #[test]
     fn test_active_runway() {
-        let station = Station {
+        let airfield = Airfield {
             name: String::from("Kutaisi"),
-            atis_freq: 251_000_000,
-            traffic_freq: None,
-            tts: TextToSpeechProvider::default(),
-            airfield: Airfield {
-                name: String::from("Kutaisi"),
-                position: Position {
-                    x: 0.0,
-                    y: 0.0,
-                    alt: 0.0,
-                },
-                runways: vec![String::from("04"), String::from("22R")],
+            position: Position {
+                x: 0.0,
+                y: 0.0,
+                alt: 0.0,
             },
-            weather: Arc::new(StaticWeather),
+            runways: vec![String::from("04"), String::from("22R")],
         };
 
-        assert_eq!(station.get_active_runway(0.0), Some("04"));
-        assert_eq!(station.get_active_runway(30.0), Some("04"));
-        assert_eq!(station.get_active_runway(129.0), Some("04"));
-        assert_eq!(station.get_active_runway(311.0), Some("04"));
-        assert_eq!(station.get_active_runway(180.0), Some("22"));
-        assert_eq!(station.get_active_runway(270.0), Some("22"));
-        assert_eq!(station.get_active_runway(309.0), Some("22"));
-        assert_eq!(station.get_active_runway(131.0), Some("22"));
+        assert_eq!(airfield.get_active_runway(0.0), Some("04"));
+        assert_eq!(airfield.get_active_runway(30.0), Some("04"));
+        assert_eq!(airfield.get_active_runway(129.0), Some("04"));
+        assert_eq!(airfield.get_active_runway(311.0), Some("04"));
+        assert_eq!(airfield.get_active_runway(180.0), Some("22"));
+        assert_eq!(airfield.get_active_runway(270.0), Some("22"));
+        assert_eq!(airfield.get_active_runway(309.0), Some("22"));
+        assert_eq!(airfield.get_active_runway(131.0), Some("22"));
     }
 
     #[test]
@@ -221,7 +260,7 @@ mod test {
             atis_freq: 251_000_000,
             traffic_freq: Some(249_500_000),
             tts: TextToSpeechProvider::default(),
-            airfield: Airfield {
+            transmitter: Transmitter::Airfield(Airfield {
                 name: String::from("Kutaisi"),
                 position: Position {
                     x: 0.0,
@@ -229,15 +268,13 @@ mod test {
                     alt: 0.0,
                 },
                 runways: vec![String::from("04"), String::from("22")],
-            },
+            }),
             weather: Arc::new(StaticWeather),
         };
 
-        let report = station.generate_report(26, true).unwrap();
-        assert_eq!(report, "<speak>\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Alpha.\n</speak>");
-
-        let report = station.generate_report(26, false).unwrap();
-        assert_eq!(report, "This is Kutaisi information Alpha. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Alpha.");
+        let report = station.generate_report(26).unwrap().unwrap();
+        assert_eq!(report.spoken, "<speak>\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Alpha.\n</speak>");
+        assert_eq!(report.textual, "This is Kutaisi information Alpha. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Alpha.");
     }
 
     #[test]
@@ -254,7 +291,7 @@ mod test {
                 thickness: 0,
                 iprecptns,
             };
-            get_clouds_report(clouds, true)
+            get_clouds_report(&clouds, true)
         }
 
         assert_eq!(create_clouds_report(8400, 1, 0), None);

@@ -127,14 +127,14 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
         airfields
     };
 
-    // extract all mission statics to later look for ATIS configs in their names
-    let mut comm_towers = {
-        // `_current_mission.mission.coalition.{blue,red}.country[i].static.group[j]
+    // extract all mission statics and ship units to later look for ATIS configs in their names
+    let (mut static_units, mut ship_units) = {
         let mut current_mission: LuaTable<_> = get!(lua, "_current_mission")?;
         let mut mission: LuaTable<_> = get!(current_mission, "mission")?;
         let mut coalitions: LuaTable<_> = get!(mission, "coalition")?;
 
-        let mut comm_towers = Vec::new();
+        let mut static_units = Vec::new();
+        let mut ship_units = Vec::new();
         let keys = vec!["blue", "red"];
         for key in keys {
             let mut coalition: LuaTable<_> = get!(coalitions, key)?;
@@ -142,6 +142,7 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
 
             let mut i = 1;
             while let Some(mut country) = countries.get::<LuaTable<_>, _, _>(i) {
+                // `_current_mission.mission.coalition.{blue,red}.country[i].static.group[j]
                 if let Some(mut statics) = country.get::<LuaTable<_>, _, _>("static") {
                     if let Some(mut groups) = statics.get::<LuaTable<_>, _, _>("group") {
                         let mut j = 1;
@@ -154,7 +155,7 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
                             let mut first_unit: LuaTable<_> = get!(units, 1)?;
                             let unit_id: i32 = get!(first_unit, "unitId")?;
 
-                            comm_towers.push(CommTower {
+                            static_units.push(CommTower {
                                 id: unit_id,
                                 name: String::new(),
                                 x,
@@ -166,26 +167,62 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
                         }
                     }
                 }
+
+                // `_current_mission.mission.coalition.{blue,red}.country[i].ship.group[j].units[k]
+                if let Some(mut ships) = country.get::<LuaTable<_>, _, _>("ships") {
+                    if let Some(mut groups) = ships.get::<LuaTable<_>, _, _>("group") {
+                        let mut j = 1;
+                        while let Some(mut group) = groups.get::<LuaTable<_>, _, _>(j) {
+                            if let Some(mut units) = group.get::<LuaTable<_>, _, _>("units") {
+                                let mut k = 1;
+                                while let Some(mut unit) = units.get::<LuaTable<_>, _, _>(k) {
+                                    let unit_id: i32 = get!(unit, "unitId")?;
+                                    let freq: u32 = get!(unit, "frequency")?;
+
+                                    ship_units.push(Ship {
+                                        id: unit_id,
+                                        name: String::new(),
+                                        freq,
+                                    });
+
+                                    k += 1;
+                                }
+                            }
+
+                            j += 1;
+                        }
+                    }
+                }
+
                 i += 1;
             }
         }
-        comm_towers
+
+        (static_units, ship_units)
     };
 
-    // extract the names for all statics
+    // extract the names for all static and ship units
     {
         // read `DCS.getUnitProperty`
         let mut dcs: LuaTable<_> = get!(lua, "DCS")?;
         let mut get_unit_property: LuaFunction<_> = get!(dcs, "getUnitProperty")?;
-        for mut tower in &mut comm_towers {
+
+        for mut unit in &mut static_units {
             // 3 = DCS.UNIT_NAME
-            tower.name = get_unit_property
-                .call_with_args((tower.id, 3))
+            unit.name = get_unit_property
+                .call_with_args((unit.id, 3))
+                .map_err(|_| new_lua_call_error("getUnitProperty"))?;
+        }
+
+        for mut unit in &mut ship_units {
+            // 3 = DCS.UNIT_NAME
+            unit.name = get_unit_property
+                .call_with_args((unit.id, 3))
                 .map_err(|_| new_lua_call_error("getUnitProperty"))?;
         }
     }
 
-    // read the terrain height for all airdromes and statics
+    // read the terrain height for all airdromes and static units
     {
         // read `Terrain.GetHeight`
         let mut terrain: LuaTable<_> = get!(lua, "Terrain")?;
@@ -197,9 +234,9 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
                 .map_err(|_| new_lua_call_error("getHeight"))?;
         }
 
-        for mut tower in &mut comm_towers {
-            tower.alt = get_height
-                .call_with_args((tower.x, tower.y))
+        for mut unit in &mut static_units {
+            unit.alt = get_height
+                .call_with_args((unit.x, unit.y))
                 .map_err(|_| new_lua_call_error("getHeight"))?;
         }
     }
@@ -266,7 +303,7 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
                 atis_freq: freq.atis,
                 traffic_freq: freq.traffic,
                 tts: TextToSpeechProvider::default(),
-                airfield,
+                transmitter: Transmitter::Airfield(airfield),
                 weather: Arc::clone(&weather),
             })
         })
@@ -274,12 +311,12 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
 
     // check all statics weather they represent and ATIS station and if so, combine them with
     // their corresponding airfield
-    stations.extend(comm_towers.into_iter().filter_map(|tower| {
-        extract_station_config(&tower.name).and_then(|config| {
+    stations.extend(static_units.into_iter().filter_map(|static_unit| {
+        extract_station_config(&static_unit.name).and_then(|config| {
             airfields.remove(&config.name).map(|mut airfield| {
-                airfield.position.x = tower.x;
-                airfield.position.y = tower.y;
-                airfield.position.alt = tower.alt;
+                airfield.position.x = static_unit.x;
+                airfield.position.y = static_unit.y;
+                airfield.position.alt = static_unit.alt;
 
                 Station {
                     name: config.name,
@@ -288,7 +325,7 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
                     tts: config
                         .tts
                         .unwrap_or_else(|| TextToSpeechProvider::default()),
-                    airfield,
+                    transmitter: Transmitter::Airfield(airfield),
                     weather: Arc::clone(&weather),
                 }
             })
@@ -327,6 +364,12 @@ struct CommTower {
     x: f64,
     y: f64,
     alt: f64,
+}
+
+struct Ship {
+    id: i32,
+    freq: u32,
+    name: String,
 }
 
 #[derive(Debug, PartialEq)]

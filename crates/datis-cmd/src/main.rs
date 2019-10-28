@@ -5,7 +5,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use clap::{App, Arg};
-use datis_core::station::{Airfield, Position, Station};
+use datis_core::station::{Airfield, Position, Station, Transmitter};
 use datis_core::tts::TextToSpeechProvider;
 use datis_core::weather::StaticWeather;
 use datis_core::Datis;
@@ -86,11 +86,11 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         atis_freq: freq,
         traffic_freq: None,
         tts: tts,
-        airfield: Airfield {
+        transmitter: Transmitter::Airfield(Airfield {
             name: String::from("Test"),
             position: Position::default(),
             runways: vec![String::from("09"), String::from("26")],
-        },
+        }),
         weather: Arc::new(StaticWeather),
     };
     let mut datis = Datis::new(vec![station])?;

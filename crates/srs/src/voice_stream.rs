@@ -121,16 +121,16 @@ impl Sink<Vec<u8>> for VoiceStream {
 
     fn start_send(self: Pin<&mut Self>, item: Vec<u8>) -> Result<(), Self::Error> {
         let mut sguid = [0; 22];
-        sguid.clone_from_slice(self.client.sguid.as_bytes());
+        sguid.clone_from_slice(self.client.sguid().as_bytes());
 
         let packet = VoicePacket {
             audio_part: item,
             frequencies: vec![Frequency {
-                freq: self.client.freq as f64,
+                freq: self.client.freq() as f64,
                 modulation: Modulation::AM,
                 encryption: Encryption::None,
             }],
-            unit_id: self.client.unit.as_ref().map(|u| u.id).unwrap_or(0),
+            unit_id: self.client.unit().map(|u| u.id).unwrap_or(0),
             packet_id: self.packet_id,
             sguid,
         };
@@ -193,7 +193,7 @@ async fn send_voice_pings(
 ) -> Result<(), anyhow::Error> {
     // TODO: is there a future that never resolves
     let mut sguid = [0; 22];
-    sguid.clone_from_slice(client.sguid.as_bytes());
+    sguid.clone_from_slice(client.sguid().as_bytes());
 
     loop {
         if recv_voice {
@@ -217,15 +217,16 @@ async fn forward_packets(
 }
 
 fn create_sync_message(client: &Client) -> Message {
+    let pos = client.position();
     Message {
         client: Some(MsgClient {
-            client_guid: client.sguid.clone(),
-            name: client.name.clone(),
-            position: client.pos.clone(),
+            client_guid: client.sguid().to_string(),
+            name: client.name().to_string(),
+            position: pos.clone(),
             coalition: Coalition::Blue,
             radio_info: Some(RadioInfo {
                 name: "DATIS Radios".to_string(),
-                pos: client.pos.clone(),
+                pos: pos,
                 ptt: false,
                 radios: vec![Radio {
                     enc: false,
@@ -233,7 +234,7 @@ fn create_sync_message(client: &Client) -> Message {
                     enc_mode: 0, // no encryption
                     freq_max: 1.0,
                     freq_min: 1.0,
-                    freq: client.freq as f64,
+                    freq: client.freq() as f64,
                     modulation: 0,
                     name: "DATIS Radio".to_string(),
                     sec_freq: 0.0,
@@ -247,11 +248,10 @@ fn create_sync_message(client: &Client) -> Message {
                 control: 0, // HOTAS
                 selected: 0,
                 unit: client
-                    .unit
-                    .as_ref()
+                    .unit()
                     .map(|u| u.name.clone())
-                    .unwrap_or_else(|| client.name.clone()),
-                unit_id: client.unit.as_ref().map(|u| u.id).unwrap_or(0),
+                    .unwrap_or_else(|| client.name().to_string()),
+                unit_id: client.unit().as_ref().map(|u| u.id).unwrap_or(0),
                 simultaneous_transmission: true,
             }),
         }),
@@ -263,9 +263,9 @@ fn create_sync_message(client: &Client) -> Message {
 fn create_update_message(client: &Client) -> Message {
     Message {
         client: Some(MsgClient {
-            client_guid: client.sguid.clone(),
-            name: client.name.clone(),
-            position: client.pos.clone(),
+            client_guid: client.sguid().to_string(),
+            name: client.name().to_string(),
+            position: client.position(),
             coalition: Coalition::Blue,
             radio_info: None,
         }),
@@ -275,15 +275,16 @@ fn create_update_message(client: &Client) -> Message {
 }
 
 fn create_radio_update_message(client: &Client) -> Message {
+    let pos = client.position();
     Message {
         client: Some(MsgClient {
-            client_guid: client.sguid.clone(),
-            name: client.name.clone(),
-            position: client.pos.clone(),
+            client_guid: client.sguid().to_string(),
+            name: client.name().to_string(),
+            position: pos.clone(),
             coalition: Coalition::Blue,
             radio_info: Some(RadioInfo {
                 name: "DATIS Radios".to_string(),
-                pos: client.pos.clone(),
+                pos: pos,
                 ptt: false,
                 radios: vec![Radio {
                     enc: false,
@@ -291,7 +292,7 @@ fn create_radio_update_message(client: &Client) -> Message {
                     enc_mode: 0, // no encryption
                     freq_max: 1.0,
                     freq_min: 1.0,
-                    freq: client.freq as f64,
+                    freq: client.freq() as f64,
                     modulation: 0,
                     name: "DATIS Radio".to_string(),
                     sec_freq: 0.0,
@@ -305,11 +306,10 @@ fn create_radio_update_message(client: &Client) -> Message {
                 control: 0, // HOTAS
                 selected: 0,
                 unit: client
-                    .unit
-                    .as_ref()
+                    .unit()
                     .map(|u| u.name.clone())
-                    .unwrap_or_else(|| client.name.clone()),
-                unit_id: client.unit.as_ref().map(|u| u.id).unwrap_or(0),
+                    .unwrap_or_else(|| client.name().to_string()),
+                unit_id: client.unit().map(|u| u.id).unwrap_or(0),
                 simultaneous_transmission: true,
             }),
         }),
