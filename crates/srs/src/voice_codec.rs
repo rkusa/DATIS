@@ -2,11 +2,12 @@ use std::io::{self, Cursor, Read, Write};
 
 // use byteorder::ByteOrder;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use bytes::BytesMut;
+use bytes::{BufMut, BytesMut};
 use tokio_codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 pub struct VoiceCodec {
     inner: LengthDelimitedCodec,
+    is_head: bool,
 }
 
 impl VoiceCodec {
@@ -15,9 +16,10 @@ impl VoiceCodec {
             inner: LengthDelimitedCodec::builder()
                 .length_field_offset(0)
                 .length_field_length(2)
-                .length_adjustment(0)
+                .length_adjustment(-2)
                 .little_endian()
                 .new_codec(),
+            is_head: true,
         }
     }
 }
@@ -46,6 +48,12 @@ pub struct Frequency {
 }
 
 #[derive(Debug)]
+pub enum Packet {
+    Ping([u8; 22]),
+    Voice(VoicePacket),
+}
+
+#[derive(Debug)]
 pub struct VoicePacket {
     // TODO: use Bytes instead?
     pub audio_part: Vec<u8>,
@@ -56,23 +64,41 @@ pub struct VoicePacket {
 }
 
 impl Decoder for VoiceCodec {
-    type Item = VoicePacket;
+    // UdpFramed, what VoiceCodec is used with, has a strange behavior in Tokio currently. If the
+    // codec would return `None`, which is actually an indication for that the voice codec needs
+    // more data to produce a valid item, the UdpFramed would yield the `None` as well. Though,
+    // a `None` from a stream means the stream is closed. This is planned to be fixed in tokio
+    // 0.2.0. Until then, we are using an option item here instead, so the stream would return
+    // `Some(None)` instead.
+    type Item = Option<VoicePacket>;
     type Error = io::Error;
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        if let Some(bytes) = self.inner.decode(buf)? {
-            let len = buf.len() as u64;
+        // discard ping messages
+        if self.is_head && buf.len() == 22 {
+            return Ok(None);
+        }
 
+        if let Some(bytes) = self.inner.decode(buf)? {
+            self.is_head = true;
+
+            let len = bytes.len() as u64;
             let mut rd = Cursor::new(bytes);
-            let len_audio_part = rd.read_u16::<LittleEndian>()? as usize;
+
+            let len_audio_part = rd.read_u16::<LittleEndian>()? as u64;
             let len_frequencies = rd.read_u16::<LittleEndian>()? as u64;
 
-            let mut audio_part = Vec::with_capacity(len_audio_part);
+            assert_eq!(
+                len,
+                4 + len_audio_part as u64 + len_frequencies + 4 + 8 + 22
+            );
+
+            let mut audio_part = vec![0u8; len_audio_part as usize];
             rd.read_exact(&mut audio_part)?;
 
             let len_before = rd.position();
             let mut frequencies = Vec::new();
-            while len_before - rd.position() < len_frequencies {
+            while rd.position() - len_before < len_frequencies {
                 let freq = rd.read_f64::<LittleEndian>()?;
                 let modulation = match rd.read_u8()? {
                     0 => Modulation::AM,
@@ -103,24 +129,33 @@ impl Decoder for VoiceCodec {
 
             assert_eq!(rd.position(), len);
 
-            Ok(Some(VoicePacket {
+            Ok(Some(Some(VoicePacket {
                 audio_part,
                 frequencies,
                 unit_id,
                 packet_id,
                 sguid,
-            }))
+            })))
         } else {
-            Ok(None)
+            self.is_head = false;
+            Ok(Some(None))
         }
     }
 }
 
 impl Encoder for VoiceCodec {
-    type Item = VoicePacket;
+    type Item = Packet;
     type Error = io::Error;
 
     fn encode(&mut self, packet: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
+        let packet = match packet {
+            Packet::Ping(sguid) => {
+                buf.put_slice(&sguid);
+                return Ok(());
+            }
+            Packet::Voice(packet) => packet,
+        };
+
         let capacity = 4 + packet.audio_part.len() + packet.frequencies.len() * 10 + 4 + 8 + 22;
         let mut wd = Cursor::new(Vec::with_capacity(capacity));
 
@@ -174,5 +209,11 @@ impl Encoder for VoiceCodec {
         assert_eq!(frame.len(), capacity);
 
         self.inner.encode(frame.into(), buf)
+    }
+}
+
+impl From<VoicePacket> for Packet {
+    fn from(p: VoicePacket) -> Self {
+        Packet::Voice(p)
     }
 }

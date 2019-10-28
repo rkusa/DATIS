@@ -214,7 +214,7 @@ async fn run(
     // TODO: set unit
 
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
-    let (sink, stream) = client.start(addr).await?.split();
+    let (sink, stream) = client.start(addr, false).await?.split();
 
     let rx = Box::pin(recv_voice_packets(stream));
     let tx = Box::pin(audio_broadcast(sink, station, tts_config, exporter));

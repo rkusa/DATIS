@@ -40,8 +40,12 @@ impl Client {
         });
     }
 
-    pub async fn start(self, addr: SocketAddr) -> Result<VoiceStream, anyhow::Error> {
-        let stream = VoiceStream::new(self, addr).await?;
+    pub async fn start(
+        self,
+        addr: SocketAddr,
+        recv_voice: bool,
+    ) -> Result<VoiceStream, anyhow::Error> {
+        let stream = VoiceStream::new(self, addr, recv_voice).await?;
         Ok(stream)
     }
 }

@@ -4,5 +4,5 @@ members = [
     "crates/datis-core",
     "crates/datis-module",
     "crates/radio-station",
-    "crates/srs",
+    "crates/srs"
 ]
