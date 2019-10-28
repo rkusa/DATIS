@@ -19,6 +19,11 @@ Moving to `1.0.0` as encouraged by semantic versioning.
 ### Changed
 - Upgrade to the SRS 1.7.0.0 network changes. DATIS now acts as a 1.7.0.0 SRS client.
 
+## [0.9.2] - 2019-10-28
+### Fixed
+- In some cases stations stopped transmitting every ~0.5 secs should be fixed
+- Restore consistent ~3sec pause between reports
+
 ## [0.9.1] - 2019-10-14
 ### Fixed
 - Do not SPAM logs when connection to SRS is lost #18
