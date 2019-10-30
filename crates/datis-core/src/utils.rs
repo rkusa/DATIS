@@ -26,3 +26,11 @@ where
         .collect::<Vec<String>>()
         .join(" ")
 }
+
+pub fn m_to_nm(n: f64) -> f64 {
+    n * 0.000_539_957
+}
+
+pub fn m_to_ft(n: f64) -> f64 {
+    n * 3.28084
+}

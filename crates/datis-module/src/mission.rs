@@ -236,7 +236,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     }
 
     // extract the current mission's weather kind and static weather configuration
-    let (clouds, visibility) = {
+    let (clouds, fog_thickness, fog_visibility) = {
         // read `_current_mission.mission.weather`
         let mut current_mission: LuaTable<_> = get!(lua, "_current_mission")?;
         let mut mission: LuaTable<_> = get!(current_mission, "mission")?;
@@ -260,16 +260,14 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
             }
         };
 
-        let visibility: Option<u32> = {
-            if is_dynamic {
-                None
-            } else {
-                let mut visibility: LuaTable<_> = get!(weather, "visibility")?;
-                Some(get!(visibility, "distance")?)
-            }
-        };
+        // Note: `weather.visibility` is always the same, which is why we cannot use it here
+        // and use the fog instead to derive some kind of visibility
 
-        (clouds, visibility)
+        let mut fog: LuaTable<_> = get!(weather, "fog")?;
+        let fog_thickness: u32 = get!(fog, "thickness")?;
+        let fog_visibility: u32 = get!(fog, "visibility")?;
+
+        (clouds, fog_thickness, fog_visibility)
     };
 
     // YOLO initialize the atmosphere, because DCS initializes it only after hitting the
@@ -284,8 +282,12 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     }
 
     // initialize the dynamic weather component
-    let mission_info: Arc<dyn MissionInfo + Send + Sync> =
-        Arc::new(DcsMissionInfo::create(lua, clouds, visibility)?);
+    let mission_info: Arc<dyn MissionInfo + Send + Sync> = Arc::new(DcsMissionInfo::create(
+        lua,
+        clouds,
+        fog_thickness,
+        fog_visibility,
+    )?);
 
     // combine the frequencies that have extracted from the mission's situation with their
     // corresponding airfield

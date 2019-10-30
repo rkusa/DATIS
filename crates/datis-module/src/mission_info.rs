@@ -11,7 +11,8 @@ use hlua51::{Lua, LuaFunction, LuaTable};
 pub struct DcsMissionInfoInner {
     lua: Lua<'static>,
     clouds: Option<Clouds>,
-    visibility: Option<u32>, // in m
+    fog_thickness: u32,  // in m
+    fog_visibility: u32, // in m
 }
 
 #[derive(Debug, Clone)]
@@ -21,7 +22,8 @@ impl DcsMissionInfo {
     pub fn create(
         mut lua: Lua<'static>,
         clouds: Option<Clouds>,
-        visibility: Option<u32>,
+        fog_thickness: u32,
+        fog_visibility: u32,
     ) -> Result<Self, anyhow::Error> {
         {
             lua.execute::<()>(LUA_CODE)?;
@@ -30,7 +32,8 @@ impl DcsMissionInfo {
         Ok(DcsMissionInfo(Arc::new(Mutex::new(DcsMissionInfoInner {
             lua,
             clouds,
-            visibility,
+            fog_thickness,
+            fog_visibility,
         }))))
     }
 }
@@ -39,7 +42,12 @@ impl MissionInfo for DcsMissionInfo {
     fn get_weather_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error> {
         let mut inner = self.0.lock().unwrap();
         let clouds = inner.clouds.clone();
-        let visibility = inner.visibility;
+
+        let visibility = if inner.fog_thickness > 200 {
+            Some(inner.fog_visibility)
+        } else {
+            None
+        };
 
         // call `getWeather(x, y, alt)`
         let mut get_weather: LuaFunction<_> = get!(inner.lua, "getWeather")?;
@@ -118,7 +126,9 @@ impl PartialEq for DcsMissionInfo {
     fn eq(&self, other: &DcsMissionInfo) -> bool {
         let lhs = self.0.lock().unwrap();
         let rhs = other.0.lock().unwrap();
-        lhs.clouds == rhs.clouds && lhs.visibility == rhs.visibility
+        lhs.clouds == rhs.clouds
+            && lhs.fog_thickness == rhs.fog_thickness
+            && lhs.fog_thickness == rhs.fog_thickness
     }
 }
 

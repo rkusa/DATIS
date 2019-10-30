@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::mission_info::{Clouds, MissionInfo, WeatherInfo};
 use crate::tts::TextToSpeechProvider;
-use crate::utils::{pronounce_number, round};
+use crate::utils::{m_to_ft, m_to_nm, pronounce_number, round};
 use anyhow::Context;
 pub use srs::message::Position;
 
@@ -143,8 +143,22 @@ impl Airfield {
             _break,
         );
 
-        if let Some(visibility) = weather.visibility {
-            report += &format!("{}. {}", get_visibility_report(visibility, spoken), _break);
+        let mut visibility = None;
+        if let Some(ref clouds_report) = weather.clouds {
+            if self.position.alt > clouds_report.base as f64
+                && self.position.alt < clouds_report.base as f64 + clouds_report.thickness as f64
+                && clouds_report.density >= 9
+            {
+                // the airport is within completely condensed clouds
+                visibility = Some(0);
+            }
+        }
+
+        if let Some(visibility) = visibility.or(weather.visibility) {
+            // 9260 m = 5 nm
+            if visibility < 9260 {
+                report += &format!("{}. {}", get_visibility_report(visibility, spoken), _break);
+            }
         }
 
         if let Some(clouds_report) = weather
@@ -261,8 +275,7 @@ impl Carrier {
 }
 
 fn get_visibility_report(visibility: u32, spoken: bool) -> String {
-    // convert m to nm
-    let visibility = (f64::from(visibility) * 0.000_539_957).round();
+    let visibility = round(m_to_nm(f64::from(visibility)), 1);
     format!("Visibility {}", pronounce_number(visibility, spoken))
 }
 
@@ -277,7 +290,7 @@ fn get_clouds_report(clouds: &Clouds, spoken: bool) -> Option<String> {
     if let Some(density) = density {
         let mut report = String::new();
         // convert m to ft, round to lowest 500ft increment and shortened (e.g. 17500 -> 175)
-        let base = (f64::from(clouds.base) * 3.28084).round() as u32;
+        let base = m_to_ft(f64::from(clouds.base)).round() as u32;
         let base = (base - (base % 500)) / 100;
         report += &format!(
             "Cloud conditions {} {}",
