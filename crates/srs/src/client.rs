@@ -47,6 +47,10 @@ impl Client {
         p.clone()
     }
 
+    pub fn position_handle(&self) -> Arc<RwLock<Position>> {
+        self.pos.clone()
+    }
+
     pub fn unit(&self) -> Option<&UnitInfo> {
         self.unit.as_ref()
     }

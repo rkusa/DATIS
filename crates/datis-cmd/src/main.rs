@@ -83,13 +83,13 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let station = Station {
         name: String::from("Test Station"),
-        atis_freq: freq,
-        traffic_freq: None,
+        freq,
         tts: tts,
         transmitter: Transmitter::Airfield(Airfield {
             name: String::from("Test"),
             position: Position::default(),
             runways: vec![String::from("09"), String::from("26")],
+            traffic_freq: None,
         }),
         weather: Arc::new(StaticWeather),
     };

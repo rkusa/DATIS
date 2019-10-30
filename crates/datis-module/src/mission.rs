@@ -18,7 +18,7 @@ pub struct Info {
     pub srs_port: u16,
 }
 
-pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
+pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     debug!("Extracting ATIS stations from Mission Situation");
 
     // read gcloud access key option
@@ -57,13 +57,6 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
             .map_err(|_| new_lua_call_error("getPlugin"))?;
         info!("Using SRS Server port: {}", port);
         port
-    };
-
-    // read `package.cpath`
-    let cpath = {
-        let mut package: LuaTable<_> = get!(lua, "package")?;
-        let cpath: String = get!(package, "cpath")?;
-        cpath
     };
 
     // extract frequencies from mission briefing, which is retrieved from
@@ -119,6 +112,7 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
                         name: display_name,
                         position: Position { x, y, alt: 0.0 },
                         runways,
+                        traffic_freq: None,
                     },
                 );
             }
@@ -169,14 +163,14 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
                 }
 
                 // `_current_mission.mission.coalition.{blue,red}.country[i].ship.group[j].units[k]
-                if let Some(mut ships) = country.get::<LuaTable<_>, _, _>("ships") {
+                if let Some(mut ships) = country.get::<LuaTable<_>, _, _>("ship") {
                     if let Some(mut groups) = ships.get::<LuaTable<_>, _, _>("group") {
                         let mut j = 1;
                         while let Some(mut group) = groups.get::<LuaTable<_>, _, _>(j) {
                             if let Some(mut units) = group.get::<LuaTable<_>, _, _>("units") {
                                 let mut k = 1;
                                 while let Some(mut unit) = units.get::<LuaTable<_>, _, _>(k) {
-                                    let unit_id: i32 = get!(unit, "unitId")?;
+                                    let unit_id: u32 = get!(unit, "unitId")?;
                                     let freq: u32 = get!(unit, "frequency")?;
 
                                     ship_units.push(Ship {
@@ -291,7 +285,7 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
 
     // initialize the dynamic weather component
     let weather: Arc<dyn Weather + Send + Sync> =
-        Arc::new(DcsWeather::create(&cpath, clouds, visibility)?);
+        Arc::new(DcsWeather::create(lua, clouds, visibility)?);
 
     // combine the frequencies that have extracted from the mission's situation with their
     // corresponding airfield
@@ -300,8 +294,7 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
         .filter_map(|(name, freq)| {
             airfields.remove(&name).map(|airfield| Station {
                 name,
-                atis_freq: freq.atis,
-                traffic_freq: freq.traffic,
+                freq: freq.atis,
                 tts: TextToSpeechProvider::default(),
                 transmitter: Transmitter::Airfield(airfield),
                 weather: Arc::clone(&weather),
@@ -314,14 +307,14 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
     stations.extend(static_units.into_iter().filter_map(|static_unit| {
         extract_station_config(&static_unit.name).and_then(|config| {
             airfields.remove(&config.name).map(|mut airfield| {
+                airfield.traffic_freq = config.traffic;
                 airfield.position.x = static_unit.x;
                 airfield.position.y = static_unit.y;
                 airfield.position.alt = static_unit.alt;
 
                 Station {
                     name: config.name,
-                    atis_freq: config.atis,
-                    traffic_freq: config.traffic,
+                    freq: config.atis,
                     tts: config
                         .tts
                         .unwrap_or_else(|| TextToSpeechProvider::default()),
@@ -332,11 +325,27 @@ pub fn extract(mut lua: Lua<'_>) -> Result<Info, anyhow::Error> {
         })
     }));
 
+    stations.extend(ship_units.into_iter().filter_map(|ship_unit| {
+        extract_station_config(&ship_unit.name).map(|config| Station {
+            name: config.name.clone(),
+            freq: ship_unit.freq as u64,
+            tts: config
+                .tts
+                .unwrap_or_else(|| TextToSpeechProvider::default()),
+            transmitter: Transmitter::Carrier(Carrier {
+                name: config.name,
+                unit_id: ship_unit.id,
+                unit_name: ship_unit.name,
+            }),
+            weather: Arc::clone(&weather),
+        })
+    }));
+
     debug!("Valid ATIS Stations:");
     for station in &stations {
         debug!(
             "  - {} (Freq: {}, Voice: {:?})",
-            station.name, station.atis_freq, station.tts
+            station.name, station.freq, station.tts
         );
     }
 
@@ -366,8 +375,9 @@ struct CommTower {
     alt: f64,
 }
 
+#[derive(Debug)]
 struct Ship {
-    id: i32,
+    id: u32,
     freq: u32,
     name: String,
 }

@@ -9,8 +9,7 @@ pub use srs::message::Position;
 #[derive(Clone)]
 pub struct Station {
     pub name: String,
-    pub atis_freq: u64,
-    pub traffic_freq: Option<u64>,
+    pub freq: u64,
     pub tts: TextToSpeechProvider,
     pub weather: Arc<dyn Weather + Send + Sync>,
     pub transmitter: Transmitter,
@@ -21,55 +20,87 @@ pub struct Airfield {
     pub name: String,
     pub position: Position,
     pub runways: Vec<String>,
+    pub traffic_freq: Option<u64>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Unit {
+pub struct Carrier {
     pub name: String,
+    pub unit_id: u32,
+    pub unit_name: String,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Transmitter {
     Airfield(Airfield),
-    Unit(Unit),
+    Carrier(Carrier),
 }
 
 pub struct Report {
     pub textual: String,
     pub spoken: String,
+    pub position: Position,
 }
 
 impl Station {
     pub fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
-        let weather = match &self.transmitter {
-            Transmitter::Airfield(airfield) => self
-                .weather
-                .get_at(
-                    airfield.position.x,
-                    airfield.position.y,
-                    airfield.position.alt,
-                )
-                .context("failed to retrieve weather")?,
-            Transmitter::Unit(unit) => {
-                let w = self
+        match &self.transmitter {
+            Transmitter::Airfield(airfield) => {
+                let weather = self
                     .weather
-                    .get_for_unit(&unit.name)
+                    .get_at(
+                        airfield.position.x,
+                        airfield.position.y,
+                        airfield.position.alt,
+                    )
+                    .context("failed to retrieve weather")?;
+
+                Ok(Some(Report {
+                    textual: airfield.generate_report(report_nr, &weather, false)?,
+                    spoken: airfield.generate_report(report_nr, &weather, true)?,
+                    position: weather.position,
+                }))
+            }
+            Transmitter::Carrier(unit) => {
+                let weather = self
+                    .weather
+                    .get_for_unit(&unit.unit_name)
                     .context("failed to retrieve weather for unit")?;
-                if let Some(w) = w {
-                    w
+                if let Some(weather) = weather {
+                    Ok(Some(Report {
+                        textual: unit.generate_report(&weather, false)?,
+                        spoken: unit.generate_report(&weather, true)?,
+                        position: weather.position,
+                    }))
                 } else {
                     return Ok(None);
                 }
             }
-        };
+        }
+    }
+}
 
-        Ok(Some(Report {
-            textual: self.generate_report_for_weather(report_nr, &weather, false)?,
-            spoken: self.generate_report_for_weather(report_nr, &weather, true)?,
-        }))
+impl Airfield {
+    fn get_active_runway(&self, wind_dir: f64) -> Option<&str> {
+        let lr: &[_] = &['L', 'R'];
+        for rwy in &self.runways {
+            let rwy = rwy.trim_matches(lr);
+            if let Ok(mut rwy_dir) = rwy.parse::<f64>() {
+                rwy_dir *= 10.0; // e.g. 04 to 040
+                let phi = (wind_dir - rwy_dir).abs() % 360.0;
+                let distance = if phi > 180.0 { 360.0 - phi } else { phi };
+                if distance <= 90.0 {
+                    return Some(&rwy);
+                }
+            } else {
+                error!("Error parsing runway: {}", rwy);
+            }
+        }
+
+        None
     }
 
-    pub fn generate_report_for_weather(
+    pub fn generate_report(
         &self,
         report_nr: usize,
         weather: &WeatherInfo,
@@ -88,13 +119,11 @@ impl Station {
             self.name, information_letter, _break
         );
 
-        if let Transmitter::Airfield(airfield) = &self.transmitter {
-            if let Some(rwy) = airfield.get_active_runway(weather.wind_dir) {
-                let rwy = pronounce_number(rwy, spoken);
-                report += &format!("Runway in use is {}. {}", rwy, _break);
-            } else {
-                error!("Could not find active runway for {}", self.name);
-            }
+        if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
+            let rwy = pronounce_number(rwy, spoken);
+            report += &format!("Runway in use is {}. {}", rwy, _break);
+        } else {
+            error!("Could not find active runway for {}", self.name);
         }
 
         let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
@@ -162,24 +191,50 @@ impl Station {
     }
 }
 
-impl Airfield {
-    fn get_active_runway(&self, wind_dir: f64) -> Option<&str> {
-        let lr: &[_] = &['L', 'R'];
-        for rwy in &self.runways {
-            let rwy = rwy.trim_matches(lr);
-            if let Ok(mut rwy_dir) = rwy.parse::<f64>() {
-                rwy_dir *= 10.0; // e.g. 04 to 040
-                let phi = (wind_dir - rwy_dir).abs() % 360.0;
-                let distance = if phi > 180.0 { 360.0 - phi } else { phi };
-                if distance <= 90.0 {
-                    return Some(&rwy);
-                }
-            } else {
-                error!("Error parsing runway: {}", rwy);
-            }
+impl Carrier {
+    pub fn generate_report(
+        &self,
+        weather: &WeatherInfo,
+        spoken: bool,
+    ) -> Result<String, anyhow::Error> {
+        #[cfg(not(test))]
+        let _break = if spoken { "\n" } else { "" };
+        #[cfg(test)]
+        let _break = if spoken { "| " } else { "" };
+
+        let mut report = if spoken { "<speak>\n" } else { "" }.to_string();
+
+        report += &format!("99, {}", _break);
+
+        let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
+        report += &format!(
+            "{}'s wind {} at {} knots, {}",
+            self.name,
+            pronounce_number(wind_dir, spoken),
+            pronounce_number(weather.wind_speed.round(), spoken),
+            _break,
+        );
+
+        report += &format!(
+            "altimeter {}, {}",
+            // inHg, but using 0.02953 instead of 0.0002953 since we don't want to speak the
+            // DECIMAL here
+            pronounce_number((weather.pressure_qnh * 0.02953).round(), spoken),
+            _break,
+        );
+
+        // TODO: determine CASE 1, 2, 3
+        report += &format!("CASE 1, {}", _break,);
+
+        // TODO: BRC xxx
+        // TODO: expected final heading xxx
+        // TODO: report initial
+
+        if spoken {
+            report += "\n</speak>";
         }
 
-        None
+        Ok(report)
     }
 }
 

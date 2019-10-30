@@ -18,10 +18,11 @@ pub mod weather;
 use std::mem;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 use crate::export::ReportExporter;
-use crate::station::{Station, Transmitter};
+use crate::station::{Position, Station, Transmitter};
 use crate::tts::{
     aws::{self, AmazonWebServicesConfig},
     gcloud::{self, GoogleCloudConfig},
@@ -209,22 +210,23 @@ async fn run(
     exporter: Option<&ReportExporter>,
 ) -> Result<(), anyhow::Error> {
     let name = format!("ATIS {}", station.name);
-    let mut client = Client::new(&name, station.atis_freq);
+    let mut client = Client::new(&name, station.freq);
     match &station.transmitter {
         Transmitter::Airfield(airfield) => {
             client.set_position(airfield.position.clone());
+            // TODO: set unit?
         }
-        Transmitter::Unit(_unit) => {
-            unimplemented!();
+        Transmitter::Carrier(unit) => {
+            client.set_unit(unit.unit_id, &unit.unit_name);
         }
     }
-    // TODO: set unit
+    let pos = client.position_handle();
 
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
     let (sink, stream) = client.start(addr, false).await?.split();
 
     let rx = Box::pin(recv_voice_packets(stream));
-    let tx = Box::pin(audio_broadcast(sink, station, tts_config, exporter));
+    let tx = Box::pin(audio_broadcast(sink, station, pos, tts_config, exporter));
 
     match future::try_select(rx, tx).await {
         Err(Either::Left((err, _))) => Err(err.into()),
@@ -245,12 +247,15 @@ async fn recv_voice_packets(mut stream: SplitStream<VoiceStream>) -> Result<(), 
 async fn audio_broadcast(
     mut sink: SplitSink<VoiceStream, Vec<u8>>,
     station: &Station,
+    position: Arc<RwLock<Position>>,
     tts_config: &TextToSpeechConfig,
     exporter: Option<&ReportExporter>,
 ) -> Result<(), anyhow::Error> {
     let interval = Duration::from_secs(60 * 60); // 60min
     let mut interval_start;
     let mut report_ix = 0;
+    let mut previous_report = "".to_string();
+    let mut frames = Vec::new();
 
     loop {
         interval_start = Instant::now();
@@ -273,17 +278,29 @@ async fn audio_broadcast(
             }
         }
 
+        debug!("{} Position: {:?}", station.name, report.position);
+
+        {
+            let mut pos = position.write().unwrap();
+            *pos = report.position;
+        }
+
         report_ix += 1;
         debug!("Report: {}", report.spoken);
 
-        let frames = match tts_config {
-            TextToSpeechConfig::GoogleCloud(config) => {
-                gcloud::text_to_speech(&report.spoken, config).await?
-            }
-            TextToSpeechConfig::AmazonWebServices(config) => {
-                aws::text_to_speech(&report.spoken, config).await?
-            }
-        };
+        if report.spoken != previous_report {
+            debug!("{} report has changed -> executing TTS", station.name);
+            // only to TTS if the report has changed from the previous iteration
+            frames = match tts_config {
+                TextToSpeechConfig::GoogleCloud(config) => {
+                    gcloud::text_to_speech(&report.spoken, config).await?
+                }
+                TextToSpeechConfig::AmazonWebServices(config) => {
+                    aws::text_to_speech(&report.spoken, config).await?
+                }
+            };
+        }
+        previous_report = report.spoken;
 
         loop {
             let elapsed = Instant::now() - interval_start;
@@ -306,7 +323,17 @@ async fn audio_broadcast(
             }
 
             // postpone the next playback of the report by some seconds ...
-            delay_for(Duration::from_secs(3)).await;
+            match &station.transmitter {
+                Transmitter::Airfield(_) => {
+                    delay_for(Duration::from_secs(3)).await;
+                }
+                Transmitter::Carrier(_) => {
+                    delay_for(Duration::from_secs(10)).await;
+                    // always create a new report for carriers, since they are usually
+                    // constantly moving
+                    break;
+                }
+            }
         }
     }
 }

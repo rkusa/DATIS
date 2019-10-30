@@ -1,3 +1,5 @@
+use srs::message::Position;
+
 pub trait Weather {
     fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error>;
     fn get_for_unit(&self, name: &str) -> Result<Option<WeatherInfo>, anyhow::Error>;
@@ -13,6 +15,7 @@ pub struct Clouds {
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct WeatherInfo {
+    pub position: Position,
     pub clouds: Option<Clouds>,
     pub visibility: Option<u32>, // in m
     pub wind_speed: f64,         // in m/s
@@ -26,8 +29,9 @@ pub struct WeatherInfo {
 pub struct StaticWeather;
 
 impl Weather for StaticWeather {
-    fn get_at(&self, _x: f64, _y: f64, _alt: f64) -> Result<WeatherInfo, anyhow::Error> {
+    fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error> {
         Ok(WeatherInfo {
+            position: Position { x, y, alt },
             clouds: None,
             visibility: None,
             wind_speed: 5.0,
