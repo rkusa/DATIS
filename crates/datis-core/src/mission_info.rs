@@ -4,6 +4,24 @@ pub trait MissionInfo {
     fn get_weather_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error>;
     fn get_unit_position(&self, name: &str) -> Result<Option<Position>, anyhow::Error>;
     fn get_unit_heading(&self, name: &str) -> Result<Option<f64>, anyhow::Error>;
+    fn get_abs_time(&self) -> Result<f64, anyhow::Error>;
+
+    fn get_mission_hour(&self) -> Result<u16, anyhow::Error> {
+        let mut time = self.get_abs_time()?;
+        let mut h = 0;
+
+        while time >= 86_400.0 {
+            time -= 86_400.0;
+            // ignore days
+        }
+
+        while time >= 3_600.0 {
+            time -= 3_600.0;
+            h += 1;
+        }
+
+        Ok(h)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -47,5 +65,9 @@ impl MissionInfo for StaticMissionInfo {
 
     fn get_unit_heading(&self, _name: &str) -> Result<Option<f64>, anyhow::Error> {
         Ok(None)
+    }
+
+    fn get_abs_time(&self) -> Result<f64, anyhow::Error> {
+        Ok(0.0)
     }
 }

@@ -75,10 +75,11 @@ impl Station {
                         .mission_info
                         .get_weather_at(pos.x, pos.y, pos.alt)
                         .context("failed to retrieve weather")?;
+                    let mission_hour = self.mission_info.get_mission_hour()?;
 
                     Ok(Some(Report {
-                        textual: unit.generate_report(&weather, heading, false)?,
-                        spoken: unit.generate_report(&weather, heading, true)?,
+                        textual: unit.generate_report(&weather, heading, mission_hour, false)?,
+                        spoken: unit.generate_report(&weather, heading, mission_hour, true)?,
                         position: pos,
                     }))
                 } else {
@@ -219,6 +220,7 @@ impl Carrier {
         &self,
         weather: &WeatherInfo,
         heading: f64,
+        mission_hour: u16,
         spoken: bool,
     ) -> Result<String, anyhow::Error> {
         #[cfg(not(test))]
@@ -265,6 +267,12 @@ impl Carrier {
             if visibility < 9_260 {
                 case = 3;
             }
+        }
+
+        // night time is only estimated, it could be improved by somehow taking the different time-
+        // zones of the different maps and the mission date into account.
+        if mission_hour >= 21 || mission_hour <= 5 {
+            case = 3;
         }
 
         report += &format!("CASE {}, {}", case, _break,);

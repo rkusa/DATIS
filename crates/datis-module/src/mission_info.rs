@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
+use anyhow::Context;
 use datis_core::{
     mission_info::{Clouds, MissionInfo, WeatherInfo},
     station::Position,
@@ -109,8 +110,8 @@ impl MissionInfo for DcsMissionInfo {
         let mut inner = self.0.lock().unwrap();
 
         // call `getUnitHeading(name)`
-        let mut get_unit_position: LuaFunction<_> = get!(inner.lua, "getUnitHeading")?;
-        let heading: String = get_unit_position
+        let mut get_unit_heading: LuaFunction<_> = get!(inner.lua, "getUnitHeading")?;
+        let heading: String = get_unit_heading
             .call_with_args(name)
             .map_err(|err| anyhow!("failed to call lua function getUnitHeading {}", err))?;
 
@@ -119,6 +120,22 @@ impl MissionInfo for DcsMissionInfo {
         } else {
             f64::from_str(&heading).ok()
         })
+    }
+
+    fn get_abs_time(&self) -> Result<f64, anyhow::Error> {
+        let mut inner = self.0.lock().unwrap();
+
+        // call `getAbsTime()`
+        let mut get_abs_time: LuaFunction<_> = get!(inner.lua, "getAbsTime")?;
+        let abs_time: String = get_abs_time
+            .call()
+            .map_err(|err| anyhow!("failed to call lua function getAbsTime {}", err))?;
+
+        if abs_time.is_empty() {
+            Err(anyhow!("Didn't receive abs time"))
+        } else {
+            Ok(f64::from_str(&abs_time).context("failed parsing abs mission time to string")?)
+        }
     }
 }
 
@@ -199,4 +216,12 @@ static LUA_CODE: &str = r#"
 
         return net.dostring_in("server", get_unit_heading)
     end
+
+    getAbsTime = function(name)
+        local get_abs_time = [[
+            return tostring(timer.getAbsTime())
+        ]]
+
+        return net.dostring_in("server", get_abs_time)
+	end
 "#;
