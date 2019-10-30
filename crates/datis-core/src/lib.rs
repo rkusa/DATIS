@@ -10,10 +10,10 @@ extern crate serde;
 extern crate anyhow;
 
 pub mod export;
+pub mod mission_info;
 pub mod station;
 pub mod tts;
 mod utils;
-pub mod weather;
 
 use std::mem;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};

@@ -10,7 +10,7 @@ extern crate anyhow;
 #[macro_use]
 mod macros;
 mod mission;
-mod weather;
+mod mission_info;
 
 use std::ffi::CString;
 use std::ptr;

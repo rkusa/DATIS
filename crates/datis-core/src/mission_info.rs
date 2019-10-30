@@ -1,8 +1,9 @@
 use srs::message::Position;
 
-pub trait Weather {
-    fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error>;
-    fn get_for_unit(&self, name: &str) -> Result<Option<WeatherInfo>, anyhow::Error>;
+pub trait MissionInfo {
+    fn get_weather_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error>;
+    fn get_unit_position(&self, name: &str) -> Result<Option<Position>, anyhow::Error>;
+    fn get_unit_heading(&self, name: &str) -> Result<Option<f64>, anyhow::Error>;
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -15,7 +16,6 @@ pub struct Clouds {
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct WeatherInfo {
-    pub position: Position,
     pub clouds: Option<Clouds>,
     pub visibility: Option<u32>, // in m
     pub wind_speed: f64,         // in m/s
@@ -26,12 +26,11 @@ pub struct WeatherInfo {
 }
 
 #[derive(Clone)]
-pub struct StaticWeather;
+pub struct StaticMissionInfo;
 
-impl Weather for StaticWeather {
-    fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error> {
+impl MissionInfo for StaticMissionInfo {
+    fn get_weather_at(&self, _x: f64, _y: f64, _alt: f64) -> Result<WeatherInfo, anyhow::Error> {
         Ok(WeatherInfo {
-            position: Position { x, y, alt },
             clouds: None,
             visibility: None,
             wind_speed: 5.0,
@@ -42,7 +41,11 @@ impl Weather for StaticWeather {
         })
     }
 
-    fn get_for_unit(&self, _name: &str) -> Result<Option<WeatherInfo>, anyhow::Error> {
-        self.get_at(0.0, 0.0, 0.0).map(|w| Some(w))
+    fn get_unit_position(&self, _name: &str) -> Result<Option<Position>, anyhow::Error> {
+        Ok(None)
+    }
+
+    fn get_unit_heading(&self, _name: &str) -> Result<Option<f64>, anyhow::Error> {
+        Ok(None)
     }
 }

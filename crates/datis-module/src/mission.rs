@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::weather::DcsWeather;
+use crate::mission_info::DcsMissionInfo;
+use datis_core::mission_info::*;
 use datis_core::station::*;
 use datis_core::tts::TextToSpeechProvider;
-use datis_core::weather::*;
 use hlua51::{Lua, LuaFunction, LuaTable};
 use regex::{Regex, RegexBuilder};
 
@@ -284,8 +284,8 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     }
 
     // initialize the dynamic weather component
-    let weather: Arc<dyn Weather + Send + Sync> =
-        Arc::new(DcsWeather::create(lua, clouds, visibility)?);
+    let mission_info: Arc<dyn MissionInfo + Send + Sync> =
+        Arc::new(DcsMissionInfo::create(lua, clouds, visibility)?);
 
     // combine the frequencies that have extracted from the mission's situation with their
     // corresponding airfield
@@ -297,7 +297,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                 freq: freq.atis,
                 tts: TextToSpeechProvider::default(),
                 transmitter: Transmitter::Airfield(airfield),
-                weather: Arc::clone(&weather),
+                mission_info: Arc::clone(&mission_info),
             })
         })
         .collect();
@@ -319,7 +319,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                         .tts
                         .unwrap_or_else(|| TextToSpeechProvider::default()),
                     transmitter: Transmitter::Airfield(airfield),
-                    weather: Arc::clone(&weather),
+                    mission_info: Arc::clone(&mission_info),
                 }
             })
         })
@@ -337,7 +337,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                 unit_id: ship_unit.id,
                 unit_name: ship_unit.name,
             }),
-            weather: Arc::clone(&weather),
+            mission_info: Arc::clone(&mission_info),
         })
     }));
 

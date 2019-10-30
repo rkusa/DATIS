@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use crate::mission_info::{Clouds, MissionInfo, WeatherInfo};
 use crate::tts::TextToSpeechProvider;
 use crate::utils::{pronounce_number, round};
-use crate::weather::{Clouds, Weather, WeatherInfo};
 use anyhow::Context;
 pub use srs::message::Position;
 
@@ -11,7 +11,7 @@ pub struct Station {
     pub name: String,
     pub freq: u64,
     pub tts: TextToSpeechProvider,
-    pub weather: Arc<dyn Weather + Send + Sync>,
+    pub mission_info: Arc<dyn MissionInfo + Send + Sync>,
     pub transmitter: Transmitter,
 }
 
@@ -47,8 +47,8 @@ impl Station {
         match &self.transmitter {
             Transmitter::Airfield(airfield) => {
                 let weather = self
-                    .weather
-                    .get_at(
+                    .mission_info
+                    .get_weather_at(
                         airfield.position.x,
                         airfield.position.y,
                         airfield.position.alt,
@@ -58,19 +58,28 @@ impl Station {
                 Ok(Some(Report {
                     textual: airfield.generate_report(report_nr, &weather, false)?,
                     spoken: airfield.generate_report(report_nr, &weather, true)?,
-                    position: weather.position,
+                    position: airfield.position.clone(),
                 }))
             }
             Transmitter::Carrier(unit) => {
-                let weather = self
-                    .weather
-                    .get_for_unit(&unit.unit_name)
-                    .context("failed to retrieve weather for unit")?;
-                if let Some(weather) = weather {
+                let pos = self
+                    .mission_info
+                    .get_unit_position(&unit.unit_name)
+                    .context("failed to retrieve unit position")?;
+                let heading = self
+                    .mission_info
+                    .get_unit_heading(&unit.unit_name)
+                    .context("failed to retrieve unit heading")?;
+                if let (Some(pos), Some(heading)) = (pos, heading) {
+                    let weather = self
+                        .mission_info
+                        .get_weather_at(pos.x, pos.y, pos.alt)
+                        .context("failed to retrieve weather")?;
+
                     Ok(Some(Report {
-                        textual: unit.generate_report(&weather, false)?,
-                        spoken: unit.generate_report(&weather, true)?,
-                        position: weather.position,
+                        textual: unit.generate_report(&weather, heading, false)?,
+                        spoken: unit.generate_report(&weather, heading, true)?,
+                        position: pos,
                     }))
                 } else {
                     return Ok(None);
@@ -195,6 +204,7 @@ impl Carrier {
     pub fn generate_report(
         &self,
         weather: &WeatherInfo,
+        heading: f64,
         spoken: bool,
     ) -> Result<String, anyhow::Error> {
         #[cfg(not(test))]
@@ -204,7 +214,7 @@ impl Carrier {
 
         let mut report = if spoken { "<speak>\n" } else { "" }.to_string();
 
-        report += &format!("99, {}", _break);
+        report += &format!("{}, {}", pronounce_number(99, spoken), _break);
 
         let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
         report += &format!(
@@ -223,12 +233,24 @@ impl Carrier {
             _break,
         );
 
+        // Case 1: daytime, ceiling >= 3000ft; visibility distance >= 5nm
+        // Case 2: daytime, ceiling >= 1000ft; visibility distance >= 5nm
+        // Case 3: nighttime or daytime, ceiling < 1000ft and visibility distance <= 5nm
+
         // TODO: determine CASE 1, 2, 3
         report += &format!("CASE 1, {}", _break,);
 
-        // TODO: BRC xxx
-        // TODO: expected final heading xxx
-        // TODO: report initial
+        let brc = heading.to_degrees().round();
+        report += &format!("BRC {}, {}", pronounce_number(brc, spoken), _break,);
+
+        // 9 -> 9deg angled deck
+        report += &format!(
+            "expected final heading {}, {}",
+            pronounce_number(brc - 9.0, spoken),
+            _break,
+        );
+
+        report += &format!("report initial, {}", _break,);
 
         if spoken {
             report += "\n</speak>";

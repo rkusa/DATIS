@@ -1,22 +1,23 @@
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use datis_core::{
+    mission_info::{Clouds, MissionInfo, WeatherInfo},
     station::Position,
-    weather::{Clouds, Weather, WeatherInfo},
 };
 use hlua51::{Lua, LuaFunction, LuaTable};
 
 #[derive(Debug)]
-pub struct DcsWeatherInner {
+pub struct DcsMissionInfoInner {
     lua: Lua<'static>,
     clouds: Option<Clouds>,
     visibility: Option<u32>, // in m
 }
 
 #[derive(Debug, Clone)]
-pub struct DcsWeather(Arc<Mutex<DcsWeatherInner>>);
+pub struct DcsMissionInfo(Arc<Mutex<DcsMissionInfoInner>>);
 
-impl DcsWeather {
+impl DcsMissionInfo {
     pub fn create(
         mut lua: Lua<'static>,
         clouds: Option<Clouds>,
@@ -26,7 +27,7 @@ impl DcsWeather {
             lua.execute::<()>(LUA_CODE)?;
         }
 
-        Ok(DcsWeather(Arc::new(Mutex::new(DcsWeatherInner {
+        Ok(DcsMissionInfo(Arc::new(Mutex::new(DcsMissionInfoInner {
             lua,
             clouds,
             visibility,
@@ -34,8 +35,8 @@ impl DcsWeather {
     }
 }
 
-impl Weather for DcsWeather {
-    fn get_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error> {
+impl MissionInfo for DcsMissionInfo {
+    fn get_weather_at(&self, x: f64, y: f64, alt: f64) -> Result<WeatherInfo, anyhow::Error> {
         let mut inner = self.0.lock().unwrap();
         let clouds = inner.clouds.clone();
         let visibility = inner.visibility;
@@ -67,7 +68,6 @@ impl Weather for DcsWeather {
         }
 
         Ok(WeatherInfo {
-            position: Position { x, y, alt },
             clouds,
             visibility,
             wind_speed,
@@ -78,38 +78,51 @@ impl Weather for DcsWeather {
         })
     }
 
-    fn get_for_unit(&self, name: &str) -> Result<Option<WeatherInfo>, anyhow::Error> {
-        let (x, y, alt) = {
-            let mut inner = self.0.lock().unwrap();
+    fn get_unit_position(&self, name: &str) -> Result<Option<Position>, anyhow::Error> {
+        let mut inner = self.0.lock().unwrap();
 
-            // call `getUnitPosition(name)`
-            let mut get_unit_position: LuaFunction<_> = get!(inner.lua, "getUnitPosition")?;
-            let mut pos: LuaTable<_> = get_unit_position
-                .call_with_args(name)
-                .map_err(|err| anyhow!("failed to call lua function getUnitPosition {}", err))?;
-            let x: f64 = get!(pos, "x")?;
-            let y: f64 = get!(pos, "y")?;
-            let alt: f64 = get!(pos, "alt")?;
-
-            (x, y, alt)
-        };
+        // call `getUnitPosition(name)`
+        let mut get_unit_position: LuaFunction<_> = get!(inner.lua, "getUnitPosition")?;
+        let mut pos: LuaTable<_> = get_unit_position
+            .call_with_args(name)
+            .map_err(|err| anyhow!("failed to call lua function getUnitPosition {}", err))?;
+        let x: f64 = get!(pos, "x")?;
+        let y: f64 = get!(pos, "y")?;
+        let alt: f64 = get!(pos, "alt")?;
 
         if x == 0.0 && y == 0.0 && alt == 0.0 {
             Ok(None)
         } else {
-            Ok(Some(self.get_at(x, y, alt)?))
+            Ok(Some(Position { x, y, alt }))
         }
+    }
+
+    fn get_unit_heading(&self, name: &str) -> Result<Option<f64>, anyhow::Error> {
+        let mut inner = self.0.lock().unwrap();
+
+        // call `getUnitHeading(name)`
+        let mut get_unit_position: LuaFunction<_> = get!(inner.lua, "getUnitHeading")?;
+        let heading: String = get_unit_position
+            .call_with_args(name)
+            .map_err(|err| anyhow!("failed to call lua function getUnitHeading {}", err))?;
+
+        Ok(if heading.is_empty() {
+            None
+        } else {
+            f64::from_str(&heading).ok()
+        })
     }
 }
 
-impl PartialEq for DcsWeather {
-    fn eq(&self, other: &DcsWeather) -> bool {
+impl PartialEq for DcsMissionInfo {
+    fn eq(&self, other: &DcsMissionInfo) -> bool {
         let lhs = self.0.lock().unwrap();
         let rhs = other.0.lock().unwrap();
         lhs.clouds == rhs.clouds && lhs.visibility == rhs.visibility
     }
 }
 
+// north correction is based on https://github.com/mrSkortch/MissionScriptingTools
 #[cfg(not(test))]
 static LUA_CODE: &str = r#"
     local Weather = require 'Weather'
@@ -135,7 +148,7 @@ static LUA_CODE: &str = r#"
     end
 
     getUnitPosition = function(name)
-        local getUnitPos = [[
+        local get_unit_position = [[
             local unit = Unit.getByName("]] .. name .. [[")
             if unit == nil then
                 return ""
@@ -145,7 +158,7 @@ static LUA_CODE: &str = r#"
             end
         ]]
 
-        local result = net.dostring_in("server", getUnitPos)
+        local result = net.dostring_in("server", get_unit_position)
         local x, y, alt = string.match(result, "(%-?[0-9%.-]+):(%-?[0-9%.]+):(%-?[0-9%.]+)")
 
         return {
@@ -153,6 +166,29 @@ static LUA_CODE: &str = r#"
             y = y,
             alt = alt,
         }
+    end
+
+    getUnitHeading = function(name)
+        local get_unit_heading = [[
+            local unit = Unit.getByName("]] .. name .. [[")
+            if unit == nil then
+                return ""
+            else
+                local unit_pos = unit:getPosition()
+                local lat, lon = coord.LOtoLL(unit_pos.p)
+                local north_pos = coord.LLtoLO(lat + 1, lon)
+                local northCorrection = math.atan2(north_pos.z - unit_pos.p.z, north_pos.x - unit_pos.p.x)
+
+                local heading = math.atan2(unit_pos.x.z, unit_pos.x.x) + northCorrection
+                if heading < 0 then
+                    heading = heading + 2*math.pi
+                end
+
+                return tostring(heading)
+            end
+        ]]
+
+        return net.dostring_in("server", get_unit_heading)
     end
 "#;
 
@@ -182,7 +218,7 @@ mod test {
 
     #[test]
     fn test_get_weather() {
-        let dw = DcsWeather::create("", None, None).unwrap();
+        let dw = DcsMissionInfo::create("", None, None).unwrap();
         assert_eq!(
             dw.get_at(1.0, 2.0_f64.to_radians(), 3.0).unwrap(),
             WeatherInfo {
@@ -204,7 +240,7 @@ mod test {
 
     #[test]
     fn test_get_weather_for_unit() {
-        let dw = DcsWeather::create("", None, None).unwrap();
+        let dw = DcsMissionInfo::create("", None, None).unwrap();
         assert_eq!(
             dw.get_for_unit("foobar").unwrap(),
             Some(WeatherInfo {
