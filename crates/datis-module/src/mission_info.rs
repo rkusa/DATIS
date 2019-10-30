@@ -133,7 +133,6 @@ impl PartialEq for DcsMissionInfo {
 }
 
 // north correction is based on https://github.com/mrSkortch/MissionScriptingTools
-#[cfg(not(test))]
 static LUA_CODE: &str = r#"
     local Weather = require 'Weather'
     getWeather = function(x, y, alt)
@@ -201,72 +200,3 @@ static LUA_CODE: &str = r#"
         return net.dostring_in("server", get_unit_heading)
     end
 "#;
-
-#[cfg(test)]
-static LUA_CODE: &str = r#"
-    function getWeather(x, y, alt)
-        return {
-            windSpeed = x,
-            windDir = y,
-            temp = alt,
-            pressure = 42,
-        }
-    end
-
-    function getUnitPosition(name)
-        return {
-            x = 1,
-            y = 2,
-            alt = 3,
-        }
-    end
-"#;
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_get_weather() {
-        let dw = DcsMissionInfo::create("", None, None).unwrap();
-        assert_eq!(
-            dw.get_at(1.0, 2.0_f64.to_radians(), 3.0).unwrap(),
-            WeatherInfo {
-                position: Position {
-                    x: 1.0,
-                    y: 2.0_f64.to_radians(),
-                    alt: 3.0
-                },
-                clouds: None,
-                visibility: None,
-                wind_speed: 1.0,
-                wind_dir: 182.0,
-                temperature: 3.0,
-                pressure_qnh: 42.0,
-                pressure_qfe: 42.0,
-            }
-        );
-    }
-
-    #[test]
-    fn test_get_weather_for_unit() {
-        let dw = DcsMissionInfo::create("", None, None).unwrap();
-        assert_eq!(
-            dw.get_for_unit("foobar").unwrap(),
-            Some(WeatherInfo {
-                position: Position {
-                    x: 1.0,
-                    y: 2.0,
-                    alt: 3.0
-                },
-                clouds: None,
-                visibility: None,
-                wind_speed: 1.0,
-                wind_dir: 294.59155902616465,
-                temperature: 3.0,
-                pressure_qnh: 42.0,
-                pressure_qfe: 42.0,
-            })
-        );
-    }
-}

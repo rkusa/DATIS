@@ -338,8 +338,8 @@ static PHONETIC_ALPHABET: &[&str] = &[
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::mission_info::StaticMissionInfo;
     use crate::tts::TextToSpeechProvider;
-    use crate::weather::StaticWeather;
     use std::sync::Arc;
 
     #[test]
@@ -352,6 +352,7 @@ mod test {
                 alt: 0.0,
             },
             runways: vec![String::from("04"), String::from("22R")],
+            traffic_freq: None,
         };
 
         assert_eq!(airfield.get_active_runway(0.0), Some("04"));
@@ -368,8 +369,7 @@ mod test {
     fn test_report() {
         let station = Station {
             name: String::from("Kutaisi"),
-            atis_freq: 251_000_000,
-            traffic_freq: Some(249_500_000),
+            freq: 251_000_000,
             tts: TextToSpeechProvider::default(),
             transmitter: Transmitter::Airfield(Airfield {
                 name: String::from("Kutaisi"),
@@ -379,8 +379,9 @@ mod test {
                     alt: 0.0,
                 },
                 runways: vec![String::from("04"), String::from("22")],
+                traffic_freq: Some(249_500_000),
             }),
-            weather: Arc::new(StaticWeather),
+            mission_info: Arc::new(StaticMissionInfo),
         };
 
         let report = station.generate_report(26).unwrap().unwrap();
@@ -390,7 +391,7 @@ mod test {
 
     #[test]
     fn test_visibility_report() {
-        assert_eq!(get_visibility_report(80_000, true), "Visibility 4 3");
+        assert_eq!(get_visibility_report(6_000, true), "Visibility 3 DECIMAL 2");
     }
 
     #[test]
