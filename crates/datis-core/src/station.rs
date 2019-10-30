@@ -156,7 +156,7 @@ impl Airfield {
 
         if let Some(visibility) = visibility.or(weather.visibility) {
             // 9260 m = 5 nm
-            if visibility < 9260 {
+            if visibility < 9_260 {
                 report += &format!("{}. {}", get_visibility_report(visibility, spoken), _break);
             }
         }
@@ -250,17 +250,38 @@ impl Carrier {
         // Case 1: daytime, ceiling >= 3000ft; visibility distance >= 5nm
         // Case 2: daytime, ceiling >= 1000ft; visibility distance >= 5nm
         // Case 3: nighttime or daytime, ceiling < 1000ft and visibility distance <= 5nm
+        let mut case = 1;
+        if let Some(ceiling) = weather.clouds.as_ref().map(|clouds| clouds.base) {
+            let ft = m_to_ft(ceiling as f64);
+            if ft < 1_000.0 {
+                case = 3;
+            } else if ft < 3_000.0 {
+                case = 2;
+            }
+        }
 
-        // TODO: determine CASE 1, 2, 3
-        report += &format!("CASE 1, {}", _break,);
+        if let Some(visibility) = weather.visibility {
+            // 9260 m = 5 nm
+            if visibility < 9_260 {
+                case = 3;
+            }
+        }
+
+        report += &format!("CASE {}, {}", case, _break,);
 
         let brc = heading.to_degrees().round();
+        let mut fh = brc - 9.0; // 9 -> 9deg angled deck
+        if fh < 0.0 {
+            fh += 360.0;
+        }
+
+        let brc = format!("{:0>3}", brc);
         report += &format!("BRC {}, {}", pronounce_number(brc, spoken), _break,);
 
-        // 9 -> 9deg angled deck
+        let fh = format!("{:0>3}", fh);
         report += &format!(
             "expected final heading {}, {}",
-            pronounce_number(brc - 9.0, spoken),
+            pronounce_number(fh, spoken),
             _break,
         );
 
