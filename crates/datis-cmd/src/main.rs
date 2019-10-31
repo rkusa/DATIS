@@ -2,10 +2,8 @@
 extern crate log;
 
 use std::str::FromStr;
-use std::sync::Arc;
 
 use clap::{App, Arg};
-use datis_core::mission_info::StaticMissionInfo;
 use datis_core::station::{Airfield, Position, Station, Transmitter};
 use datis_core::tts::TextToSpeechProvider;
 use datis_core::Datis;
@@ -91,7 +89,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             runways: vec![String::from("09"), String::from("26")],
             traffic_freq: None,
         }),
-        mission_info: Arc::new(StaticMissionInfo),
+        rpc: None,
     };
     let mut datis = Datis::new(vec![station])?;
     datis.set_port(5002);

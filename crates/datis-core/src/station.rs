@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use crate::mission_info::{Clouds, MissionInfo, WeatherInfo};
+use crate::rpc::{Clouds, MissionRpc, WeatherInfo};
 use crate::tts::TextToSpeechProvider;
 use crate::utils::{m_to_ft, m_to_nm, pronounce_number, round};
 use anyhow::Context;
@@ -11,8 +9,8 @@ pub struct Station {
     pub name: String,
     pub freq: u64,
     pub tts: TextToSpeechProvider,
-    pub mission_info: Arc<dyn MissionInfo + Send + Sync>,
     pub transmitter: Transmitter,
+    pub rpc: Option<MissionRpc>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -45,16 +43,16 @@ pub struct Report {
 const SPEAK_START_TAG: &str = "<speak version=\"1.0\" xml:lang=\"en-US\">\n";
 
 impl Station {
-    pub fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
-        match &self.transmitter {
-            Transmitter::Airfield(airfield) => {
-                let weather = self
-                    .mission_info
+    pub async fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
+        match (self.rpc.as_ref(), &self.transmitter) {
+            (Some(rpc), Transmitter::Airfield(airfield)) => {
+                let weather = rpc
                     .get_weather_at(
                         airfield.position.x,
                         airfield.position.y,
                         airfield.position.alt,
                     )
+                    .await
                     .context("failed to retrieve weather")?;
 
                 Ok(Some(Report {
@@ -63,21 +61,21 @@ impl Station {
                     position: airfield.position.clone(),
                 }))
             }
-            Transmitter::Carrier(unit) => {
-                let pos = self
-                    .mission_info
+            (Some(rpc), Transmitter::Carrier(unit)) => {
+                let pos = rpc
                     .get_unit_position(&unit.unit_name)
+                    .await
                     .context("failed to retrieve unit position")?;
-                let heading = self
-                    .mission_info
+                let heading = rpc
                     .get_unit_heading(&unit.unit_name)
+                    .await
                     .context("failed to retrieve unit heading")?;
                 if let (Some(pos), Some(heading)) = (pos, heading) {
-                    let weather = self
-                        .mission_info
+                    let weather = rpc
                         .get_weather_at(pos.x, pos.y, pos.alt)
+                        .await
                         .context("failed to retrieve weather")?;
-                    let mission_hour = self.mission_info.get_mission_hour()?;
+                    let mission_hour = rpc.get_mission_hour().await?;
 
                     Ok(Some(Report {
                         textual: unit.generate_report(&weather, heading, mission_hour, false)?,
@@ -85,9 +83,10 @@ impl Station {
                         position: pos,
                     }))
                 } else {
-                    return Ok(None);
+                    Ok(None)
                 }
             }
+            _ => Ok(None),
         }
     }
 }

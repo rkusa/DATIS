@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
 
-use crate::mission_info::DcsMissionInfo;
-use datis_core::mission_info::*;
+use datis_core::rpc::*;
 use datis_core::station::*;
 use datis_core::tts::TextToSpeechProvider;
 use hlua51::{Lua, LuaFunction, LuaTable};
@@ -17,6 +15,7 @@ pub struct Info {
     pub aws_region: String,
     pub srs_port: u16,
     pub executable_path: String,
+    pub rpc: MissionRpc,
 }
 
 pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
@@ -292,12 +291,8 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     }
 
     // initialize the dynamic weather component
-    let mission_info: Arc<dyn MissionInfo + Send + Sync> = Arc::new(DcsMissionInfo::create(
-        lua,
-        clouds,
-        fog_thickness,
-        fog_visibility,
-    )?);
+
+    let rpc = MissionRpc::new(clouds, fog_thickness, fog_visibility)?;
 
     // combine the frequencies that have extracted from the mission's situation with their
     // corresponding airfield
@@ -309,7 +304,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                 freq: freq.atis,
                 tts: TextToSpeechProvider::default(),
                 transmitter: Transmitter::Airfield(airfield),
-                mission_info: Arc::clone(&mission_info),
+                rpc: Some(rpc.clone()),
             })
         })
         .collect();
@@ -331,7 +326,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                         .tts
                         .unwrap_or_else(|| TextToSpeechProvider::default()),
                     transmitter: Transmitter::Airfield(airfield),
-                    mission_info: Arc::clone(&mission_info),
+                    rpc: Some(rpc.clone()),
                 }
             })
         })
@@ -340,7 +335,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     stations.extend(ship_units.into_iter().filter_map(|ship_unit| {
         extract_station_config(&ship_unit.name).map(|config| Station {
             name: config.name.clone(),
-            freq: ship_unit.freq as u64,
+            freq: config.atis,
             tts: config
                 .tts
                 .unwrap_or_else(|| TextToSpeechProvider::default()),
@@ -349,7 +344,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                 unit_id: ship_unit.id,
                 unit_name: ship_unit.name,
             }),
-            mission_info: Arc::clone(&mission_info),
+            rpc: Some(rpc.clone()),
         })
     }));
 
@@ -373,6 +368,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         aws_region,
         srs_port,
         executable_path: format!("{}Mods\\tech\\DATIS\\bin\\", writedir),
+        rpc,
     })
 }
 

@@ -415,6 +415,8 @@ dependencies = [
  "log4rs 0.8.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "lua51-sys 0.1.2 (git+https://github.com/rkusa/hlua51.git)",
  "regex 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.41 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -788,7 +790,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "hlua51"
 version = "0.4.1"
-source = "git+https://github.com/rkusa/hlua51.git#a7bf6b7acfe0396d83cb91a0b990f0654aa512b2"
+source = "git+https://github.com/rkusa/hlua51.git#c2a61db82f76858a4d9903b41ea49a0452a42c7d"
 dependencies = [
  "libc 0.2.65 (registry+https://github.com/rust-lang/crates.io-index)",
  "lua51-sys 0.1.2 (git+https://github.com/rkusa/hlua51.git)",
@@ -1059,7 +1061,7 @@ dependencies = [
 [[package]]
 name = "lua51-sys"
 version = "0.1.2"
-source = "git+https://github.com/rkusa/hlua51.git#a7bf6b7acfe0396d83cb91a0b990f0654aa512b2"
+source = "git+https://github.com/rkusa/hlua51.git#c2a61db82f76858a4d9903b41ea49a0452a42c7d"
 dependencies = [
  "cc 1.0.46 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.65 (registry+https://github.com/rust-lang/crates.io-index)",

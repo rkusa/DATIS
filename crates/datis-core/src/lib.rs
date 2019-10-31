@@ -10,7 +10,7 @@ extern crate serde;
 extern crate anyhow;
 
 pub mod export;
-pub mod mission_info;
+pub mod rpc;
 pub mod station;
 pub mod tts;
 mod utils;
@@ -270,7 +270,7 @@ async fn audio_broadcast(
     loop {
         interval_start = Instant::now();
 
-        let report = match station.generate_report(report_ix)? {
+        let report = match station.generate_report(report_ix).await? {
             Some(report) => report,
             None => {
                 debug!(

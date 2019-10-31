@@ -24,6 +24,8 @@ function datis_start()
 
   if DCS.getPause() then
     datis.pause()
+  else
+    datis.resume()
   end
 end
 
@@ -40,9 +42,136 @@ function datis_pause()
   end
 end
 
-function datis_unpause()
+function datis_resume()
   if datis ~= nil then
-    datis.unpause()
+    datis.resume()
+  end
+end
+
+local i = 0
+
+function datis_simulation_frame()
+  i = i + 1
+  if i > 50 then -- roughly twice a second
+    i = 0
+
+    local ok, err = pcall(datis_next)
+    if not ok then
+      log.write("[DATIS]", log.ERROR, "Next error: " .. tostring(err))
+    end
+  end
+end
+
+function datis_next()
+  if datis ~= nil then
+    datis.try_next(datis_handleRequest)
+  end
+end
+
+function datis_handleRequest(method, params)
+  -- log.write("[DATIS]", log.INFO, "RECV " .. method .. " " .. params)
+
+  if params ~= nil then
+    params = net.json2lua(params)
+  end
+
+  if method == "get_weather" then
+    local position = {
+      x = params.x,
+      y = params.alt,
+      z = params.y,
+    }
+    local wind = Weather.getGroundWindAtPoint({
+      position = position
+    })
+    local temp, pressure = Weather.getTemperatureAndPressureAtPoint({
+      position = position
+    })
+
+    return {
+      result = net.lua2json({
+        windSpeed = wind.v,
+        windDir = wind.a,
+        temp = temp,
+        pressure = pressure,
+      })
+    }
+
+  elseif method == "get_unit_position" then
+    local get_unit_position = [[
+      local unit = Unit.getByName("]] .. params.name .. [[")
+      if unit == nil then
+        return ""
+      else
+        local pos = unit:getPoint()
+        return  pos.x .. ":" .. pos.y .. ":" .. pos.z
+      end
+    ]]
+
+    local result = net.dostring_in("server", get_unit_position)
+
+    if result == "" then
+      return {
+        error = "unit not found"
+      }
+    end
+
+    local x, y, z = string.match(result, "(%-?[0-9%.-]+):(%-?[0-9%.]+):(%-?[0-9%.]+)")
+
+    return {
+      result = net.lua2json({
+        x = tonumber(x),
+        y = tonumber(y),
+        z = tonumber(z),
+      })
+    }
+
+  elseif method == "get_unit_heading" then
+    -- north correction is based on https://github.com/mrSkortch/MissionScriptingTools
+    local get_unit_heading = [[
+      local unit = Unit.getByName("]] .. params.name .. [[")
+      if unit == nil then
+        return ""
+      else
+        local unit_pos = unit:getPosition()
+        local lat, lon = coord.LOtoLL(unit_pos.p)
+        local north_pos = coord.LLtoLO(lat + 1, lon)
+        local northCorrection = math.atan2(north_pos.z - unit_pos.p.z, north_pos.x - unit_pos.p.x)
+
+        local heading = math.atan2(unit_pos.x.z, unit_pos.x.x) + northCorrection
+        if heading < 0 then
+          heading = heading + 2*math.pi
+        end
+
+        return tostring(heading)
+      end
+    ]]
+    local result = net.dostring_in("server", get_unit_heading)
+    if result == "" then
+      return {
+        error = "unit not found"
+      }
+    end
+
+    return {
+      result = net.lua2json(tonumber(result))
+    }
+
+  elseif method == "get_abs_time" then
+    local get_abs_time = [[
+      return tostring(timer.getAbsTime())
+    ]]
+
+    local result = net.dostring_in("server", get_abs_time)
+
+    return {
+      result = net.lua2json(tonumber(result))
+    }
+
+  else
+    return {
+      error = "unknown method "..method
+    }
   end
 end
 
@@ -81,10 +210,17 @@ function datis_load()
         log.write("[DATIS]", log.ERROR, "Start Error: " .. tostring(err))
       end
     else
-      local status, err = pcall(datis_unpause)
+      local status, err = pcall(datis_resume)
       if not status then
         log.write("[DATIS]", log.ERROR, "Unpause Error: " .. tostring(err))
       end
+    end
+  end
+
+  function handler.onSimulationFrame()
+    local status, err = pcall(datis_simulation_frame)
+    if not status then
+      log.write("[DATIS]", log.ERROR, "Simulation frame Error: " .. tostring(err))
     end
   end
 
