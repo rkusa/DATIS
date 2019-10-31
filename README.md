@@ -2,21 +2,17 @@
 
 DCS World Automatic Terminal Information Service (ATIS) broadcasted though [Simple Radio Standalone](https://github.com/ciribob/DCS-SimpleRadioStandalone).
 
-**Features:** Automatically starts within DCS, extracts weather information from the currently running mission, generates an ATIS report, converts it to speech (using Google's Text-to-Speech cloud service) and broadcasts it through SRS.
+**Features:** Automatically starts within DCS, extracts weather information from the currently running mission, generates an ATIS report, converts it to speech and broadcasts it through SRS.
 
 [Changelog](./CHANGELOG.md) | [Prebuild Releases](https://github.com/rkusa/DATIS/releases)
 
 Example Report:
 
-> This is Batumi information Alpha.
-> Runway in use is 3 1.
-> Wind ZERO 4 1 at 8 knots.
-> Visibility 4 3.
-> Cloud conditions scattered ZERO, rain.
-> Temperature 2 3 celcius.
-> ALTIMETER 2 NINER 5 3.
-> REMARKS 1 ZERO ZERO ZERO hectopascal.
-> End information Alpha.
+> This is Batumi information Alpha. Runway in use is 13. Wind 140 at 9 knots. Visibility 0.5. Cloud conditions overcast 5, rain. Temperature 20.9 celcius. ALTIMETER 2933. REMARKS. 993 hectopascal. QFE 2930 or 992. End information Alpha.
+
+Example Carrier Report:
+
+> 99, Mother's wind 140 at 9 knots, altimeter 2933, CASE 1, BRC 276, expected final heading 267, report initial
 
 ## Crates
 
@@ -51,7 +47,7 @@ For information about the free tier of both GCloud and AWS see:
 - https://cloud.google.com/text-to-speech/pricing
 - https://aws.amazon.com/polly/pricing/
 
-## Mission Setup
+## Airfield ATIS Setup
 
 There are two methods for adding ATIS stations to your mission. The first method is easier to setup, but the second one supports more configuration options.
 
@@ -113,6 +109,16 @@ ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE WIN
 ```
 
 ![Example](./docs/static.jpg)
+
+## Carrier ATIS setup
+
+_I know, there is no such thing like a carrier ATIS in real life - though still a useful feature until we get the DCS carrier module._
+
+Setup like [Using Static Units](https://github.com/rkusa/DATIS#using-static-units), but instead of adding the `ATIS` name pattern to the name of a static unit, put it into the name of your carrier unt (not its group's name!) that should broadcast the report.
+
+![Example](./docs/carrier.jpg)
+
+Known issue: It will broadcast on the unit's frequency and not on the frequency setup in the `ATIS` name pattern.
 
 ## Build
 
