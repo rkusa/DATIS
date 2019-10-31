@@ -4,4 +4,7 @@
 target
 **/*.rs.bk
 /mod/Mods/tech/DATIS/bin/datis.dll
+/mod/Mods/tech/DATIS/bin/*.exe
 /mod/*.zip
+*.wav
+*.ogg

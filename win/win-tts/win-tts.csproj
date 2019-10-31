@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net45</TargetFramework>
+    <RootNamespace>win_tts</RootNamespace>
+    <StartupObject>win_tts.Program</StartupObject>
+    <ApplicationIcon />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Speech" />
+  </ItemGroup>
+
+</Project>

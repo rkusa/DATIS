@@ -16,6 +16,7 @@ pub struct Info {
     pub aws_secret: String,
     pub aws_region: String,
     pub srs_port: u16,
+    pub executable_path: String,
 }
 
 pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
@@ -57,6 +58,15 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
             .map_err(|_| new_lua_call_error("getPlugin"))?;
         info!("Using SRS Server port: {}", port);
         port
+    };
+
+    // read write dir: lfs.writedir()
+    let writedir = {
+        let mut lfs: LuaTable<_> = get!(lua, "lfs")?;
+
+        let mut get_writedir: LuaFunction<_> = get!(lfs, "writedir")?;
+        let writedir: String = get_writedir.call()?;
+        writedir
     };
 
     // extract frequencies from mission briefing, which is retrieved from
@@ -362,6 +372,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         aws_secret,
         aws_region,
         srs_port,
+        executable_path: format!("{}Mods\\tech\\DATIS\\bin\\", writedir),
     })
 }
 

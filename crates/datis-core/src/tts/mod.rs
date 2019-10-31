@@ -1,5 +1,6 @@
 pub mod aws;
 pub mod gcloud;
+pub mod win;
 
 use std::fmt;
 use std::str::FromStr;
@@ -8,12 +9,14 @@ use std::str::FromStr;
 pub enum TextToSpeechProvider {
     GoogleCloud { voice: gcloud::VoiceKind },
     AmazonWebServices { voice: aws::VoiceKind },
+    Windows,
 }
 
 #[derive(Clone)]
 pub enum TextToSpeechConfig {
     GoogleCloud(gcloud::GoogleCloudConfig),
     AmazonWebServices(aws::AmazonWebServicesConfig),
+    Windows(win::WindowsConfig),
 }
 
 impl Default for TextToSpeechProvider {
@@ -33,6 +36,7 @@ impl fmt::Debug for TextToSpeechProvider {
             TextToSpeechProvider::AmazonWebServices { voice } => {
                 write!(f, "Amazon Web Services (Voice: {:?})", voice)
             }
+            TextToSpeechProvider::Windows => write!(f, "Windows built-in TTS"),
         }
     }
 }
@@ -57,9 +61,13 @@ impl FromStr for TextToSpeechProvider {
                 _ => {}
             },
             &[voice] if voice.len() > 0 => {
-                return Ok(TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::from_str(voice)?,
-                })
+                if voice == "WIN" {
+                    return Ok(TextToSpeechProvider::Windows);
+                } else {
+                    return Ok(TextToSpeechProvider::GoogleCloud {
+                        voice: gcloud::VoiceKind::from_str(voice)?,
+                    });
+                }
             }
             _ => {}
         }

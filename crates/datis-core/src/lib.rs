@@ -26,6 +26,7 @@ use crate::station::{Position, Station, Transmitter};
 use crate::tts::{
     aws::{self, AmazonWebServicesConfig},
     gcloud::{self, GoogleCloudConfig},
+    win::{self, WindowsConfig},
     TextToSpeechConfig, TextToSpeechProvider,
 };
 use futures::future::{self, abortable, AbortHandle, Either, FutureExt};
@@ -44,6 +45,7 @@ pub struct Datis {
     runtime: Runtime,
     started: bool,
     abort_handles: Vec<AbortHandle>,
+    executable_path: Option<String>,
 }
 
 struct AwsConfig {
@@ -63,6 +65,7 @@ impl Datis {
             runtime: Runtime::new()?,
             started: false,
             abort_handles: Vec::new(),
+            executable_path: None,
         })
     }
 
@@ -90,6 +93,10 @@ impl Datis {
     pub fn set_log_dir<S: Into<String>>(&mut self, log_dir: S) {
         let exporter = ReportExporter::new(log_dir.into() + "atis-reports.json");
         self.exporter = Some(exporter);
+    }
+
+    pub fn set_executable_path<S: Into<String>>(&mut self, executable_path: S) {
+        self.executable_path = Some(executable_path.into());
     }
 
     pub fn start(&mut self) -> Result<(), anyhow::Error> {
@@ -145,6 +152,9 @@ impl Datis {
                         continue;
                     }
                 }
+                TextToSpeechProvider::Windows => TextToSpeechConfig::Windows(WindowsConfig {
+                    executable_path: self.executable_path.clone(),
+                }),
             };
 
             let (f, abort_handle) = abortable(spawn(
@@ -297,6 +307,9 @@ async fn audio_broadcast(
                 }
                 TextToSpeechConfig::AmazonWebServices(config) => {
                     aws::text_to_speech(&report.spoken, config).await?
+                }
+                TextToSpeechConfig::Windows(config) => {
+                    win::text_to_speech(&report.spoken, config).await?
                 }
             };
         }

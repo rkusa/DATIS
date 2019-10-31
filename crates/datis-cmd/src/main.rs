@@ -15,7 +15,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
     env_logger::Builder::new()
-        .filter_level(log::LevelFilter::Info)
+        .filter_level(log::LevelFilter::Debug)
         .try_init()
         .unwrap();
 

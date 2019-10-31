@@ -42,6 +42,8 @@ pub struct Report {
     pub position: Position,
 }
 
+const SPEAK_START_TAG: &str = "<speak version=\"1.0\" xml:lang=\"en-US\">\n";
+
 impl Station {
     pub fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
         match &self.transmitter {
@@ -122,7 +124,7 @@ impl Airfield {
         let _break = if spoken { "| " } else { "" };
 
         let information_letter = PHONETIC_ALPHABET[report_nr % PHONETIC_ALPHABET.len()];
-        let mut report = if spoken { "<speak>\n" } else { "" }.to_string();
+        let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
 
         report += &format!(
             "This is {} information {}. {}",
@@ -228,7 +230,7 @@ impl Carrier {
         #[cfg(test)]
         let _break = if spoken { "| " } else { "" };
 
-        let mut report = if spoken { "<speak>\n" } else { "" }.to_string();
+        let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
 
         report += &format!("{}, {}", pronounce_number(99, spoken), _break);
 
