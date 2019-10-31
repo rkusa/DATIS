@@ -28,15 +28,17 @@ Example Report:
 
 ## Installation
 
-_Before you start, be aware that this mod requires either a Google Cloud (Gcloud) or Amazon Web Services (AWS) account._
+~~_Before you start, be aware that this mod requires either a Google Cloud (Gcloud) or Amazon Web Services (AWS) account._~~
+_Since version 1.0.0-alpha.2 it is possible to use Windows' built-in TTS engine, so a cloud account is not necessary anymore (but still useful for a wider range of voice choices)._
 
 [Build it](#build) yourself and use the content inside the `mod` directory or use the pre-build mod from one of the [releases](https://github.com/rkusa/DATIS/releases).
 
 1. Copy the content (`Mods` and `Scripts` directory) into `Saved Games\DCS.openbeta\`.
-2. Create your cloud credentials, either
-   1. Google Cloud: Go to https://console.cloud.google.com/apis/credentials and create an API key and restrict API access to Google Text-to-Speech, or
-   2. Amazon Web Services: Go to https://console.aws.amazon.com/iam/home#/users and create a new user with `AmazonPollyReadOnlyAccess` permissions
-3. Open DCS go to OPTIONS -> SPECIAL -> DCS ATIS, enter your API keys into the respective input fields
+2. Optional: Setup your cloud provider of choice
+   1. Create your cloud credentials, either
+      1. Google Cloud: Go to https://console.cloud.google.com/apis/credentials and create an API key and restrict API access to Google Text-to-Speech, or
+      2. Amazon Web Services: Go to https://console.aws.amazon.com/iam/home#/users and create a new user with `AmazonPollyReadOnlyAccess` permissions
+   2. Open DCS go to OPTIONS -> SPECIAL -> DCS ATIS, enter your API keys into the respective input fields
 
 Once you start a mission that contains a pattern as described in the next section, DATIS runs automatically.
 It thereby expects a SRS server to run locally on the default SRS ports. The port can be changed in the DCS DATIS mod settings page.
@@ -54,6 +56,8 @@ For information about the free tier of both GCloud and AWS see:
 There are two methods for adding ATIS stations to your mission. The first method is easier to setup, but the second one supports more configuration options.
 
 ### Mission Situation
+
+_(This method currently uses the default GCloud voice, for different TTS providers, see the next setup method)_
 
 Add the following text pattern as often to the mission situation as you like.
 
@@ -94,6 +98,7 @@ Available voices are:
   - _(a bit down [on this page](https://cloud.google.com/text-to-speech/) is a widget where the different voices can easily be tested)_
   - Keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota (see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing))
 - AWS: `Nicole`, `Russell`, `Amy`, `Emma`, `Brian`, `Aditi`, `Raveena`, `Ivy`, `Joanna`, `Kendra`, `Kimberly`, `Salli`, `Joey`, `Justin`, `Matthew`, `Geraint`
+- WIN (uses Windows' built-in TTS engine)
 
 Examples:
 
@@ -104,6 +109,7 @@ ATIS Kutaisi 251.000, VOICE en-US-Standard-E
 ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE en-US-Standard-E
 ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE GC:en-US-Wavenet-B
 ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE AWS:Nicole
+ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE WIN
 ```
 
 ![Example](./docs/static.jpg)

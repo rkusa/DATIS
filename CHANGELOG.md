@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-alpha.2] - 2019-10-31
+
+### Added
+- Support for Windows' TTS as an additional TTS provider #24
+- Carrier ATIS (reports altimeter, BRC and Case variant to be used)
+
+### Fixed
+- Derive a visibility value from cloud and fog weather settings (instead of using the visibility mission setting that never changes)
+
 ## [1.0.0-alpha.1] - 2019-10-25
 
 Moving to `1.0.0` as encouraged by semantic versioning.
