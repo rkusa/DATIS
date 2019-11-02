@@ -4,8 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [1.0.0-alpha.3] - 2019-10-31
+## [0.10.0] - 2019-11-02
+### Changed
+- Upgraded to the SRS 1.7.0.0 network changes. DATIS now acts as a 1.7.0.0 SRS client.
 
+### Fixed
+- In some cases stations stopped transmitting every ~0.5 secs should be fixed
+- Restore consistent ~3sec pause between reports
+-
+## [1.0.0-alpha.3] - 2019-10-31
 ### Fixed
 - Fixed DATIS crashing MP servers
 - Possibly fixed DATIS not picking up weather updates for missions with dynamic weather #16
@@ -14,7 +21,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Reworked how DATIS communicates to the running mission - DATIS now has a way to ask the running mission about updates
 
 ## [1.0.0-alpha.2] - 2019-10-31
-
 ### Added
 - Support for Windows' TTS as an additional TTS provider #24
 - Carrier ATIS (reports altimeter, BRC and Case variant to be used)
@@ -23,7 +29,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Derive a visibility value from cloud and fog weather settings (instead of using the visibility mission setting that never changes)
 
 ## [1.0.0-alpha.1] - 2019-10-25
-
 Moving to `1.0.0` as encouraged by semantic versioning.
 
 ### Added
