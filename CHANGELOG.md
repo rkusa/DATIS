@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-alpha.4] - 2019-11-02
+### Added
+- Possibility to select a voice for Windows' TTS (e.g. `VOICE WIN:David`, or `VOICE WIN:Zira`)
+
+### Fixed
+- Fixed SRS message decoding error
+
 ## [0.10.0] - 2019-11-02
 ### Changed
 - Upgraded to the SRS 1.7.0.0 network changes. DATIS now acts as a 1.7.0.0 SRS client.
@@ -11,7 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - In some cases stations stopped transmitting every ~0.5 secs should be fixed
 - Restore consistent ~3sec pause between reports
--
+
 ## [1.0.0-alpha.3] - 2019-10-31
 ### Fixed
 - Fixed DATIS crashing MP servers
