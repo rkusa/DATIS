@@ -244,6 +244,7 @@ fn audio_broadcast<W: Weather + Clone>(
     let mut interval_start;
     let mut report_ix = 0;
     let mut packet_nr: u64 = 1;
+
     loop {
         interval_start = Instant::now();
 
@@ -278,23 +279,25 @@ fn audio_broadcast<W: Weather + Clone>(
 
             data.set_position(0);
             let start = Instant::now();
+            let mut frame_id = 0;
             let mut audio = PacketReader::new(data);
+
             while let Some(pck) = audio.read_packet()? {
                 if pck.data.len() == 0 {
                     continue;
                 }
-                let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
+                let frame = pack_frame(&sguid, packet_nr, station.atis_freq, &pck.data)?;
                 socket.send_to(&frame, srs_addr)?;
                 packet_nr = packet_nr.wrapping_add(1);
 
                 // wait for the current ~playtime before sending the next package
-                let playtime = Duration::from_millis(id * 20);
+                let playtime = Duration::from_millis(frame_id * 20);
                 let elapsed = start.elapsed();
                 if playtime > elapsed {
                     thread::sleep(playtime - elapsed);
                 }
 
-                id += 1;
+                frame_id += 1;
 
                 if ctx.should_stop() {
                     return Ok(false);
@@ -302,11 +305,11 @@ fn audio_broadcast<W: Weather + Clone>(
             }
 
             'recv: loop {
-            	// read and discard pending datagrams
+                // read and discard pending datagrams
                 match socket.recv_from(&mut sink) {
                     Err(err) => match err.kind() {
                         io::ErrorKind::TimedOut => {
-                        	break 'recv;
+                            break 'recv;
                         }
                         _ => {
                             return Err(err.into());
@@ -316,7 +319,7 @@ fn audio_broadcast<W: Weather + Clone>(
                 }
             }
 
-            let playtime = Duration::from_millis(id * 20);
+            let playtime = Duration::from_millis(frame_id * 20);
             let elapsed = Instant::now() - start;
             if playtime > elapsed {
                 thread::sleep(playtime - elapsed);
