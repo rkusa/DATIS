@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2019-10-28
+### Fixed
+- In some cases stations stopped transmitting every ~0.5 secs should be fixed
+- Restore consistent ~3sec pause between reports
+
 ## [0.10.0-beta1] - 2019-10-18
 ### Changed
 - Upgraded to the SRS 1.7.0.0 network changes. DATIS now acts as a 1.7.0.0 SRS client.

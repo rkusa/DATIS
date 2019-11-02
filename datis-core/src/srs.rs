@@ -278,49 +278,45 @@ fn audio_broadcast<W: Weather + Clone>(
 
             data.set_position(0);
             let start = Instant::now();
-            let mut size = 0;
             let mut audio = PacketReader::new(data);
             while let Some(pck) = audio.read_packet()? {
-                let pck_size = pck.data.len();
-                if pck_size == 0 {
+                if pck.data.len() == 0 {
                     continue;
                 }
-                size += pck_size;
-                let frame = pack_frame(&sguid, packet_nr, station.atis_freq, &pck.data)?;
+                let frame = pack_frame(&sguid, id, station.atis_freq, &pck.data)?;
                 socket.send_to(&frame, srs_addr)?;
                 packet_nr = packet_nr.wrapping_add(1);
 
-                // read and discard pending datagrams
-                match socket.recv_from(&mut sink) {
-                    Err(err) => match err.kind() {
-                        io::ErrorKind::TimedOut => {}
-                        _ => {
-                            return Err(err.into());
-                        }
-                    },
-                    _ => {}
-                }
-
                 // wait for the current ~playtime before sending the next package
-                let secs = (size * 8) as f64 / 1024.0 / 32.0; // 32 kBit/s
-                let playtime = Duration::from_millis((secs * 1000.0) as u64);
+                let playtime = Duration::from_millis(id * 20);
                 let elapsed = start.elapsed();
                 if playtime > elapsed {
                     thread::sleep(playtime - elapsed);
                 }
+
+                id += 1;
 
                 if ctx.should_stop() {
                     return Ok(false);
                 }
             }
 
-            debug!("TOTAL SIZE: {}", size);
+            'recv: loop {
+            	// read and discard pending datagrams
+                match socket.recv_from(&mut sink) {
+                    Err(err) => match err.kind() {
+                        io::ErrorKind::TimedOut => {
+                        	break 'recv;
+                        }
+                        _ => {
+                            return Err(err.into());
+                        }
+                    },
+                    _ => {}
+                }
+            }
 
-            // 32 kBit/s
-            let secs = (size * 8) as f64 / 1024.0 / 32.0;
-            debug!("SECONDS: {}", secs);
-
-            let playtime = Duration::from_millis((secs * 1000.0) as u64);
+            let playtime = Duration::from_millis(id * 20);
             let elapsed = Instant::now() - start;
             if playtime > elapsed {
                 thread::sleep(playtime - elapsed);
