@@ -152,9 +152,12 @@ impl Datis {
                         continue;
                     }
                 }
-                TextToSpeechProvider::Windows => TextToSpeechConfig::Windows(WindowsConfig {
-                    executable_path: self.executable_path.clone(),
-                }),
+                TextToSpeechProvider::Windows { ref voice } => {
+                    TextToSpeechConfig::Windows(WindowsConfig {
+                        executable_path: self.executable_path.clone(),
+                        voice: voice.clone(),
+                    })
+                }
             };
 
             let (f, abort_handle) = abortable(spawn(

@@ -52,20 +52,29 @@ namespace win_tts
 
         private static void SelectVoice(SpeechSynthesizer synth, string voice)
         {
+            voice = "Microsoft " + voice + " Desktop";
             try
             {
                 synth.SelectVoice(voice);
             }
             catch (ArgumentException ex)
             {
+                Console.Error.WriteLine("Failed to set voice: " + voice);
                 Console.Error.WriteLine(ex.Message);
+                Console.Error.WriteLine("Available voices:");
+                foreach (var v in synth.GetInstalledVoices())
+                {
+                    Console.Error.WriteLine(v.VoiceInfo.Name);
+                }
             }
         }
 
         private static void EnumerateAvailableVoices(SpeechSynthesizer synth)
         {
             foreach (var v in synth.GetInstalledVoices())
+            {
                 Console.WriteLine(v.VoiceInfo.Name);
+            }
         }
     }
 }

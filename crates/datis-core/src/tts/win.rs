@@ -5,6 +5,7 @@ use audiopus::{coder::Encoder, Application, Channels, SampleRate};
 #[derive(Clone)]
 pub struct WindowsConfig {
     pub executable_path: Option<String>,
+    pub voice: Option<String>,
 }
 
 pub async fn text_to_speech(
@@ -18,7 +19,12 @@ pub async fn text_to_speech(
     };
     debug!("Executing {} ...", path);
     // TODO: migrate to async version of Command
-    let output = Command::new(path).arg(text).output()?;
+    let mut command = Command::new(path);
+    command.arg(text);
+    if let Some(ref voice) = config.voice {
+        command.arg(voice);
+    }
+    let output = command.output()?;
 
     if !output.stderr.is_empty() {
         return Err(anyhow!(
