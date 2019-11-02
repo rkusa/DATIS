@@ -1,8 +1,10 @@
 use crate::rpc::{Clouds, MissionRpc, WeatherInfo};
 use crate::tts::TextToSpeechProvider;
 use crate::utils::{m_to_ft, m_to_nm, pronounce_number, round};
-use anyhow::Context;
 pub use srs::message::Position;
+
+#[cfg(not(feature = "static-weather"))]
+use anyhow::Context;
 
 #[derive(Clone)]
 pub struct Station {
@@ -43,6 +45,7 @@ pub struct Report {
 const SPEAK_START_TAG: &str = "<speak version=\"1.0\" xml:lang=\"en-US\">\n";
 
 impl Station {
+    #[cfg(not(feature = "static-weather"))]
     pub async fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
         match (self.rpc.as_ref(), &self.transmitter) {
             (Some(rpc), Transmitter::Airfield(airfield)) => {
@@ -87,6 +90,38 @@ impl Station {
                 }
             }
             _ => Ok(None),
+        }
+    }
+
+    #[cfg(feature = "static-weather")]
+    pub async fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
+        let weather = WeatherInfo {
+            clouds: None,
+            visibility: None,
+            wind_speed: 5.0,
+            wind_dir: (330.0f64).to_radians(),
+            temperature: 22.0,
+            pressure_qnh: 101_500.0,
+            pressure_qfe: 101_500.0,
+        };
+
+        match &self.transmitter {
+            Transmitter::Airfield(airfield) => Ok(Some(Report {
+                textual: airfield.generate_report(report_nr, &weather, false)?,
+                spoken: airfield.generate_report(report_nr, &weather, true)?,
+                position: airfield.position.clone(),
+            })),
+            Transmitter::Carrier(unit) => {
+                let pos = Position::default();
+                let heading = 180.0;
+                let mission_hour = 7;
+
+                Ok(Some(Report {
+                    textual: unit.generate_report(&weather, heading, mission_hour, false)?,
+                    spoken: unit.generate_report(&weather, heading, mission_hour, true)?,
+                    position: pos,
+                }))
+            }
         }
     }
 }
