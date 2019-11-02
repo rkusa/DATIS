@@ -382,9 +382,7 @@ static PHONETIC_ALPHABET: &[&str] = &[
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::mission_info::StaticMissionInfo;
     use crate::tts::TextToSpeechProvider;
-    use std::sync::Arc;
 
     #[test]
     fn test_active_runway() {
@@ -409,8 +407,8 @@ mod test {
         assert_eq!(airfield.get_active_runway(131.0), Some("22"));
     }
 
-    #[test]
-    fn test_report() {
+    #[tokio::test]
+    async fn test_report() {
         let station = Station {
             name: String::from("Kutaisi"),
             freq: 251_000_000,
@@ -425,10 +423,10 @@ mod test {
                 runways: vec![String::from("04"), String::from("22")],
                 traffic_freq: Some(249_500_000),
             }),
-            mission_info: Arc::new(StaticMissionInfo),
+            rpc: None,
         };
 
-        let report = station.generate_report(26).unwrap().unwrap();
+        let report = station.generate_report(26).await.unwrap().unwrap();
         assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Alpha.\n</speak>");
         assert_eq!(report.textual, "This is Kutaisi information Alpha. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Alpha.");
     }
