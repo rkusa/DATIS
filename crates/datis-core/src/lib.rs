@@ -211,8 +211,8 @@ async fn spawn(
             error!("{} failed: {:?}", name, err);
         }
 
-        info!("Restarting ATIS {} in 10 seconds ...", station.name);
-        delay_for(Duration::from_secs(10)).await;
+        info!("Restarting ATIS {} in 60 seconds ...", station.name);
+        delay_for(Duration::from_secs(60)).await;
     }
 }
 
