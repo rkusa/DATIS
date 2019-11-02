@@ -58,7 +58,7 @@ pub struct RadioInfo {
     pub ptt: bool,
     pub radios: Vec<Radio>,
     pub control: u8,
-    pub selected: usize,
+    pub selected: i16,
     pub unit: String,
     pub unit_id: u32,
     pub simultaneous_transmission: bool,
