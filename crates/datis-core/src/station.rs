@@ -73,6 +73,7 @@ impl Station {
                     .get_unit_heading(&unit.unit_name)
                     .await
                     .context("failed to retrieve unit heading")?;
+
                 if let (Some(pos), Some(heading)) = (pos, heading) {
                     let weather = rpc
                         .get_weather_at(pos.x, pos.y, pos.alt)
@@ -329,7 +330,7 @@ impl Carrier {
             _break,
         );
 
-        report += &format!("report initial, {}", _break,);
+        report += "report initial.";
 
         if spoken {
             report += "\n</speak>";

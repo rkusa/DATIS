@@ -5,7 +5,7 @@ test:
 	cargo test
 
 release:
-	cargo build --release
+	cargo build --release --package datis
 	powershell copy target/release/datis.dll mod/Mods/tech/DATIS/bin/
 
 	cd win/win-tts && dotnet build -c Release
