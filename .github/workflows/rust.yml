@@ -9,5 +9,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - name: Update Rust
+      run: rustup update
     - name: Run tests
       run: cargo test
