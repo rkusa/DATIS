@@ -21,8 +21,10 @@ impl Decoder for MessagesCodec {
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         if let Some(line) = self.lines_codec.decode(buf)? {
-            let msg = serde_json::from_str(&line)?;
-            Ok(Some(msg))
+            match serde_json::from_str(&line) {
+                Ok(msg) => Ok(Some(msg)),
+                Err(err) => Err(MessagesCodecError::JsonDecode(err, line)),
+            }
         } else {
             Ok(None)
         }
@@ -30,8 +32,10 @@ impl Decoder for MessagesCodec {
 
     fn decode_eof(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         if let Some(line) = self.lines_codec.decode_eof(buf)? {
-            let msg = serde_json::from_str(&line)?;
-            Ok(Some(msg))
+            match serde_json::from_str(&line) {
+                Ok(msg) => Ok(Some(msg)),
+                Err(err) => Err(MessagesCodecError::JsonDecode(err, line)),
+            }
         } else {
             Ok(None)
         }
@@ -43,7 +47,7 @@ impl Encoder for MessagesCodec {
     type Error = MessagesCodecError;
 
     fn encode(&mut self, msg: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
-        let json = serde_json::to_string(&msg)?;
+        let json = serde_json::to_string(&msg).map_err(MessagesCodecError::JsonEncode)?;
         self.lines_codec.encode(json, buf)?;
         Ok(())
     }
@@ -51,7 +55,8 @@ impl Encoder for MessagesCodec {
 
 #[derive(Debug)]
 pub enum MessagesCodecError {
-    Json(serde_json::Error),
+    JsonDecode(serde_json::Error, String),
+    JsonEncode(serde_json::Error),
     LinesCodec(tokio_codec::LinesCodecError),
     Io(io::Error),
 }
@@ -59,7 +64,8 @@ pub enum MessagesCodecError {
 impl fmt::Display for MessagesCodecError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MessagesCodecError::Json(_) => write!(f, "failed to encode/decode JSON"),
+            MessagesCodecError::JsonDecode(_, json) => write!(f, "failed to decode JSON: {}", json),
+            MessagesCodecError::JsonEncode(_) => write!(f, "failed to encode JSON"),
             MessagesCodecError::LinesCodec(err) => err.fmt(f),
             MessagesCodecError::Io(err) => err.fmt(f),
         }
@@ -69,7 +75,8 @@ impl fmt::Display for MessagesCodecError {
 impl error::Error for MessagesCodecError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
-            MessagesCodecError::Json(ref err) => Some(err),
+            MessagesCodecError::JsonDecode(ref err, _) => Some(err),
+            MessagesCodecError::JsonEncode(ref err) => Some(err),
             MessagesCodecError::LinesCodec(ref err) => Some(err),
             MessagesCodecError::Io(ref err) => Some(err),
         }
@@ -79,12 +86,6 @@ impl error::Error for MessagesCodecError {
 impl From<io::Error> for MessagesCodecError {
     fn from(err: io::Error) -> Self {
         MessagesCodecError::Io(err)
-    }
-}
-
-impl From<serde_json::Error> for MessagesCodecError {
-    fn from(err: serde_json::Error) -> Self {
-        MessagesCodecError::Json(err)
     }
 }
 
