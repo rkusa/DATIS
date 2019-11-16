@@ -1,6 +1,6 @@
 name: Rust
 
-on: [push]
+on: push
 
 jobs:
   build:
@@ -9,7 +9,5 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: Switch to Rust beta
-      run: rustup override set beta
     - name: Run tests
       run: cargo test
