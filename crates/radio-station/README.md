@@ -22,7 +22,7 @@ ARGS:
 
 ## Build
 
-Build with [Rust beta](https://rustup.rs/):
+Build with [Rust stable](https://rustup.rs/):
 
 ```
 cd .\drs-cmd

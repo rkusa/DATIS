@@ -4,11 +4,12 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::{Duration, Instant};
 
 use async_std::fs::File;
+use async_std::io::prelude::ReadExt;
 use async_std::path::{Path, PathBuf};
+use async_std::stream::StreamExt;
 use futures::future::{self, Either};
-use futures_util::io::AsyncReadExt;
 use futures_util::sink::SinkExt;
-use futures_util::stream::{SplitSink, SplitStream, StreamExt};
+use futures_util::stream::{SplitSink, SplitStream, StreamExt as FutStreamExt};
 use ogg::reading::PacketReader;
 use ogg_metadata::{AudioMetadata, OggFormat};
 use srs::message::Position;

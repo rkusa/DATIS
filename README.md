@@ -123,7 +123,7 @@ Known issue: It will broadcast on the unit's frequency and not on the frequency 
 ## Build
 
 Instead of building you can also use the pre-build mod from one of the [releases](https://github.com/rkusa/DATIS/releases).
-Otherwise, build with [Rust (beta)](https://rustup.rs/):
+Otherwise, build with [Rust (stable)](https://rustup.rs/):
 
 ```
 make release
