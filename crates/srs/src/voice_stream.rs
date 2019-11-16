@@ -221,7 +221,7 @@ fn create_sync_message(client: &Client) -> Message {
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
-            name: client.name().to_string(),
+            name: Some(client.name().to_string()),
             position: pos.clone(),
             coalition: Coalition::Blue,
             radio_info: Some(RadioInfo {
@@ -264,7 +264,7 @@ fn create_update_message(client: &Client) -> Message {
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
-            name: client.name().to_string(),
+            name: Some(client.name().to_string()),
             position: client.position(),
             coalition: Coalition::Blue,
             radio_info: None,
@@ -279,7 +279,7 @@ fn create_radio_update_message(client: &Client) -> Message {
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
-            name: client.name().to_string(),
+            name: Some(client.name().to_string()),
             position: pos.clone(),
             coalition: Coalition::Blue,
             radio_info: Some(RadioInfo {

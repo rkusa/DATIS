@@ -68,7 +68,7 @@ pub struct RadioInfo {
 #[serde(rename_all = "PascalCase")]
 pub struct Client {
     pub client_guid: String,
-    pub name: String,
+    pub name: Option<String>,
     pub position: Position,
     pub coalition: Coalition,
     pub radio_info: Option<RadioInfo>,
