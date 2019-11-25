@@ -1,6 +1,6 @@
 # DATIS
 
-DCS World Automatic Terminal Information Service (ATIS) broadcasted though [Simple Radio Standalone](https://github.com/ciribob/DCS-SimpleRadioStandalone).
+DCS World Automatic Terminal Information Service (ATIS) broadcasted through [Simple Radio Standalone](https://github.com/ciribob/DCS-SimpleRadioStandalone).
 
 **Features:** Automatically starts within DCS, extracts weather information from the currently running mission, generates an ATIS report, converts it to speech and broadcasts it through SRS.
 
