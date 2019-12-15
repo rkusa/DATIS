@@ -41,7 +41,7 @@ impl VoiceStream {
         let a = Box::pin(recv_updates(stream));
         let b = Box::pin(send_updates(client.clone(), sink, recv_voice));
 
-        let udp = UdpSocket::bind("127.0.0.1:0").await?;
+        let udp = UdpSocket::bind("0.0.0.0:0").await?;
         udp.connect(addr).await?;
         let (sink, stream) = UdpFramed::new(udp, VoiceCodec::new()).split();
         let (tx, rx) = mpsc::channel(32);
@@ -172,8 +172,13 @@ async fn send_updates(
     let sync_msg = create_sync_message(&client);
     sink.send(sync_msg).await?;
 
+    println!("Starting update sending");
+
     loop {
+        println!("Delaying 5 seconds");
         delay_for(Duration::from_secs(5)).await;
+
+        println!("Sending update message");
 
         // Sending update message
         let upd_msg = if recv_voice {
@@ -196,9 +201,11 @@ async fn send_voice_pings(
     sguid.clone_from_slice(client.sguid().as_bytes());
 
     loop {
+        println!("Sending voice ping");
         if recv_voice {
             tx.send(Packet::Ping(sguid.clone())).await?;
         }
+        println!("sent voice ping");
 
         delay_for(Duration::from_secs(5)).await;
     }
@@ -283,7 +290,7 @@ fn create_radio_update_message(client: &Client) -> Message {
             position: pos.clone(),
             coalition: Coalition::Blue,
             radio_info: Some(RadioInfo {
-                name: "DATIS Radios".to_string(),
+                name: "SRSRS test Radio".to_string(),
                 pos: pos,
                 ptt: false,
                 radios: vec![Radio {
@@ -294,7 +301,7 @@ fn create_radio_update_message(client: &Client) -> Message {
                     freq_min: 1.0,
                     freq: client.freq() as f64,
                     modulation: 0,
-                    name: "DATIS Radio".to_string(),
+                    name: "SRSRS test Radio".to_string(),
                     sec_freq: 0.0,
                     volume: 1.0,
                     freq_mode: 0, // Cockpit
