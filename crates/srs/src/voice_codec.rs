@@ -76,7 +76,7 @@ impl Decoder for VoiceCodec {
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         // discard ping messages
         if self.is_head && buf.len() == 22 {
-            return Ok(None);
+            return Ok(Some(None));
         }
 
         if let Some(bytes) = self.inner.decode(buf)? {
