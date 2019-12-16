@@ -8,6 +8,7 @@ extern crate anyhow;
 use std::str::FromStr;
 use std::net::{SocketAddr, IpAddr, Ipv4Addr};
 use std::time::Duration;
+use std::io::prelude::*;
 
 use futures::prelude::*;
 
@@ -19,7 +20,11 @@ use futures_util::stream::{SplitSink, SplitStream, StreamExt};
 
 use tokio::timer::delay_for;
 
+use audiopus::{coder::Decoder, Channels, SampleRate};
+
 use tokio;
+
+use rodio::{Source, Sink};
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -49,10 +54,36 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
 async fn recv_voice_packets(mut stream: SplitStream<VoiceStream>) -> Result<(), anyhow::Error> {
+    let mut dec = Decoder::new(SampleRate::Hz16000, Channels::Mono)
+        .expect("Failed to create decoder");
+    let mut output = [0i16; 2048];
+
+    let device = rodio::default_output_device().unwrap();
+    let sink = Sink::new(&device);
+
+    let source = rodio::source::SineWave::new(440);
+    // sink.append(source);
+
     while let Some(packet) = stream.next().await {
-        packet.expect("Voice packet receive error");
+        let packet = packet.expect("Voice packet receive error");
         // we are currently not interested in the received voice packets, so simply discard them
-        println!("Got packet");
+        println!("Got packet: ");
+        println!("Freqs: {:?}", packet.frequencies);
+        println!("ID: {:?}", packet.sguid);
+        let decode_result = dec.decode(Some(&packet.audio_part), &mut output[..], false);
+
+        match decode_result {
+            Ok(len) => {
+                println!("Decoded {} bytes", len);
+                let buffer = rodio::buffer::SamplesBuffer::new(
+                    1,
+                    16000,
+                    &output[0..len]
+                );
+                sink.append(buffer);
+            },
+            Err(e) => {println!("Decoder error: {:?}", e)}
+        }
     }
 
     println!("Warning: Got out of recv_voice_packets loop");
