@@ -50,6 +50,29 @@ pub struct Radio {
     pub simul: bool,     // false
 }
 
+impl From<&GameRadio> for Radio {
+    fn from(r: &GameRadio) -> Self {
+        Self {
+            enc: r.enc,
+            enc_key: r.enc_key,
+            enc_mode: r.enc_mode,
+            freq_max: r.freq_max,
+            freq_min: r.freq_min,
+            freq: r.freq,
+            modulation: r.modulation,
+            name: r.name.clone(),
+            sec_freq: r.sec_freq,
+            volume: r.volume,
+            freq_mode: r.freq_mode,
+            vol_mode: r.vol_mode,
+            expansion: r.expansion,
+            channel: -1,
+            simul: false,
+        }
+    }
+
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RadioInfo {
@@ -84,6 +107,38 @@ pub struct Message {
     // ServerSettings
     // ExternalAWACSModePassword
     pub version: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GameRadio {
+    pub enc: bool,
+    pub enc_key: u8,
+    pub enc_mode: u8,
+    pub freq_max: f64,   // 1.0,
+    pub freq_min: f64,   // 1.0,
+    pub freq: f64,       // 1.0,
+    pub modulation: u8,  // 3,
+    pub name: String,    // "No Radio",
+    pub sec_freq: f64,   // 0.0,
+    pub volume: f32,     // 1.0,
+    pub freq_mode: u8,   // 0,
+    pub vol_mode: u8,    // 0,
+    pub expansion: bool, // false,
+    pub guard_freq_mode: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GameMessage {
+    pub control: i32,
+    pub name: String,
+    pub pos: Position,
+    pub ptt: bool,
+    pub radios: Vec<GameRadio>,
+    pub selected: i16,
+    pub unit: String,
+    pub unit_id: u32,
 }
 
 impl ::serde::Serialize for MsgType {

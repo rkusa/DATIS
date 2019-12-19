@@ -7,7 +7,6 @@ edition = "2018"
 [dependencies]
 clap = "2.32"
 ctrlc = "3.1"
-datis-core = { path = "../datis-core", features = ["static-weather"] }
 dotenv = "0.15"
 env_logger = "0.7"
 log = "0.4"

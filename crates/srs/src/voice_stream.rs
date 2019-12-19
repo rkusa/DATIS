@@ -6,7 +6,7 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use crate::client::Client;
-use crate::message::{Client as MsgClient, Coalition, Message, MsgType, Radio, RadioInfo};
+use crate::message::{Client as MsgClient, Coalition, Message, MsgType, Radio, RadioInfo, GameMessage};
 use crate::messages_codec::MessagesCodec;
 use crate::voice_codec::*;
 use futures::channel::mpsc;
@@ -33,13 +33,14 @@ impl VoiceStream {
     pub async fn new(
         client: Client,
         addr: SocketAddr,
+        game_source: mpsc::UnboundedReceiver<GameMessage>,
         recv_voice: bool,
     ) -> Result<Self, io::Error> {
         let tcp = TcpStream::connect(addr).await?;
         let (sink, stream) = Framed::new(tcp, MessagesCodec::new()).split();
 
         let a = Box::pin(recv_updates(stream));
-        let b = Box::pin(send_updates(client.clone(), sink, recv_voice));
+        let b = Box::pin(send_updates(client.clone(), sink, game_source, recv_voice));
 
         let udp = UdpSocket::bind("0.0.0.0:0").await?;
         udp.connect(addr).await?;
@@ -166,6 +167,7 @@ async fn recv_updates(
 async fn send_updates(
     client: Client,
     mut sink: SplitSink<Framed<TcpStream, MessagesCodec>, Message>,
+    mut game_source: mpsc::UnboundedReceiver<GameMessage>,
     recv_voice: bool,
 ) -> Result<(), anyhow::Error> {
     // send initial SYNC message
@@ -174,21 +176,34 @@ async fn send_updates(
 
     println!("Starting update sending");
 
-    loop {
-        println!("Delaying 5 seconds");
-        delay_for(Duration::from_secs(5)).await;
+    let mut last_game_msg = None;
 
-        println!("Sending update message");
+    loop {
+        // futures::stream::select().await;
+        let delay = delay_for(Duration::from_secs(5));
+        match future::select(game_source.next(), delay).await {
+            Either::Left((Some(msg), _)) => {
+                last_game_msg = Some(msg);
+            }
+            Either::Left((None, _)) => {break;}
+            Either::Right((_, _)) => {
+                info!("Game message timeout")
+            }
+        }
 
         // Sending update message
         let upd_msg = if recv_voice {
             // to recv audio we have to update our radio info regularly
-            create_radio_update_message(&client)
+            match &last_game_msg {
+                Some(msg) => radio_message_from_game(&client, msg),
+                None => create_radio_update_message(&client)
+            }
         } else {
             create_update_message(&client)
         };
         sink.send(upd_msg).await?;
     }
+    unreachable!("Game source disconnected");
 }
 
 async fn send_voice_pings(
@@ -201,11 +216,9 @@ async fn send_voice_pings(
     sguid.clone_from_slice(client.sguid().as_bytes());
 
     loop {
-        println!("Sending voice ping");
         if recv_voice {
             tx.send(Packet::Ping(sguid.clone())).await?;
         }
-        println!("sent voice ping");
 
         delay_for(Duration::from_secs(5)).await;
     }
@@ -323,4 +336,41 @@ fn create_radio_update_message(client: &Client) -> Message {
         msg_type: MsgType::RadioUpdate,
         version: SRS_VERSION.to_string(),
     }
+}
+
+fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Message {
+    let pos = game_message.pos.clone();
+
+    // pub control: i32,
+    // pub name: String,
+    // pub pos: Position,
+    // pub ptt: bool,
+    // pub radios: Vec<GameRadio>,
+    // pub selected: i32,
+    // pub unit: String,
+    // pub unit_id: usize,
+    Message {
+        client: Some(MsgClient {
+            client_guid: client.sguid().to_string(),
+            name: Some(game_message.name.clone()),
+            position: pos.clone(),
+            coalition: Coalition::Blue,
+            radio_info: Some(RadioInfo {
+                name: game_message.name.clone(),
+                pos: pos,
+                ptt: game_message.ptt,
+                radios: game_message.radios.iter()
+                    .map(|r| r.into())
+                    .collect::<Vec<Radio>>(),
+                control: 0, // HOTAS
+                selected: game_message.selected,
+                unit: game_message.unit.clone(),
+                unit_id: game_message.unit_id,
+                simultaneous_transmission: true,
+            }),
+        }),
+        msg_type: MsgType::RadioUpdate,
+        version: SRS_VERSION.to_string(),
+    }
+
 }

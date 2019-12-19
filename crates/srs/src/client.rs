@@ -70,9 +70,10 @@ impl Client {
     pub async fn start(
         self,
         addr: SocketAddr,
+        game_source: futures::channel::mpsc::UnboundedReceiver<crate::message::GameMessage>,
         recv_voice: bool,
     ) -> Result<VoiceStream, anyhow::Error> {
-        let stream = VoiceStream::new(self, addr, recv_voice).await?;
+        let stream = VoiceStream::new(self, addr, game_source, recv_voice).await?;
         Ok(stream)
     }
 }
