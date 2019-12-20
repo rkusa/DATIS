@@ -17,7 +17,7 @@ use futures_util::stream::{SplitSink, SplitStream};
 use tokio;
 use tokio::timer::delay_for;
 use audiopus::{coder::Decoder, Channels, SampleRate};
-use rodio::{Sink};
+use rodio::{Sink, source::ChannelVolume};
 
 use srs::{
     Client,
@@ -145,7 +145,11 @@ async fn recv_voice_packets(
                             16000,
                             &output[0..len]
                         );
-                        sink.append(source);
+                        let with_channel = ChannelVolume::new(
+                            source,
+                            packet_channels(&packet, &radios)
+                        );
+                        sink.append(with_channel);
                     },
                     Err(e) => {println!("Decoder error: {:?}", e)}
                 }
@@ -174,16 +178,39 @@ async fn audio_broadcast(
 
 
 fn packet_volume(packet: &VoicePacket, radios: &Option<Vec<GameRadio>>) -> f32 {
+    packet_radio(packet, radios)
+        .map(|(_, r)| r.volume)
+        .unwrap_or(1.0)
+}
+fn packet_channels(packet: &VoicePacket, radios: &Option<Vec<GameRadio>>)
+    -> Vec<f32>
+{
+    packet_radio(packet, radios)
+        .map(|(id, _)| {
+            if id % 2 == 1 {
+                vec![1., 0.]
+            }
+            else {
+                vec![0., 1.]
+            }
+        })
+        .unwrap_or(vec![1., 1.])
+}
+
+fn packet_radio(
+    packet: &VoicePacket,
+    radios: &Option<Vec<GameRadio>>
+) -> Option<(usize, GameRadio)> {
     radios.as_ref().map(|radios| {
             packet.frequencies.iter().map(|freq| {
                 radios.iter()
-                    .filter(|radio| radio.freq == freq.freq as f64)
-                    .map(|radio| radio.volume)
+                    .cloned()
+                    .enumerate()
+                    .filter(|(_, radio)| radio.freq == freq.freq as f64)
                     .next()
-                    .unwrap_or(1.0)
             })
             .next()
-            .unwrap_or(1.0)
+            .unwrap_or(None)
         })
-        .unwrap_or(1.0)
+        .unwrap_or(None)
 }
