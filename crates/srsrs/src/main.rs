@@ -5,29 +5,25 @@ extern crate log;
 extern crate anyhow;
 
 
-use std::str::FromStr;
 use std::net::{SocketAddr, IpAddr, Ipv4Addr};
 use std::time::Duration;
-use std::io::prelude::*;
-use std::collections::HashMap;
 
 
-use clap::{App, Arg};
 use dotenv::dotenv;
 use futures::prelude::*;
-use futures::future::{Either, FutureExt};
+use futures::future::{Either};
 use futures::channel::mpsc;
-use futures_util::stream::{SplitSink, SplitStream, StreamExt};
+use futures_util::stream::{SplitSink, SplitStream};
 use tokio;
 use tokio::timer::delay_for;
 use audiopus::{coder::Decoder, Channels, SampleRate};
-use rodio::{Source, Sink};
+use rodio::{Sink};
 
 use srs::{
     Client,
     VoiceStream,
     VoicePacket,
-    message::{GameRadio, GameMessage},
+    message::{GameRadio},
 };
 
 mod dcs_control;
@@ -63,7 +59,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (split_tx1, game_rx) = mpsc::unbounded();
     let (split_tx2, radio_rx) = mpsc::unbounded();
 
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(64,94,100,43)), 5002);
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(136,55,80,214)), 5002);
 
     let (sink, stream) = client.start(addr, game_rx, true).await?.split();
 
@@ -101,17 +97,17 @@ async fn recv_voice_packets(
 )
     -> Result<(), anyhow::Error>
 {
-    let mut dec = Decoder::new(SampleRate::Hz16000, Channels::Mono)
-        .expect("Failed to create decoder");
-    let mut output = [0i16; 2048];
+    let mut output = [0i16; 1024];
 
     let device = rodio::default_output_device().unwrap();
 
-    let mut sinks = HashMap::new();
+    // let mut sinks = HashMap::new();
+    let mut sinks: Vec<([u8; 22], Decoder, rodio::Sink)> = vec!();
 
     let mut radios: Option<Vec<srs::message::GameRadio>> = None;
 
     println!("Got past sine wave");
+
 
     loop {
         let next = future::select(stream.next(), game_info.next()).await;
@@ -120,9 +116,19 @@ async fn recv_voice_packets(
                 let packet = packet
                     .expect("Voice packet receive error");
 
-                if !sinks.contains_key(&packet.sguid) {
-                    sinks.insert(packet.sguid, Sink::new(&device));
+                let mut sink_index = None;
+                for (i, (id, _, _)) in sinks.iter().enumerate() {
+                    if id == &packet.sguid {
+                        sink_index = Some(i);
+                    }
                 }
+                if sink_index == None {
+                    let dec = Decoder::new(SampleRate::Hz16000, Channels::Mono)
+                        .expect("Failed to create decoder");
+                    sinks.push((packet.sguid, dec, Sink::new(&device)));
+                }
+                let sink_index = sink_index.unwrap_or(sinks.len()-1);
+                let (_, dec, sink) = &mut sinks[sink_index];
 
                 let decode_result = dec.decode(
                     Some(&packet.audio_part),
@@ -132,15 +138,14 @@ async fn recv_voice_packets(
 
                 match decode_result {
                     Ok(len) => {
-                        let buffer = rodio::buffer::SamplesBuffer::new(
+                        // println!("{:?}", packet.sguid);
+                        sink.set_volume(packet_volume(&packet, &radios));
+                        let source = rodio::buffer::SamplesBuffer::new(
                             1,
                             16000,
                             &output[0..len]
                         );
-                        // println!("{:?}", packet.sguid);
-                        let sink = &sinks[&packet.sguid];
-                        sink.set_volume(packet_volume(&packet, &radios));
-                        sink.append(buffer);
+                        sink.append(source);
                     },
                     Err(e) => {println!("Decoder error: {:?}", e)}
                 }
@@ -159,7 +164,7 @@ async fn recv_voice_packets(
 }
 
 async fn audio_broadcast(
-    mut sink: SplitSink<VoiceStream, Vec<u8>>,
+    _sink: SplitSink<VoiceStream, Vec<u8>>,
 ) -> Result<(), anyhow::Error> {
     loop {
         delay_for(Duration::from_secs(5)).await;
