@@ -5,8 +5,10 @@ extern crate log;
 extern crate anyhow;
 
 
-use std::net::{SocketAddr, IpAddr, Ipv4Addr};
+use std::net::{SocketAddr, IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::time::Duration;
+
+use clap;
 
 
 use dotenv::dotenv;
@@ -52,6 +54,20 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .try_init()
         .unwrap();
 
+
+    let matches = clap::App::new("srsrs")
+        .version("1.0")
+        .arg(clap::Arg::with_name("SERVER")
+            .index(1)
+            .required(true))
+        .arg(clap::Arg::with_name("PORT")
+            .index(2)
+            .required(false))
+        .get_matches();
+
+    let server = matches.value_of("SERVER").unwrap();
+    let port = matches.value_of("PORT").unwrap_or("5002");
+
     let frequency = 245000000;
     let client = Client::new("thezoq2_srsrstest", frequency);
 
@@ -59,9 +75,10 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (split_tx1, game_rx) = mpsc::unbounded();
     let (split_tx2, radio_rx) = mpsc::unbounded();
 
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(136,55,80,214)), 5002);
+    // let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(136,55,80,214)), 5002);
+    let mut addr = format!("{}:{}", server, port).to_socket_addrs().unwrap();
 
-    let (sink, stream) = client.start(addr, game_rx, true).await?.split();
+    let (sink, stream) = client.start(addr.next().unwrap(), game_rx, true).await?.split();
 
     let control = Box::pin(dcs_control::dcs_control(game_tx));
     let channel_splter = Box::pin(split_channel(split_rx, split_tx1, split_tx2));
