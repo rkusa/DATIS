@@ -5,7 +5,7 @@ extern crate log;
 extern crate anyhow;
 
 
-use std::net::{SocketAddr, IpAddr, Ipv4Addr, ToSocketAddrs};
+use std::net::ToSocketAddrs;
 use std::time::Duration;
 
 use clap;
@@ -13,7 +13,7 @@ use clap;
 
 use dotenv::dotenv;
 use futures::prelude::*;
-use futures::future::{Either};
+use futures::future::Either;
 use futures::channel::mpsc;
 use futures_util::stream::{SplitSink, SplitStream};
 use tokio;
@@ -78,7 +78,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(136,55,80,214)), 5002);
     let mut addr = format!("{}:{}", server, port).to_socket_addrs().unwrap();
 
-    let (sink, stream) = client.start(addr.next().unwrap(), game_rx, true).await?.split();
+    let (sink, stream) = client.start(addr.next().unwrap(), Some(game_rx)).await?.split();
 
     let control = Box::pin(dcs_control::dcs_control(game_tx));
     let channel_splter = Box::pin(split_channel(split_rx, split_tx1, split_tx2));
