@@ -33,14 +33,16 @@ impl VoiceStream {
     pub async fn new(
         client: Client,
         addr: SocketAddr,
-        game_source: mpsc::UnboundedReceiver<GameMessage>,
-        recv_voice: bool,
-    ) -> Result<Self, io::Error> {
+        game_source: Option<mpsc::UnboundedReceiver<GameMessage>>
+    ) -> Result<Self, io::Error>
+    {
+        let recv_voice = game_source.is_some();
+
         let tcp = TcpStream::connect(addr).await?;
         let (sink, stream) = Framed::new(tcp, MessagesCodec::new()).split();
 
         let a = Box::pin(recv_updates(stream));
-        let b = Box::pin(send_updates(client.clone(), sink, game_source, recv_voice));
+        let b = Box::pin(send_updates(client.clone(), sink, game_source));
 
         let udp = UdpSocket::bind("0.0.0.0:0").await?;
         udp.connect(addr).await?;
@@ -164,46 +166,55 @@ async fn recv_updates(
     Ok(())
 }
 
-async fn send_updates(
+async fn send_updates<G>(
     client: Client,
     mut sink: SplitSink<Framed<TcpStream, MessagesCodec>, Message>,
-    mut game_source: mpsc::UnboundedReceiver<GameMessage>,
-    recv_voice: bool,
-) -> Result<(), anyhow::Error> {
-    // send initial SYNC message
-    let sync_msg = create_sync_message(&client);
-    sink.send(sync_msg).await?;
+    mut game_source: Option<G>,
+) -> Result<(), anyhow::Error>
+    where G: Stream<Item=GameMessage> + Unpin
+{
+    if let Some(mut game_source) = game_source {
+        // send initial SYNC message
+        let sync_msg = create_sync_message(&client);
+        sink.send(sync_msg).await?;
 
-    println!("Starting update sending");
+        println!("Starting update sending");
 
-    let mut last_game_msg = None;
+        let mut last_game_msg = None;
 
-    loop {
-        // futures::stream::select().await;
-        let delay = delay_for(Duration::from_secs(5));
-        match future::select(game_source.next(), delay).await {
-            Either::Left((Some(msg), _)) => {
-                last_game_msg = Some(msg);
+
+        loop {
+            let delay = delay_for(Duration::from_secs(5));
+            // futures::stream::select().await;
+            match future::select(game_source.next(), delay).await {
+                Either::Left((Some(msg), _)) => {
+                    last_game_msg = Some(msg);
+                }
+                Either::Left((None, _)) => {break;}
+                Either::Right((_, _)) => {
+                    info!("Game message timeout")
+                }
             }
-            Either::Left((None, _)) => {break;}
-            Either::Right((_, _)) => {
-                info!("Game message timeout")
+
+            match &last_game_msg {
+                Some(msg) => sink.send(radio_message_from_game(&client, msg)).await?,
+                None => {},
             }
         }
-
-        // Sending update message
-        let upd_msg = if recv_voice {
-            // to recv audio we have to update our radio info regularly
-            match &last_game_msg {
-                Some(msg) => radio_message_from_game(&client, msg),
-                None => create_radio_update_message(&client)
-            }
-        } else {
-            create_update_message(&client)
-        };
-        sink.send(upd_msg).await?;
+        unreachable!("Game source disconnected");
     }
-    unreachable!("Game source disconnected");
+    else {
+        // send initial SYNC message
+        let sync_msg = create_sync_message(&client);
+        sink.send(sync_msg).await?;
+
+        loop {
+            delay_for(Duration::from_secs(5)).await;
+
+            // Sending update message
+            sink.send(create_update_message(&client)).await?;
+        }
+    }
 }
 
 async fn send_voice_pings(
