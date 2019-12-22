@@ -69,6 +69,15 @@ impl Client {
         });
     }
 
+    /**
+      Start sending updates to the specified server. If `game_source` is None,
+      the client will act as a stationary transmitter using the position and
+      frequency specified in the `Client` struct. It will not request any voice
+      messages
+
+      If the `game_source` is set, the position and frequencies of the game
+      message will be sent, and voice requested
+    */
     pub async fn start(
         self,
         addr: SocketAddr,

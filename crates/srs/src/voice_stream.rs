@@ -166,6 +166,11 @@ async fn recv_updates(
     Ok(())
 }
 
+/**
+  Sends updates about the client to the server. If `game_source` is set,
+  the position and frequency from the latest received `GameMessage` is used.
+  Otherwise, the parameters set in the `client` struct are used.
+*/
 async fn send_updates<G>(
     client: Client,
     mut sink: SplitSink<Framed<TcpStream, MessagesCodec>, Message>,
@@ -173,15 +178,12 @@ async fn send_updates<G>(
 ) -> Result<(), anyhow::Error>
     where G: Stream<Item=GameMessage> + Unpin
 {
+    // send initial SYNC message
+    let sync_msg = create_sync_message(&client);
+    sink.send(sync_msg).await?;
+
     if let Some(mut game_source) = game_source {
-        // send initial SYNC message
-        let sync_msg = create_sync_message(&client);
-        sink.send(sync_msg).await?;
-
-        println!("Starting update sending");
-
         let mut last_game_msg = None;
-
 
         loop {
             let delay = delay_for(Duration::from_secs(5));
@@ -204,10 +206,6 @@ async fn send_updates<G>(
         unreachable!("Game source disconnected");
     }
     else {
-        // send initial SYNC message
-        let sync_msg = create_sync_message(&client);
-        sink.send(sync_msg).await?;
-
         loop {
             delay_for(Duration::from_secs(5)).await;
 
@@ -308,14 +306,6 @@ fn create_update_message(client: &Client) -> Message {
 fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Message {
     let pos = game_message.pos.clone();
 
-    // pub control: i32,
-    // pub name: String,
-    // pub pos: Position,
-    // pub ptt: bool,
-    // pub radios: Vec<GameRadio>,
-    // pub selected: i32,
-    // pub unit: String,
-    // pub unit_id: usize,
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),

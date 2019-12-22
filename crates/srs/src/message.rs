@@ -109,6 +109,10 @@ pub struct Message {
     pub version: String,
 }
 
+/**
+  Radio received from the in-game srs-plugin. Can be translated into a
+  `Radio` struct using `.into()`
+*/
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct GameRadio {
@@ -128,6 +132,9 @@ pub struct GameRadio {
     pub guard_freq_mode: u8,
 }
 
+/**
+  Data received from the in-game srs-plugin.
+*/
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct GameMessage {
