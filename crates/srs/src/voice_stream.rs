@@ -169,7 +169,7 @@ async fn recv_updates(
 async fn send_updates<G>(
     client: Client,
     mut sink: SplitSink<Framed<TcpStream, MessagesCodec>, Message>,
-    mut game_source: Option<G>,
+    game_source: Option<G>,
 ) -> Result<(), anyhow::Error>
     where G: Stream<Item=GameMessage> + Unpin
 {
@@ -305,50 +305,6 @@ fn create_update_message(client: &Client) -> Message {
     }
 }
 
-fn create_radio_update_message(client: &Client) -> Message {
-    let pos = client.position();
-    Message {
-        client: Some(MsgClient {
-            client_guid: client.sguid().to_string(),
-            name: Some(client.name().to_string()),
-            position: pos.clone(),
-            coalition: Coalition::Blue,
-            radio_info: Some(RadioInfo {
-                name: "SRSRS test Radio".to_string(),
-                pos: pos,
-                ptt: false,
-                radios: vec![Radio {
-                    enc: false,
-                    enc_key: 0,
-                    enc_mode: 0, // no encryption
-                    freq_max: 1.0,
-                    freq_min: 1.0,
-                    freq: client.freq() as f64,
-                    modulation: 0,
-                    name: "SRSRS test Radio".to_string(),
-                    sec_freq: 0.0,
-                    volume: 1.0,
-                    freq_mode: 0, // Cockpit
-                    vol_mode: 0,  // Cockpit
-                    expansion: false,
-                    channel: -1,
-                    simul: false,
-                }],
-                control: 0, // HOTAS
-                selected: 0,
-                unit: client
-                    .unit()
-                    .map(|u| u.name.clone())
-                    .unwrap_or_else(|| client.name().to_string()),
-                unit_id: client.unit().map(|u| u.id).unwrap_or(0),
-                simultaneous_transmission: true,
-            }),
-        }),
-        msg_type: MsgType::RadioUpdate,
-        version: SRS_VERSION.to_string(),
-    }
-}
-
 fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Message {
     let pos = game_message.pos.clone();
 
@@ -383,5 +339,4 @@ fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Messa
         msg_type: MsgType::RadioUpdate,
         version: SRS_VERSION.to_string(),
     }
-
 }
