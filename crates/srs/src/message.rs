@@ -70,7 +70,6 @@ impl From<&GameRadio> for Radio {
             simul: false,
         }
     }
-
 }
 
 #[derive(Serialize, Deserialize, Debug)]

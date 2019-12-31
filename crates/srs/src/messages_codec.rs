@@ -1,7 +1,7 @@
 use crate::message::Message;
 use bytes::BytesMut;
 use std::{error, fmt, io};
-use tokio_codec::{Decoder, Encoder, LinesCodec};
+use tokio_util::codec::{Decoder, Encoder, LinesCodec, LinesCodecError};
 
 pub struct MessagesCodec {
     lines_codec: LinesCodec,
@@ -57,7 +57,7 @@ impl Encoder for MessagesCodec {
 pub enum MessagesCodecError {
     JsonDecode(serde_json::Error, String),
     JsonEncode(serde_json::Error),
-    LinesCodec(tokio_codec::LinesCodecError),
+    LinesCodec(LinesCodecError),
     Io(io::Error),
 }
 
@@ -89,8 +89,8 @@ impl From<io::Error> for MessagesCodecError {
     }
 }
 
-impl From<tokio_codec::LinesCodecError> for MessagesCodecError {
-    fn from(err: tokio_codec::LinesCodecError) -> Self {
+impl From<LinesCodecError> for MessagesCodecError {
+    fn from(err: LinesCodecError) -> Self {
         MessagesCodecError::LinesCodec(err)
     }
 }

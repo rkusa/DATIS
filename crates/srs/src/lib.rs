@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate anyhow;
-#[macro_use]
-extern crate log;
 
 mod client;
 pub mod message;

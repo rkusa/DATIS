@@ -6,15 +6,14 @@ use std::time::{Duration, Instant};
 use async_std::fs::File;
 use async_std::io::prelude::ReadExt;
 use async_std::path::{Path, PathBuf};
-use async_std::stream::StreamExt;
 use futures::future::{self, Either};
-use futures_util::sink::SinkExt;
-use futures_util::stream::{SplitSink, SplitStream, StreamExt as FutStreamExt};
+use futures::sink::SinkExt;
+use futures::stream::{SplitSink, SplitStream, StreamExt as FutStreamExt};
 use ogg::reading::PacketReader;
 use ogg_metadata::{AudioMetadata, OggFormat};
 use srs::message::Position;
 use srs::{Client, VoiceStream};
-use tokio::timer::delay_for;
+use tokio::time::delay_for;
 
 pub struct RadioStation {
     name: String,

@@ -30,11 +30,11 @@ use crate::tts::{
     TextToSpeechConfig, TextToSpeechProvider,
 };
 use futures::future::{self, abortable, AbortHandle, Either, FutureExt};
-use futures_util::sink::SinkExt;
-use futures_util::stream::{SplitSink, SplitStream, StreamExt};
+use futures::sink::SinkExt;
+use futures::stream::{SplitSink, SplitStream, StreamExt};
 use srs::{Client, VoiceStream};
 use tokio::runtime::Runtime;
-use tokio::timer::delay_for;
+use tokio::time::delay_for;
 
 pub struct Datis {
     stations: Vec<Station>,
@@ -170,6 +170,8 @@ impl Datis {
             self.runtime.spawn(f.map(|_| ()));
         }
 
+        debug!("Started all ATIS stations");
+
         Ok(())
     }
 
@@ -188,7 +190,7 @@ impl Datis {
         }
 
         let rt = mem::replace(&mut self.runtime, Runtime::new()?);
-        rt.shutdown_now();
+        mem::drop(rt); // shutdown
         debug!("Shut down all ATIS stations");
 
         self.started = false;

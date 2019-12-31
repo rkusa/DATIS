@@ -6,18 +6,19 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use crate::client::Client;
-use crate::message::{Client as MsgClient, Coalition, Message, MsgType, Radio, RadioInfo, GameMessage};
+use crate::message::{
+    Client as MsgClient, Coalition, GameMessage, Message, MsgType, Radio, RadioInfo,
+};
 use crate::messages_codec::MessagesCodec;
 use crate::voice_codec::*;
 use futures::channel::mpsc;
 use futures::future::{self, Either, FutureExt, TryFutureExt};
-use futures::sink::Sink;
-use futures::stream::{Stream, StreamExt};
-use futures_util::sink::SinkExt;
-use futures_util::stream::{SplitSink, SplitStream};
-use tokio::net::{TcpStream, UdpFramed, UdpSocket};
-use tokio::timer::delay_for;
-use tokio_codec::Framed;
+use futures::sink::{Sink, SinkExt};
+use futures::stream::{SplitSink, SplitStream, Stream, StreamExt};
+use tokio::net::{TcpStream, UdpSocket};
+use tokio::time::delay_for;
+use tokio_util::codec::Framed;
+use tokio_util::udp::UdpFramed;
 
 const SRS_VERSION: &str = "1.7.0.0";
 
@@ -33,9 +34,8 @@ impl VoiceStream {
     pub async fn new(
         client: Client,
         addr: SocketAddr,
-        game_source: Option<mpsc::UnboundedReceiver<GameMessage>>
-    ) -> Result<Self, io::Error>
-    {
+        game_source: Option<mpsc::UnboundedReceiver<GameMessage>>,
+    ) -> Result<Self, io::Error> {
         let recv_voice = game_source.is_some();
 
         let tcp = TcpStream::connect(addr).await?;
@@ -44,7 +44,8 @@ impl VoiceStream {
         let a = Box::pin(recv_updates(stream));
         let b = Box::pin(send_updates(client.clone(), sink, game_source));
 
-        let udp = UdpSocket::bind("0.0.0.0:0").await?;
+        let local_addr: SocketAddr = "0.0.0.0:0".parse().unwrap();
+        let udp = UdpSocket::bind(local_addr).await?;
         udp.connect(addr).await?;
         let (sink, stream) = UdpFramed::new(udp, VoiceCodec::new()).split();
         let (tx, rx) = mpsc::channel(32);
@@ -104,8 +105,7 @@ impl Stream for VoiceStream {
         match s.heartbeat.poll_unpin(cx) {
             Poll::Pending => {}
             Poll::Ready(Err(err)) => return Poll::Ready(Some(Err(err.into()))),
-            Poll::Ready(Ok(asd)) => {
-                debug!("WTF {:?}", asd);
+            Poll::Ready(Ok(_)) => {
                 return Poll::Ready(Some(Err(anyhow!("TCP connection was closed unexpectedly"))));
             }
         }
@@ -174,7 +174,8 @@ async fn send_updates<G>(
     mut sink: SplitSink<Framed<TcpStream, MessagesCodec>, Message>,
     game_source: Option<G>,
 ) -> Result<(), anyhow::Error>
-    where G: Stream<Item=GameMessage> + Unpin
+where
+    G: Stream<Item = GameMessage> + Unpin,
 {
     // send initial SYNC message
     let sync_msg = create_sync_message(&client);
@@ -189,20 +190,21 @@ async fn send_updates<G>(
                 Either::Left((Some(msg), _)) => {
                     last_game_msg = Some(msg);
                 }
-                Either::Left((None, _)) => {break;}
+                Either::Left((None, _)) => {
+                    break;
+                }
                 Either::Right((_, _)) => {
-                    debug!("Game message timeout")
+                    // debug!("Game message timeout")
                 }
             }
 
             match &last_game_msg {
                 Some(msg) => sink.send(radio_message_from_game(&client, msg)).await?,
-                None => {},
+                None => {}
             }
         }
         unreachable!("Game source disconnected");
-    }
-    else {
+    } else {
         loop {
             delay_for(Duration::from_secs(5)).await;
 
@@ -313,7 +315,9 @@ fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Messa
                 name: game_message.name.clone(),
                 pos: pos,
                 ptt: game_message.ptt,
-                radios: game_message.radios.iter()
+                radios: game_message
+                    .radios
+                    .iter()
                     .map(|r| r.into())
                     .collect::<Vec<Radio>>(),
                 control: 0, // HOTAS

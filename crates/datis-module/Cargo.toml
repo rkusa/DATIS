@@ -14,7 +14,7 @@ datis-core = { path = "../datis-core" }
 hlua51 = { git = "https://github.com/rkusa/hlua51.git" }
 libc = "0.2"
 log = "0.4"
-log4rs = "0.8"
+log4rs = "0.10"
 lua51-sys = { git = "https://github.com/rkusa/hlua51.git" }
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }

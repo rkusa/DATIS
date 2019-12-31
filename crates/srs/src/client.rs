@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use futures::channel::mpsc;
 
-use crate::message::{create_sguid, Position, GameMessage};
+use crate::message::{create_sguid, GameMessage, Position};
 use crate::voice_stream::VoiceStream;
 
 #[derive(Debug, Clone)]
@@ -81,7 +81,7 @@ impl Client {
     pub async fn start(
         self,
         addr: SocketAddr,
-        game_source: Option<mpsc::UnboundedReceiver<GameMessage>>
+        game_source: Option<mpsc::UnboundedReceiver<GameMessage>>,
     ) -> Result<VoiceStream, anyhow::Error> {
         let stream = VoiceStream::new(self, addr, game_source).await?;
         Ok(stream)

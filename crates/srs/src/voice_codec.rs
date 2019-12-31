@@ -1,9 +1,8 @@
 use std::io::{self, Cursor, Read, Write};
 
-// use byteorder::ByteOrder;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::{BufMut, BytesMut};
-use tokio_codec::{Decoder, Encoder, LengthDelimitedCodec};
+use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 pub struct VoiceCodec {
     inner: LengthDelimitedCodec,

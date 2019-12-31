@@ -61,7 +61,7 @@ pub async fn text_to_speech(
     let audio_stream = response
         .audio_stream
         .ok_or_else(|| anyhow!("Polly response did not contain an audio stream"))?;
-    let audio_stream = vector_i16(audio_stream);
+    let audio_stream = vector_i16(&audio_stream);
 
     const MONO_20MS: usize = 16000 * 1 * 20 / 1000;
     let enc = Encoder::new(SampleRate::Hz16000, Channels::Mono, Application::Voip)?;
@@ -79,7 +79,7 @@ pub async fn text_to_speech(
     Ok(frames)
 }
 
-fn vector_i16(byte_stream: bytes::Bytes) -> Vec<i16> {
+fn vector_i16(byte_stream: &[u8]) -> Vec<i16> {
     let len = byte_stream.len();
     let mut res: Vec<i16> = Vec::new();
     let mut index_pos = 0;
