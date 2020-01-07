@@ -166,11 +166,9 @@ async fn recv_updates(
     Ok(())
 }
 
-/**
-  Sends updates about the client to the server. If `game_source` is set,
-  the position and frequency from the latest received `GameMessage` is used.
-  Otherwise, the parameters set in the `client` struct are used.
-*/
+/// Sends updates about the client to the server. If `game_source` is set,
+/// the position and frequency from the latest received `GameMessage` is used.
+/// Otherwise, the parameters set in the `client` struct are used.
 async fn send_updates<G>(
     client: Client,
     mut sink: SplitSink<Framed<TcpStream, MessagesCodec>, Message>,
@@ -187,14 +185,13 @@ async fn send_updates<G>(
 
         loop {
             let delay = delay_for(Duration::from_secs(5));
-            // futures::stream::select().await;
             match future::select(game_source.next(), delay).await {
                 Either::Left((Some(msg), _)) => {
                     last_game_msg = Some(msg);
                 }
                 Either::Left((None, _)) => {break;}
                 Either::Right((_, _)) => {
-                    info!("Game message timeout")
+                    debug!("Game message timeout")
                 }
             }
 
