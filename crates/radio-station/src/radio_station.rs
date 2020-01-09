@@ -54,7 +54,7 @@ impl RadioStation {
         client.set_position(self.position);
 
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), self.port);
-        let (sink, stream) = client.start(addr, false).await?.split();
+        let (sink, stream) = client.start(addr, None).await?.split();
 
         let rx = Box::pin(recv_voice_packets(stream));
         let tx = Box::pin(radio_broadcast(sink, path, should_loop));

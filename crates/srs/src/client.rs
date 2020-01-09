@@ -1,7 +1,9 @@
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 
-use crate::message::{create_sguid, Position};
+use futures::channel::mpsc;
+
+use crate::message::{create_sguid, Position, GameMessage};
 use crate::voice_stream::VoiceStream;
 
 #[derive(Debug, Clone)]
@@ -67,12 +69,21 @@ impl Client {
         });
     }
 
+    /**
+      Start sending updates to the specified server. If `game_source` is None,
+      the client will act as a stationary transmitter using the position and
+      frequency specified in the `Client` struct. It will not request any voice
+      messages
+
+      If the `game_source` is set, the position and frequencies of the game
+      message will be sent, and voice requested
+    */
     pub async fn start(
         self,
         addr: SocketAddr,
-        recv_voice: bool,
+        game_source: Option<mpsc::UnboundedReceiver<GameMessage>>
     ) -> Result<VoiceStream, anyhow::Error> {
-        let stream = VoiceStream::new(self, addr, recv_voice).await?;
+        let stream = VoiceStream::new(self, addr, game_source).await?;
         Ok(stream)
     }
 }

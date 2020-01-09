@@ -6,7 +6,7 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use crate::client::Client;
-use crate::message::{Client as MsgClient, Coalition, Message, MsgType, Radio, RadioInfo};
+use crate::message::{Client as MsgClient, Coalition, Message, MsgType, Radio, RadioInfo, GameMessage};
 use crate::messages_codec::MessagesCodec;
 use crate::voice_codec::*;
 use futures::channel::mpsc;
@@ -33,15 +33,18 @@ impl VoiceStream {
     pub async fn new(
         client: Client,
         addr: SocketAddr,
-        recv_voice: bool,
-    ) -> Result<Self, io::Error> {
+        game_source: Option<mpsc::UnboundedReceiver<GameMessage>>
+    ) -> Result<Self, io::Error>
+    {
+        let recv_voice = game_source.is_some();
+
         let tcp = TcpStream::connect(addr).await?;
         let (sink, stream) = Framed::new(tcp, MessagesCodec::new()).split();
 
         let a = Box::pin(recv_updates(stream));
-        let b = Box::pin(send_updates(client.clone(), sink, recv_voice));
+        let b = Box::pin(send_updates(client.clone(), sink, game_source));
 
-        let udp = UdpSocket::bind("127.0.0.1:0").await?;
+        let udp = UdpSocket::bind("0.0.0.0:0").await?;
         udp.connect(addr).await?;
         let (sink, stream) = UdpFramed::new(udp, VoiceCodec::new()).split();
         let (tx, rx) = mpsc::channel(32);
@@ -163,26 +166,49 @@ async fn recv_updates(
     Ok(())
 }
 
-async fn send_updates(
+/// Sends updates about the client to the server. If `game_source` is set,
+/// the position and frequency from the latest received `GameMessage` is used.
+/// Otherwise, the parameters set in the `client` struct are used.
+async fn send_updates<G>(
     client: Client,
     mut sink: SplitSink<Framed<TcpStream, MessagesCodec>, Message>,
-    recv_voice: bool,
-) -> Result<(), anyhow::Error> {
+    game_source: Option<G>,
+) -> Result<(), anyhow::Error>
+    where G: Stream<Item=GameMessage> + Unpin
+{
     // send initial SYNC message
     let sync_msg = create_sync_message(&client);
     sink.send(sync_msg).await?;
 
-    loop {
-        delay_for(Duration::from_secs(5)).await;
+    if let Some(mut game_source) = game_source {
+        let mut last_game_msg = None;
 
-        // Sending update message
-        let upd_msg = if recv_voice {
-            // to recv audio we have to update our radio info regularly
-            create_radio_update_message(&client)
-        } else {
-            create_update_message(&client)
-        };
-        sink.send(upd_msg).await?;
+        loop {
+            let delay = delay_for(Duration::from_secs(5));
+            match future::select(game_source.next(), delay).await {
+                Either::Left((Some(msg), _)) => {
+                    last_game_msg = Some(msg);
+                }
+                Either::Left((None, _)) => {break;}
+                Either::Right((_, _)) => {
+                    debug!("Game message timeout")
+                }
+            }
+
+            match &last_game_msg {
+                Some(msg) => sink.send(radio_message_from_game(&client, msg)).await?,
+                None => {},
+            }
+        }
+        unreachable!("Game source disconnected");
+    }
+    else {
+        loop {
+            delay_for(Duration::from_secs(5)).await;
+
+            // Sending update message
+            sink.send(create_update_message(&client)).await?;
+        }
     }
 }
 
@@ -274,42 +300,26 @@ fn create_update_message(client: &Client) -> Message {
     }
 }
 
-fn create_radio_update_message(client: &Client) -> Message {
-    let pos = client.position();
+fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Message {
+    let pos = game_message.pos.clone();
+
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
-            name: Some(client.name().to_string()),
+            name: Some(game_message.name.clone()),
             position: pos.clone(),
             coalition: Coalition::Blue,
             radio_info: Some(RadioInfo {
-                name: "DATIS Radios".to_string(),
+                name: game_message.name.clone(),
                 pos: pos,
-                ptt: false,
-                radios: vec![Radio {
-                    enc: false,
-                    enc_key: 0,
-                    enc_mode: 0, // no encryption
-                    freq_max: 1.0,
-                    freq_min: 1.0,
-                    freq: client.freq() as f64,
-                    modulation: 0,
-                    name: "DATIS Radio".to_string(),
-                    sec_freq: 0.0,
-                    volume: 1.0,
-                    freq_mode: 0, // Cockpit
-                    vol_mode: 0,  // Cockpit
-                    expansion: false,
-                    channel: -1,
-                    simul: false,
-                }],
+                ptt: game_message.ptt,
+                radios: game_message.radios.iter()
+                    .map(|r| r.into())
+                    .collect::<Vec<Radio>>(),
                 control: 0, // HOTAS
-                selected: 0,
-                unit: client
-                    .unit()
-                    .map(|u| u.name.clone())
-                    .unwrap_or_else(|| client.name().to_string()),
-                unit_id: client.unit().map(|u| u.id).unwrap_or(0),
+                selected: game_message.selected,
+                unit: game_message.unit.clone(),
+                unit_id: game_message.unit_id,
                 simultaneous_transmission: true,
             }),
         }),
