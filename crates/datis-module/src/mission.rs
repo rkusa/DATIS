@@ -5,6 +5,7 @@ use datis_core::rpc::*;
 use datis_core::station::*;
 use datis_core::tts::TextToSpeechProvider;
 use hlua51::{Lua, LuaFunction, LuaTable};
+use rand::Rng;
 use regex::{Regex, RegexBuilder};
 
 pub struct Info {
@@ -90,6 +91,10 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
             .call_with_args("Airdromes")
             .map_err(|_| new_lua_call_error("GetTerrainConfig"))?;
 
+
+        // Create a random generator for creating the information letter offset.
+        let mut rng = rand::thread_rng();
+
         // on Caucasus, airdromes start at the index 12, others start at 1; also hlua's table
         // iterator does not work for tables of tables, which is why we are just iterating
         // from 1 to 50 an check whether there is an airdrome table at this index or not
@@ -122,6 +127,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                         position: Position { x, y, alt: 0.0 },
                         runways,
                         traffic_freq: None,
+                        info_ltr_offset: rng.gen_range(0, 25),
                     },
                 );
             }

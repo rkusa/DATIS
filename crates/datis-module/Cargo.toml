@@ -16,6 +16,7 @@ libc = "0.2"
 log = "0.4"
 log4rs = "0.10"
 lua51-sys = { git = "https://github.com/rkusa/hlua51.git" }
+rand = "0.7.3"
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

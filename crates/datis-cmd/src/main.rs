@@ -88,6 +88,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             position: Position::default(),
             runways: vec![String::from("09"), String::from("26")],
             traffic_freq: None,
+            info_ltr_offset: 0,
         }),
         rpc: None,
     };

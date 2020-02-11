@@ -21,6 +21,7 @@ pub struct Airfield {
     pub position: Position,
     pub runways: Vec<String>,
     pub traffic_freq: Option<u64>,
+    pub info_ltr_offset: usize,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -158,7 +159,7 @@ impl Airfield {
         #[cfg(test)]
         let _break = if spoken { "| " } else { "" };
 
-        let information_letter = PHONETIC_ALPHABET[report_nr % PHONETIC_ALPHABET.len()];
+        let information_letter = phonetic_alphabet::lookup(self.info_ltr_offset + report_nr);
         let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
 
         report += &format!(
@@ -374,11 +375,17 @@ fn get_clouds_report(clouds: &Clouds, spoken: bool) -> Option<String> {
     }
 }
 
-static PHONETIC_ALPHABET: &[&str] = &[
-    "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett",
-    "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango",
-    "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu",
-];
+mod phonetic_alphabet {
+    static PHONETIC_ALPHABET: &[&str] = &[
+        "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett",
+        "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango",
+        "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu",
+    ];
+
+    pub fn lookup(idx: usize) -> &'static str {
+        PHONETIC_ALPHABET[idx % PHONETIC_ALPHABET.len()]
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -396,6 +403,7 @@ mod test {
             },
             runways: vec![String::from("04"), String::from("22R")],
             traffic_freq: None,
+            info_ltr_offset: 0,
         };
 
         assert_eq!(airfield.get_active_runway(0.0), Some("04"));
@@ -423,6 +431,7 @@ mod test {
                 },
                 runways: vec![String::from("04"), String::from("22")],
                 traffic_freq: Some(249_500_000),
+                info_ltr_offset: 0,
             }),
             rpc: None,
         };
@@ -430,6 +439,43 @@ mod test {
         let report = station.generate_report(26).await.unwrap().unwrap();
         assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Alpha.\n</speak>");
         assert_eq!(report.textual, "This is Kutaisi information Alpha. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Alpha.");
+    }
+
+    #[tokio::test]
+    async fn test_report_with_info_letter_offset() {
+        let station = Station {
+            name: String::from("Kutaisi"),
+            freq: 251_000_000,
+            tts: TextToSpeechProvider::default(),
+            transmitter: Transmitter::Airfield(Airfield {
+                name: String::from("Kutaisi"),
+                position: Position {
+                    x: 0.0,
+                    y: 0.0,
+                    alt: 0.0,
+                },
+                runways: vec![String::from("04"), String::from("22")],
+                traffic_freq: Some(249_500_000),
+                info_ltr_offset: 15, // Should be "Papa"
+            }),
+            rpc: None,
+        };
+
+        let report = station.generate_report(26).await.unwrap().unwrap();
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nThis is Kutaisi information Papa. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Papa.\n</speak>");
+        assert_eq!(report.textual, "This is Kutaisi information Papa. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Papa.");
+    }
+
+
+    #[test]
+    fn test_phonetic_alpha_lookup() {
+        assert_eq!(phonetic_alphabet::lookup(0), "Alpha");
+        assert_eq!(phonetic_alphabet::lookup(14), "Oscar");
+        assert_eq!(phonetic_alphabet::lookup(25), "Zulu");
+        //It should also wrap around if the idx is higher than 25.
+        assert_eq!(phonetic_alphabet::lookup(26), "Alpha");
+        assert_eq!(phonetic_alphabet::lookup(40), "Oscar");
+        assert_eq!(phonetic_alphabet::lookup(51), "Zulu");
     }
 
     #[test]
