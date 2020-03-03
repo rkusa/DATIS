@@ -377,9 +377,9 @@ fn get_clouds_report(clouds: &Clouds, spoken: bool) -> Option<String> {
 
 mod phonetic_alphabet {
     static PHONETIC_ALPHABET: &[&str] = &[
-        "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett",
-        "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango",
-        "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu",
+        "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India",
+        "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo",
+        "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu",
     ];
 
     pub fn lookup(idx: usize) -> &'static str {
@@ -465,7 +465,6 @@ mod test {
         assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nThis is Kutaisi information Papa. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Papa.\n</speak>");
         assert_eq!(report.textual, "This is Kutaisi information Papa. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Papa.");
     }
-
 
     #[test]
     fn test_phonetic_alpha_lookup() {

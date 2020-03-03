@@ -91,7 +91,6 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
             .call_with_args("Airdromes")
             .map_err(|_| new_lua_call_error("GetTerrainConfig"))?;
 
-
         // Create a random generator for creating the information letter offset.
         let mut rng = rand::thread_rng();
 
