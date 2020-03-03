@@ -100,7 +100,7 @@ impl Station {
         let weather = WeatherInfo {
             clouds: None,
             visibility: None,
-            wind_speed: 5.0,
+            wind_speed: 2.5,
             wind_dir: (330.0f64).to_radians(),
             temperature: 22.0,
             pressure_qnh: 101_500.0,
