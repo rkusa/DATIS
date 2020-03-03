@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Start each airfield station with a random information letter #39
 
+### Fixed
+- Fixed wind speed unit (convert the m/s received from DCS to knots) #40
+
 ## [1.0.0-alpha.6] - 2019-11-16
 ### Fixed
 - Update SRS message parser to work with SRS 1.7.0.3

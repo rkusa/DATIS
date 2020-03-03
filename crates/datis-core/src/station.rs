@@ -178,7 +178,7 @@ impl Airfield {
         report += &format!(
             "Wind {} at {} knots. {}",
             pronounce_number(wind_dir, spoken),
-            pronounce_number(weather.wind_speed.round(), spoken),
+            pronounce_number((weather.wind_speed * 1.94384).round(), spoken), // to knots
             _break,
         );
 
