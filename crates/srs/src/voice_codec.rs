@@ -142,11 +142,10 @@ impl Decoder for VoiceCodec {
     }
 }
 
-impl Encoder for VoiceCodec {
-    type Item = Packet;
+impl Encoder<Packet> for VoiceCodec {
     type Error = io::Error;
 
-    fn encode(&mut self, packet: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, packet: Packet, buf: &mut BytesMut) -> Result<(), Self::Error> {
         let packet = match packet {
             Packet::Ping(sguid) => {
                 buf.put_slice(&sguid);
