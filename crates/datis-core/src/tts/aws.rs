@@ -55,8 +55,7 @@ pub async fn text_to_speech(
     };
 
     let client = PollyClient::new_with(dispatcher, creds, config.region.clone());
-    // FIXME: use await once rusoto migrated to std futures (https://github.com/rusoto/rusoto/pull/1498)
-    let response = client.synthesize_speech(req).sync()?;
+    let response = client.synthesize_speech(req).await?;
 
     let audio_stream = response
         .audio_stream
