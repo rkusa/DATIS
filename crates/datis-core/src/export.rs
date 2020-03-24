@@ -38,21 +38,16 @@ pub enum ReportExporterError {
 
 impl fmt::Display for ReportExporterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use std::error::Error;
-        write!(f, "{}", self.description())
+        use self::ReportExporterError::*;
+
+        match *self {
+            Io(_) => write!(f, "{}", "Error opening export file"),
+            Json(_) => write!(f, "{}", "Error exporting report"),
+        }
     }
 }
 
 impl error::Error for ReportExporterError {
-    fn description(&self) -> &str {
-        use self::ReportExporterError::*;
-
-        match *self {
-            Io(_) => "Error opening export file",
-            Json(_) => "Error exporting report",
-        }
-    }
-
     fn cause(&self) -> Option<&dyn error::Error> {
         use self::ReportExporterError::*;
 
