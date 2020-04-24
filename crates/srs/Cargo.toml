@@ -1,6 +1,6 @@
 [package]
 name = "srs"
-version = "1.0.0-alpha.7"
+version = "1.0.0-alpha.8"
 authors = ["rkusa"]
 edition = "2018"
 

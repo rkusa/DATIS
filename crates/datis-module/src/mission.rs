@@ -185,12 +185,10 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                                 let mut k = 1;
                                 while let Some(mut unit) = units.get::<LuaTable<_>, _, _>(k) {
                                     let unit_id: u32 = get!(unit, "unitId")?;
-                                    let freq: u32 = get!(unit, "frequency")?;
 
                                     ship_units.push(Ship {
                                         id: unit_id,
                                         name: String::new(),
-                                        freq,
                                     });
 
                                     k += 1;
@@ -392,7 +390,6 @@ struct CommTower {
 #[derive(Debug)]
 struct Ship {
     id: u32,
-    freq: u32,
     name: String,
 }
 
