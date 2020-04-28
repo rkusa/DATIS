@@ -2,6 +2,8 @@ use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -31,6 +33,14 @@ pub struct VoiceStream {
     packet_id: u64,
 }
 
+#[derive(Clone)]
+struct ServerSettings(Arc<ServerSettingsInner>);
+
+struct ServerSettingsInner {
+    los_enabled: AtomicBool,
+    distance_enabled: AtomicBool,
+}
+
 impl VoiceStream {
     pub async fn new(
         client: Client,
@@ -42,8 +52,18 @@ impl VoiceStream {
         let tcp = TcpStream::connect(addr).await?;
         let (sink, stream) = Framed::new(tcp, MessagesCodec::new()).split();
 
-        let a = Box::pin(recv_updates(stream));
-        let b = Box::pin(send_updates(client.clone(), sink, game_source));
+        let server_settings = ServerSettings(Arc::new(ServerSettingsInner {
+            los_enabled: AtomicBool::new(false),
+            distance_enabled: AtomicBool::new(false),
+        }));
+
+        let a = Box::pin(recv_updates(stream, server_settings.clone()));
+        let b = Box::pin(send_updates(
+            client.clone(),
+            sink,
+            game_source,
+            server_settings,
+        ));
 
         let local_addr: SocketAddr = "0.0.0.0:0".parse().unwrap();
         let udp = UdpSocket::bind(local_addr).await?;
@@ -158,10 +178,33 @@ impl Sink<Vec<u8>> for VoiceStream {
 
 async fn recv_updates(
     mut stream: SplitStream<Framed<TcpStream, MessagesCodec>>,
+    server_settings: ServerSettings,
 ) -> Result<(), anyhow::Error> {
     while let Some(msg) = stream.next().await {
-        // discard messages for now
-        msg?;
+        let msg = msg?;
+        if let Some(settings) = msg.server_settings {
+            server_settings.0.los_enabled.store(
+                settings.get("LOS_ENABLED").map(|s| s.as_str()) == Some("True"),
+                Ordering::Relaxed,
+            );
+            server_settings.0.distance_enabled.store(
+                settings.get("DISTANCE_ENABLED").map(|s| s.as_str()) == Some("true"),
+                Ordering::Relaxed,
+            );
+        }
+
+        match msg.msg_type {
+            MsgType::VersionMismatch => {
+                return Err(anyhow!(
+                    "Version mismatch between DATIS ({}) and the SRS server ({})",
+                    SRS_VERSION,
+                    msg.version
+                ));
+            }
+            _ => {
+                // discard other messages for now
+            }
+        }
     }
 
     Ok(())
@@ -174,13 +217,16 @@ async fn send_updates<G>(
     client: Client,
     mut sink: SplitSink<Framed<TcpStream, MessagesCodec>, Message>,
     game_source: Option<G>,
+    server_settings: ServerSettings,
 ) -> Result<(), anyhow::Error>
 where
     G: Stream<Item = GameMessage> + Unpin,
 {
+    // send sync message to receive server settings
+    sink.send(create_sync_message(&client)).await?;
+
     // send initial Update message
-    let msg = create_radio_update_message(&client);
-    sink.send(msg).await?;
+    sink.send(create_radio_update_message(&client)).await?;
 
     if let Some(mut game_source) = game_source {
         let mut last_game_msg = None;
@@ -209,13 +255,16 @@ where
 
         Ok(())
     } else {
+        // TODO: send position updates only if either LOS or Distance is enabled on the server
         let mut old_pos = client.position();
         loop {
             delay_for(Duration::from_secs(60)).await;
 
             // keep the position of the station updated
             let new_pos = client.position();
-            if new_pos != old_pos {
+            let los_enabled = server_settings.0.los_enabled.load(Ordering::Relaxed);
+            let distance_enabled = server_settings.0.distance_enabled.load(Ordering::Relaxed);
+            if (los_enabled || distance_enabled) && new_pos != old_pos {
                 log::debug!(
                     "Position of {} changed, sending a new update message",
                     client.name()
@@ -281,6 +330,7 @@ fn create_radio_update_message(client: &Client) -> Message {
             lat_lng_position: Some(pos.clone()),
         }),
         msg_type: MsgType::RadioUpdate,
+        server_settings: None,
         version: SRS_VERSION.to_string(),
     }
 }
@@ -296,6 +346,23 @@ fn create_update_message(client: &Client) -> Message {
             lat_lng_position: Some(pos.clone()),
         }),
         msg_type: MsgType::Update,
+        server_settings: None,
+        version: SRS_VERSION.to_string(),
+    }
+}
+
+fn create_sync_message(client: &Client) -> Message {
+    let pos = client.position();
+    Message {
+        client: Some(MsgClient {
+            client_guid: client.sguid().to_string(),
+            name: Some(client.name().to_string()),
+            coalition: Coalition::Blue,
+            radio_info: None,
+            lat_lng_position: Some(pos.clone()),
+        }),
+        msg_type: MsgType::Sync,
+        server_settings: None,
         version: SRS_VERSION.to_string(),
     }
 }
@@ -321,6 +388,7 @@ fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Messa
             lat_lng_position: Some(pos.clone()),
         }),
         msg_type: MsgType::RadioUpdate,
+        server_settings: None,
         version: SRS_VERSION.to_string(),
     }
 }

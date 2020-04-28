@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -217,6 +218,7 @@ pub struct LatLngPosition {
 pub struct Message {
     pub client: Option<Client>,
     pub msg_type: MsgType,
+    pub server_settings: Option<HashMap<String, String>>,
     // Clients
     // ServerSettings
     // ExternalAWACSModePassword
