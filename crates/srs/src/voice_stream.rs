@@ -179,7 +179,7 @@ where
     G: Stream<Item = GameMessage> + Unpin,
 {
     // send initial Update message
-    let msg = create_update_message(&client);
+    let msg = create_radio_update_message(&client);
     sink.send(msg).await?;
 
     if let Some(mut game_source) = game_source {
@@ -257,7 +257,7 @@ async fn forward_packets(
     Ok(())
 }
 
-fn create_update_message(client: &Client) -> Message {
+fn create_radio_update_message(client: &Client) -> Message {
     let pos = client.position();
     Message {
         client: Some(MsgClient {
@@ -278,6 +278,21 @@ fn create_update_message(client: &Client) -> Message {
                 unit_id: client.unit().as_ref().map(|u| u.id).unwrap_or(0),
                 simultaneous_transmission: true,
             }),
+            lat_lng_position: Some(pos.clone()),
+        }),
+        msg_type: MsgType::RadioUpdate,
+        version: SRS_VERSION.to_string(),
+    }
+}
+
+fn create_update_message(client: &Client) -> Message {
+    let pos = client.position();
+    Message {
+        client: Some(MsgClient {
+            client_guid: client.sguid().to_string(),
+            name: Some(client.name().to_string()),
+            coalition: Coalition::Blue,
+            radio_info: None,
             lat_lng_position: Some(pos.clone()),
         }),
         msg_type: MsgType::Update,
