@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
-use crate::station::Position;
+use crate::station::{LatLngPosition, Position};
 use futures::channel::oneshot::{channel, Receiver, Sender};
 use serde_json::Value;
 
@@ -70,12 +70,7 @@ impl MissionRpc {
         }
     }
 
-    pub async fn get_weather_at(
-        &self,
-        x: f64,
-        y: f64,
-        alt: f64,
-    ) -> Result<WeatherInfo, anyhow::Error> {
+    pub async fn get_weather_at(&self, pos: &Position) -> Result<WeatherInfo, anyhow::Error> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct Data {
@@ -86,8 +81,10 @@ impl MissionRpc {
         }
 
         let (rx, clouds, visibility) = {
-            let (req, rx) =
-                PendingRequest::new("get_weather", Some(json!({ "x": x, "y": y, "alt": 0})));
+            let (req, rx) = PendingRequest::new(
+                "get_weather",
+                Some(json!({ "x": pos.x, "y": pos.y, "alt": 0})),
+            );
 
             let mut inner = self.0.lock().unwrap();
             inner.queue.push_back(req);
@@ -112,8 +109,10 @@ impl MissionRpc {
         let pressure_qnh = data.pressure;
 
         let rx = {
-            let (req, rx) =
-                PendingRequest::new("get_weather", Some(json!({ "x": x, "y": y, "alt": alt})));
+            let (req, rx) = PendingRequest::new(
+                "get_weather",
+                Some(json!({ "x": pos.x, "y": pos.y, "alt": pos.alt})),
+            );
             let mut inner = self.0.lock().unwrap();
             inner.queue.push_back(req);
             rx
@@ -208,6 +207,23 @@ impl MissionRpc {
         }
 
         Ok(h)
+    }
+
+    pub async fn to_lat_lng(&self, pos: &Position) -> Result<LatLngPosition, anyhow::Error> {
+        let rx = {
+            let (req, rx) = PendingRequest::new(
+                "to_lat_lng",
+                Some(json!({ "x": pos.x, "y": pos.y, "alt": pos.alt})),
+            );
+            let mut inner = self.0.lock().unwrap();
+            inner.queue.push_back(req);
+            rx
+        };
+
+        match rx.await? {
+            Response::Success(v) => Ok(serde_json::from_value(v)?),
+            Response::Error(err) => Err(anyhow!("failed to get abs time: {}", err)),
+        }
     }
 }
 

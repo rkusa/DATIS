@@ -1,7 +1,7 @@
 use crate::rpc::{Clouds, MissionRpc, WeatherInfo};
 use crate::tts::TextToSpeechProvider;
 use crate::utils::{m_to_ft, m_to_nm, pronounce_number, round};
-pub use srs::message::Position;
+pub use srs::message::{LatLngPosition, Position};
 
 #[cfg(not(feature = "static-weather"))]
 use anyhow::Context;
@@ -40,7 +40,7 @@ pub enum Transmitter {
 pub struct Report {
     pub textual: String,
     pub spoken: String,
-    pub position: Position,
+    pub position: LatLngPosition,
 }
 
 const SPEAK_START_TAG: &str = "<speak version=\"1.0\" xml:lang=\"en-US\">\n";
@@ -51,18 +51,18 @@ impl Station {
         match (self.rpc.as_ref(), &self.transmitter) {
             (Some(rpc), Transmitter::Airfield(airfield)) => {
                 let weather = rpc
-                    .get_weather_at(
-                        airfield.position.x,
-                        airfield.position.y,
-                        airfield.position.alt,
-                    )
+                    .get_weather_at(&airfield.position)
                     .await
                     .context("failed to retrieve weather")?;
+                let position = rpc
+                    .to_lat_lng(&airfield.position)
+                    .await
+                    .context("failed to retrieve unit position")?;
 
                 Ok(Some(Report {
                     textual: airfield.generate_report(report_nr, &weather, false)?,
                     spoken: airfield.generate_report(report_nr, &weather, true)?,
-                    position: airfield.position.clone(),
+                    position,
                 }))
             }
             (Some(rpc), Transmitter::Carrier(unit)) => {
@@ -77,15 +77,19 @@ impl Station {
 
                 if let (Some(pos), Some(heading)) = (pos, heading) {
                     let weather = rpc
-                        .get_weather_at(pos.x, pos.y, pos.alt)
+                        .get_weather_at(&pos)
                         .await
                         .context("failed to retrieve weather")?;
                     let mission_hour = rpc.get_mission_hour().await?;
+                    let position = rpc
+                        .to_lat_lng(&pos)
+                        .await
+                        .context("failed to retrieve unit position")?;
 
                     Ok(Some(Report {
                         textual: unit.generate_report(&weather, heading, mission_hour, false)?,
                         spoken: unit.generate_report(&weather, heading, mission_hour, true)?,
-                        position: pos,
+                        position,
                     }))
                 } else {
                     Ok(None)
@@ -111,17 +115,16 @@ impl Station {
             Transmitter::Airfield(airfield) => Ok(Some(Report {
                 textual: airfield.generate_report(report_nr, &weather, false)?,
                 spoken: airfield.generate_report(report_nr, &weather, true)?,
-                position: airfield.position.clone(),
+                position: LatLngPosition::default(),
             })),
             Transmitter::Carrier(unit) => {
-                let pos = Position::default();
                 let heading = 180.0;
                 let mission_hour = 7;
 
                 Ok(Some(Report {
                     textual: unit.generate_report(&weather, heading, mission_hour, false)?,
                     spoken: unit.generate_report(&weather, heading, mission_hour, true)?,
-                    position: pos,
+                    position: LatLngPosition::default(),
                 }))
             }
         }
@@ -396,11 +399,7 @@ mod test {
     fn test_active_runway() {
         let airfield = Airfield {
             name: String::from("Kutaisi"),
-            position: Position {
-                x: 0.0,
-                y: 0.0,
-                alt: 0.0,
-            },
+            position: Position::default(),
             runways: vec![String::from("04"), String::from("22R")],
             traffic_freq: None,
             info_ltr_offset: 0,
@@ -424,11 +423,7 @@ mod test {
             tts: TextToSpeechProvider::default(),
             transmitter: Transmitter::Airfield(Airfield {
                 name: String::from("Kutaisi"),
-                position: Position {
-                    x: 0.0,
-                    y: 0.0,
-                    alt: 0.0,
-                },
+                position: Position::default(),
                 runways: vec![String::from("04"), String::from("22")],
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 0,
@@ -449,11 +444,7 @@ mod test {
             tts: TextToSpeechProvider::default(),
             transmitter: Transmitter::Airfield(Airfield {
                 name: String::from("Kutaisi"),
-                position: Position {
-                    x: 0.0,
-                    y: 0.0,
-                    alt: 0.0,
-                },
+                position: Position::default(),
                 runways: vec![String::from("04"), String::from("22")],
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 15, // Should be "Papa"

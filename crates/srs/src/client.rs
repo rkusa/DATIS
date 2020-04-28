@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use futures::channel::mpsc;
 
-use crate::message::{create_sguid, GameMessage, Position};
+use crate::message::{create_sguid, GameMessage, LatLngPosition};
 use crate::voice_stream::VoiceStream;
 
 #[derive(Debug, Clone)]
@@ -17,7 +17,7 @@ pub struct Client {
     sguid: String,
     name: String,
     freq: u64,
-    pos: Arc<RwLock<Position>>,
+    pos: Arc<RwLock<LatLngPosition>>,
     unit: Option<UnitInfo>,
 }
 
@@ -27,7 +27,7 @@ impl Client {
             sguid: create_sguid(),
             name: name.to_string(),
             freq,
-            pos: Arc::new(RwLock::new(Position::default())),
+            pos: Arc::new(RwLock::new(LatLngPosition::default())),
             unit: None,
         }
     }
@@ -44,12 +44,12 @@ impl Client {
         self.freq
     }
 
-    pub fn position(&self) -> Position {
+    pub fn position(&self) -> LatLngPosition {
         let p = self.pos.read().unwrap();
         p.clone()
     }
 
-    pub fn position_handle(&self) -> Arc<RwLock<Position>> {
+    pub fn position_handle(&self) -> Arc<RwLock<LatLngPosition>> {
         self.pos.clone()
     }
 
@@ -57,7 +57,7 @@ impl Client {
         self.unit.as_ref()
     }
 
-    pub fn set_position(&mut self, pos: Position) {
+    pub fn set_position(&mut self, pos: LatLngPosition) {
         let mut p = self.pos.write().unwrap();
         *p = pos;
     }

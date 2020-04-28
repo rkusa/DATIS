@@ -22,7 +22,7 @@ use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 use crate::export::ReportExporter;
-use crate::station::{Position, Station, Transmitter};
+use crate::station::{LatLngPosition, Station, Transmitter};
 use crate::tts::{
     aws::{self, AmazonWebServicesConfig},
     gcloud::{self, GoogleCloudConfig},
@@ -228,7 +228,12 @@ async fn run(
     let mut client = Client::new(&name, station.freq);
     match &station.transmitter {
         Transmitter::Airfield(airfield) => {
-            client.set_position(airfield.position.clone());
+            let pos = if let Some(rpc) = &station.rpc {
+                rpc.to_lat_lng(&airfield.position).await?
+            } else {
+                LatLngPosition::default()
+            };
+            client.set_position(pos);
             // TODO: set unit?
         }
         Transmitter::Carrier(unit) => {
@@ -262,7 +267,7 @@ async fn recv_voice_packets(mut stream: SplitStream<VoiceStream>) -> Result<(), 
 async fn audio_broadcast(
     mut sink: SplitSink<VoiceStream, Vec<u8>>,
     station: &Station,
-    position: Arc<RwLock<Position>>,
+    position: Arc<RwLock<LatLngPosition>>,
     tts_config: &TextToSpeechConfig,
     exporter: Option<&ReportExporter>,
 ) -> Result<(), anyhow::Error> {

@@ -168,6 +168,21 @@ function datis_handleRequest(method, params)
       result = net.lua2json(tonumber(result))
     }
 
+  elseif method == "to_lat_lng" then
+    local to_lat_lng = [[
+      local lat, lng, alt = coord.LOtoLL({ x = ]] .. params.x .. [[, y = ]] .. params.alt .. [[, z = ]] .. params.y .. [[ })
+      return lat .. ":" .. lng .. ":" .. alt
+    ]]
+    local result = net.dostring_in("server", to_lat_lng)
+    local lat, lng, alt = string.match(result, "(%-?[0-9%.-]+):(%-?[0-9%.]+):(%-?[0-9%.]+)")
+    return {
+      result = net.lua2json({
+        lat = tonumber(lat),
+        lng = tonumber(lng),
+        alt = tonumber(alt),
+      })
+    }
+
   else
     return {
       error = "unknown method "..method

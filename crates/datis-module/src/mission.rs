@@ -294,7 +294,6 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     }
 
     // initialize the dynamic weather component
-
     let rpc = MissionRpc::new(clouds, fog_thickness, fog_visibility)?;
 
     // combine the frequencies that have extracted from the mission's situation with their

@@ -1,6 +1,7 @@
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use uuid::Uuid;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -30,60 +31,168 @@ pub struct Position {
     pub alt: f64,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Radio {
+    #[serde(default)]
     pub enc: bool,
+    #[serde(default)]
     pub enc_key: u8,
-    pub enc_mode: u8,
-    pub freq_max: f64,   // 1.0,
-    pub freq_min: f64,   // 1.0,
-    pub freq: f64,       // 1.0,
-    pub modulation: u8,  // 3,
-    pub name: String,    // "No Radio",
-    pub sec_freq: f64,   // 0.0,
-    pub volume: f32,     // 1.0,
-    pub freq_mode: u8,   // 0,
-    pub vol_mode: u8,    // 0,
-    pub expansion: bool, // false,
-    pub channel: i32,    // -1,
-    pub simul: bool,     // false
+    #[serde(default)]
+    pub enc_mode: EncryptionMode,
+    #[serde(default = "default_freq")]
+    pub freq_max: f64,
+    #[serde(default = "default_freq")]
+    pub freq_min: f64,
+    #[serde(default = "default_freq")]
+    pub freq: f64,
+    #[serde(default)]
+    pub modulation: Modulation,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default = "default_freq")]
+    pub sec_freq: f64,
+    #[serde(default = "default_volume")]
+    pub volume: f32,
+    #[serde(default)]
+    pub freq_mode: FreqMode,
+    #[serde(default)]
+    pub guard_freq_mode: FreqMode,
+    #[serde(default)]
+    pub vol_mode: VolumeMode,
+    #[serde(default)]
+    pub expansion: bool,
+    #[serde(default = "default_channel")]
+    pub channel: i32,
+    #[serde(default)]
+    pub simul: bool,
 }
 
-impl From<&GameRadio> for Radio {
-    fn from(r: &GameRadio) -> Self {
-        Self {
-            enc: r.enc,
-            enc_key: r.enc_key,
-            enc_mode: r.enc_mode,
-            freq_max: r.freq_max,
-            freq_min: r.freq_min,
-            freq: r.freq,
-            modulation: r.modulation,
-            name: r.name.clone(),
-            sec_freq: r.sec_freq,
-            volume: r.volume,
-            freq_mode: r.freq_mode,
-            vol_mode: r.vol_mode,
-            expansion: r.expansion,
+fn default_freq() -> f64 {
+    1.0
+}
+
+fn default_volume() -> f32 {
+    1.0
+}
+
+fn default_channel() -> i32 {
+    -1
+}
+
+impl Default for Radio {
+    fn default() -> Self {
+        Radio {
+            enc: false,
+            enc_key: 0,
+            enc_mode: EncryptionMode::NoEncryption,
+            freq_max: 1.0,
+            freq_min: 1.0,
+            freq: 1.0,
+            modulation: Modulation::Disabled,
+            name: "".to_string(),
+            sec_freq: 1.0,
+            volume: 1.0,
+            freq_mode: FreqMode::Cockpit,
+            guard_freq_mode: FreqMode::Cockpit,
+            vol_mode: VolumeMode::Cockpit,
+            expansion: false,
             channel: -1,
             simul: false,
         }
     }
 }
 
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum EncryptionMode {
+    /// no control
+    NoEncryption = 0,
+    /// FC3 Gui Toggle + Gui Enc key setting
+    EncryptionJustOverlay = 1,
+    /// InCockpit toggle + Incockpit Enc setting
+    EncryptionFull = 2,
+    /// Incockpit toggle + Gui Enc Key setting
+    EncryptionCockpitToggleOverlayCode = 3,
+}
+
+impl Default for EncryptionMode {
+    fn default() -> Self {
+        EncryptionMode::NoEncryption
+    }
+}
+
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum VolumeMode {
+    Cockpit = 0,
+    Overlay = 1,
+}
+
+impl Default for VolumeMode {
+    fn default() -> Self {
+        VolumeMode::Cockpit
+    }
+}
+
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum FreqMode {
+    Cockpit = 0,
+    Overlay = 1,
+}
+
+impl Default for FreqMode {
+    fn default() -> Self {
+        FreqMode::Cockpit
+    }
+}
+
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum Modulation {
+    AM = 0,
+    FM = 1,
+    Intercom = 2,
+    Disabled = 3,
+}
+
+impl Default for Modulation {
+    fn default() -> Self {
+        Modulation::Disabled
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RadioInfo {
+    #[serde(default)]
     pub name: String,
-    pub pos: Position,
+    #[serde(default)]
     pub ptt: bool,
     pub radios: Vec<Radio>,
-    pub control: u8,
+    #[serde(default)]
+    pub control: RadioSwitchControls,
+    #[serde(default)]
     pub selected: i16,
+    #[serde(default)]
     pub unit: String,
     pub unit_id: u32,
+    #[serde(default)]
     pub simultaneous_transmission: bool,
+}
+
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum RadioSwitchControls {
+    Hotas = 0,
+    InCockpit = 1,
+}
+
+impl Default for RadioSwitchControls {
+    fn default() -> Self {
+        RadioSwitchControls::Hotas
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -91,10 +200,16 @@ pub struct RadioInfo {
 pub struct Client {
     pub client_guid: String,
     pub name: Option<String>,
-    pub position: Position,
-    pub coalition: Coalition,
     pub radio_info: Option<RadioInfo>,
-    // ClientChannelId
+    pub coalition: Coalition,
+    pub lat_lng_position: Option<LatLngPosition>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct LatLngPosition {
+    pub lat: f64,
+    pub lng: f64,
+    pub alt: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -108,43 +223,58 @@ pub struct Message {
     pub version: String,
 }
 
-/**
-  Radio received from the in-game srs-plugin. Can be translated into a
-  `Radio` struct using `.into()`
-*/
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GameRadio {
-    pub enc: bool,
-    pub enc_key: u8,
-    pub enc_mode: u8,
-    pub freq_max: f64,   // 1.0,
-    pub freq_min: f64,   // 1.0,
-    pub freq: f64,       // 1.0,
-    pub modulation: u8,  // 3,
-    pub name: String,    // "No Radio",
-    pub sec_freq: f64,   // 0.0,
-    pub volume: f32,     // 1.0,
-    pub freq_mode: u8,   // 0,
-    pub vol_mode: u8,    // 0,
-    pub expansion: bool, // false,
-    pub guard_freq_mode: u8,
-}
-
-/**
-  Data received from the in-game srs-plugin.
-*/
-#[derive(Serialize, Deserialize, Debug, Clone)]
+/// Data received from the in-game srs-plugin.
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GameMessage {
     pub control: i32,
     pub name: String,
-    pub pos: Position,
+    pub lat_lng_position: LatLngPosition,
     pub ptt: bool,
-    pub radios: Vec<GameRadio>,
+    pub radios: Vec<Radio>,
     pub selected: i16,
     pub unit: String,
     pub unit_id: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Transponder {
+    control: IFFControlMode,
+    mode1: i32,
+    mode3: i32,
+    mode4: bool,
+    mic: i32,
+    status: IFFStatus,
+}
+
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum IFFControlMode {
+    Cockpit = 0,
+    Overlay = 1,
+    Disabled = 2,
+}
+
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum IFFStatus {
+    Off = 0,
+    Normal = 1,
+    Ident = 2,
+}
+
+impl Default for Transponder {
+    fn default() -> Self {
+        Transponder {
+            control: IFFControlMode::Disabled,
+            mode1: -1,
+            mode3: -1,
+            mode4: false,
+            mic: -1,
+            status: IFFStatus::Off,
+        }
+    }
 }
 
 impl ::serde::Serialize for MsgType {

@@ -11,13 +11,13 @@ use futures::sink::SinkExt;
 use futures::stream::{SplitSink, SplitStream, StreamExt as FutStreamExt};
 use ogg::reading::PacketReader;
 use ogg_metadata::{AudioMetadata, OggFormat};
-use srs::message::Position;
+use srs::message::LatLngPosition;
 use srs::{Client, VoiceStream};
 use tokio::time::delay_for;
 
 pub struct RadioStation {
     name: String,
-    position: Position,
+    position: LatLngPosition,
     freq: u64,
     port: u16,
 }
@@ -26,7 +26,7 @@ impl RadioStation {
     pub fn new(name: &str) -> Self {
         RadioStation {
             name: name.to_string(),
-            position: Position::default(),
+            position: LatLngPosition::default(),
             freq: 251_000_000,
             port: 5002,
         }
@@ -36,8 +36,8 @@ impl RadioStation {
         self.port = port;
     }
 
-    pub fn set_position(&mut self, x: f64, y: f64, alt: f64) {
-        self.position = Position { x, y, alt };
+    pub fn set_position(&mut self, lat: f64, lng: f64, alt: f64) {
+        self.position = LatLngPosition { lat, lng, alt };
     }
 
     pub fn set_frequency(&mut self, freq: u64) {

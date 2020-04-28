@@ -8,6 +8,7 @@ use std::time::Duration;
 use crate::client::Client;
 use crate::message::{
     Client as MsgClient, Coalition, GameMessage, Message, MsgType, Radio, RadioInfo,
+    RadioSwitchControls,
 };
 use crate::messages_codec::MessagesCodec;
 use crate::voice_codec::*;
@@ -20,7 +21,7 @@ use tokio::time::delay_for;
 use tokio_util::codec::Framed;
 use tokio_util::udp::UdpFramed;
 
-const SRS_VERSION: &str = "1.7.0.0";
+const SRS_VERSION: &str = "1.8.0.0";
 
 pub struct VoiceStream {
     voice_sink: mpsc::Sender<Packet>,
@@ -177,9 +178,9 @@ async fn send_updates<G>(
 where
     G: Stream<Item = GameMessage> + Unpin,
 {
-    // send initial SYNC message
-    let sync_msg = create_sync_message(&client);
-    sink.send(sync_msg).await?;
+    // send initial Update message
+    let msg = create_update_message(&client);
+    sink.send(msg).await?;
 
     if let Some(mut game_source) = game_source {
         let mut last_game_msg = None;
@@ -203,13 +204,25 @@ where
                 None => {}
             }
         }
-        unreachable!("Game source disconnected");
-    } else {
-        loop {
-            delay_for(Duration::from_secs(5)).await;
 
-            // Sending update message
-            sink.send(create_update_message(&client)).await?;
+        log::warn!("Game source disconnected");
+
+        Ok(())
+    } else {
+        let mut old_pos = client.position();
+        loop {
+            delay_for(Duration::from_secs(60)).await;
+
+            // keep the position of the station updated
+            let new_pos = client.position();
+            if new_pos != old_pos {
+                log::debug!(
+                    "Position of {} changed, sending a new update message",
+                    client.name()
+                );
+                sink.send(create_update_message(&client)).await?;
+                old_pos = new_pos;
+            }
         }
     }
 }
@@ -244,36 +257,19 @@ async fn forward_packets(
     Ok(())
 }
 
-fn create_sync_message(client: &Client) -> Message {
+fn create_update_message(client: &Client) -> Message {
     let pos = client.position();
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(client.name().to_string()),
-            position: pos.clone(),
             coalition: Coalition::Blue,
             radio_info: Some(RadioInfo {
                 name: "DATIS Radios".to_string(),
-                pos: pos,
                 ptt: false,
-                radios: vec![Radio {
-                    enc: false,
-                    enc_key: 0,
-                    enc_mode: 0, // no encryption
-                    freq_max: 1.0,
-                    freq_min: 1.0,
-                    freq: client.freq() as f64,
-                    modulation: 0,
-                    name: "DATIS Radio".to_string(),
-                    sec_freq: 0.0,
-                    volume: 1.0,
-                    freq_mode: 0, // Cockpit
-                    vol_mode: 0,  // Cockpit
-                    expansion: false,
-                    channel: -1,
-                    simul: false,
-                }],
-                control: 0, // HOTAS
+                // TODO: enable one of the radios to receive voice
+                radios: std::iter::repeat_with(Radio::default).take(10).collect(),
+                control: crate::message::RadioSwitchControls::Hotas,
                 selected: 0,
                 unit: client
                     .unit()
@@ -282,20 +278,7 @@ fn create_sync_message(client: &Client) -> Message {
                 unit_id: client.unit().as_ref().map(|u| u.id).unwrap_or(0),
                 simultaneous_transmission: true,
             }),
-        }),
-        msg_type: MsgType::Sync,
-        version: SRS_VERSION.to_string(),
-    }
-}
-
-fn create_update_message(client: &Client) -> Message {
-    Message {
-        client: Some(MsgClient {
-            client_guid: client.sguid().to_string(),
-            name: Some(client.name().to_string()),
-            position: client.position(),
-            coalition: Coalition::Blue,
-            radio_info: None,
+            lat_lng_position: Some(pos.clone()),
         }),
         msg_type: MsgType::Update,
         version: SRS_VERSION.to_string(),
@@ -303,29 +286,24 @@ fn create_update_message(client: &Client) -> Message {
 }
 
 fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Message {
-    let pos = game_message.pos.clone();
+    let pos = game_message.lat_lng_position.clone();
 
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(game_message.name.clone()),
-            position: pos.clone(),
             coalition: Coalition::Blue,
             radio_info: Some(RadioInfo {
                 name: game_message.name.clone(),
-                pos: pos,
                 ptt: game_message.ptt,
-                radios: game_message
-                    .radios
-                    .iter()
-                    .map(|r| r.into())
-                    .collect::<Vec<Radio>>(),
-                control: 0, // HOTAS
+                radios: game_message.radios.clone(),
+                control: RadioSwitchControls::Hotas,
                 selected: game_message.selected,
                 unit: game_message.unit.clone(),
                 unit_id: game_message.unit_id,
                 simultaneous_transmission: true,
             }),
+            lat_lng_position: Some(pos.clone()),
         }),
         msg_type: MsgType::RadioUpdate,
         version: SRS_VERSION.to_string(),
