@@ -156,6 +156,9 @@ pub enum Modulation {
     FM = 1,
     Intercom = 2,
     Disabled = 3,
+    HaveQuick = 4,
+    Satcom = 5,
+    Mids = 6,
 }
 
 impl Default for Modulation {

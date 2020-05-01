@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Made `eu-central-1` the default AWS region
 - **Breaking:** Made `WIN` the default voice (instead of `GC:en-US-Standard-C`)
 
+### Fixed
+- Added new SRS 1.8.0.0 radio modulation variants
+
 ## [1.0.0-alpha.9] - 2020-04-28
 ### Changed
 - **Breaking:** Upgraded SRS protocol to 1.8.0.0 (requires SRS server version 1.8.x.x)
