@@ -90,11 +90,13 @@ For GCloud prefix the voice with `GC:` and for AWS with `AWS:` (it expects a val
 
 Available voices are:
 
-- GCloud: `en-US-Standard-B`, `en-US-Standard-C` (current default), `en-US-Standard-D`, `en-US-Standard-E`, `en-US-Wavenet-A`, `en-US-Wavenet-B`, `en-US-Wavenet-C`, `en-US-Wavenet-D`, `en-US-Wavenet-E`, `en-US-Wavenet-F`
+- WIN - uses Windows' built-in TTS engine  (current default)
+- GCloud: `en-US-Standard-B`, `en-US-Standard-C`, `en-US-Standard-D`, `en-US-Standard-E`, `en-US-Wavenet-A`, `en-US-Wavenet-B`, `en-US-Wavenet-C`, `en-US-Wavenet-D`, `en-US-Wavenet-E`, `en-US-Wavenet-F`
   - _(a bit down [on this page](https://cloud.google.com/text-to-speech/) is a widget where the different voices can easily be tested)_
   - Keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota (see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing))
 - AWS: `Nicole`, `Russell`, `Amy`, `Emma`, `Brian`, `Aditi`, `Raveena`, `Ivy`, `Joanna`, `Kendra`, `Kimberly`, `Salli`, `Joey`, `Justin`, `Matthew`, `Geraint`
-- WIN (uses Windows' built-in TTS engine)
+
+The default can be changed in the DCS SPECIAL settings for DATIS.
 
 Examples:
 

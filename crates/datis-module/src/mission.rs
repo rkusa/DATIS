@@ -22,6 +22,18 @@ pub struct Info {
 pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     debug!("Extracting ATIS stations from Mission Situation");
 
+    let default_voice = {
+        // OptionsData.getPlugin("DATIS", "defaultVoice")
+        let mut options_data: LuaTable<_> = get!(lua, "OptionsData")?;
+        let mut get_plugin: LuaFunction<_> = get!(options_data, "getPlugin")?;
+
+        let default_voice: String = get_plugin
+            .call_with_args(("DATIS", "defaultVoice"))
+            .map_err(|_| new_lua_call_error("getPlugin"))?;
+
+        default_voice
+    };
+
     // read gcloud access key option
     let (gcloud_key, aws_key, aws_secret, aws_region) = {
         // OptionsData.getPlugin("DATIS", "gcloudAccessKey")
@@ -334,13 +346,19 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         })
     }));
 
+    let default_voice = match TextToSpeechProvider::from_str(&default_voice) {
+        Ok(default_voice) => default_voice,
+        Err(err) => {
+            warn!("Invalid default voice `{}`: {}", default_voice, err);
+            TextToSpeechProvider::default()
+        }
+    };
+
     stations.extend(ship_units.into_iter().filter_map(|ship_unit| {
         extract_station_config(&ship_unit.name).map(|config| Station {
             name: config.name.clone(),
             freq: config.atis,
-            tts: config
-                .tts
-                .unwrap_or_else(|| TextToSpeechProvider::default()),
+            tts: config.tts.unwrap_or_else(|| default_voice.clone()),
             transmitter: Transmitter::Carrier(Carrier {
                 name: config.name,
                 unit_id: ship_unit.id,

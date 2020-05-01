@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added default voice setting to DATIS settings
+
+### Changed
+- Made `eu-central-1` the default AWS region
+- **Breaking:** Made `WIN` the default voice (instead of `GC:en-US-Standard-C`)
 
 ## [1.0.0-alpha.9] - 2020-04-28
 ### Changed

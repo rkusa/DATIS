@@ -21,9 +21,7 @@ pub enum TextToSpeechConfig {
 
 impl Default for TextToSpeechProvider {
     fn default() -> Self {
-        TextToSpeechProvider::GoogleCloud {
-            voice: gcloud::VoiceKind::StandardC,
-        }
+        TextToSpeechProvider::Windows { voice: None }
     }
 }
 

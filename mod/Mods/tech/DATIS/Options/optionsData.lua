@@ -1,5 +1,6 @@
 cdata = {
   DCSATIS = _("DCS ATIS USING AMAZON POLLY AND GOOGLE TEXT TO SPEECH"),
+  DATIS_DEFAULT_VOICE = _("Default Voice:"),
   DATIS_CLOUD_ACCESS_KEY = _("Google Cloud Access Key:"),
   DATIS_AWS_ACCESS_KEY = _("Amazon Access Key:"),
   DATIS_AWS_PRIVATE_KEY = _("Amazon Private Key:"),
