@@ -80,9 +80,7 @@ impl FromStr for TextToSpeechProvider {
         }
 
         // fallback
-        Ok(TextToSpeechProvider::GoogleCloud {
-            voice: gcloud::VoiceKind::StandardC,
-        })
+        Ok(TextToSpeechProvider::default())
     }
 }
 
@@ -97,9 +95,7 @@ mod test {
         fn fallback_on_empty_string() {
             assert_eq!(
                 TextToSpeechProvider::from_str("").unwrap(),
-                TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::StandardC
-                }
+                TextToSpeechProvider::default()
             )
         }
 
@@ -107,9 +103,7 @@ mod test {
         fn fallback_on_unknown_prefix() {
             assert_eq!(
                 TextToSpeechProvider::from_str("UNK:foobar").unwrap(),
-                TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::StandardC
-                }
+                TextToSpeechProvider::default()
             )
         }
 
