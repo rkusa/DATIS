@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Added default voice setting to DATIS settings
+- Units can now broadcast custom messages. Just name a unit with the following patter `BROADCAST {frequency}[, VOICE {voice name}]: {custom message}` and the `{custom message}` will be converted to speech using the voice `{voice name}` and broadcasted over the `{frequency}`.
 
 ### Changed
-- Made `eu-central-1` the default AWS region
 - **Breaking:** Made `WIN` the default voice (instead of `GC:en-US-Standard-C`)
+- Made `eu-central-1` the default AWS region
+- Every unit can now act as an ATIS station (not just statics)
+- Every unit can now act as a Carrier station (not just ships; not really a useful feature, just a side-effect)
 
 ### Fixed
 - Added new SRS 1.8.0.0 radio modulation variants

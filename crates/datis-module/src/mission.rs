@@ -148,13 +148,13 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     };
 
     // extract all mission statics and ship units to later look for ATIS configs in their names
-    let (mut static_units, mut ship_units) = {
+    let mut mission_units = {
         let mut current_mission: LuaTable<_> = get!(lua, "_current_mission")?;
         let mut mission: LuaTable<_> = get!(current_mission, "mission")?;
         let mut coalitions: LuaTable<_> = get!(mission, "coalition")?;
 
-        let mut static_units = Vec::new();
-        let mut ship_units = Vec::new();
+        let mut mission_units = Vec::new();
+
         let keys = vec!["blue", "red"];
         for key in keys {
             let mut coalition: LuaTable<_> = get!(coalitions, key)?;
@@ -162,52 +162,35 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
 
             let mut i = 1;
             while let Some(mut country) = countries.get::<LuaTable<_>, _, _>(i) {
-                // `_current_mission.mission.coalition.{blue,red}.country[i].static.group[j]
-                if let Some(mut statics) = country.get::<LuaTable<_>, _, _>("static") {
-                    if let Some(mut groups) = statics.get::<LuaTable<_>, _, _>("group") {
-                        let mut j = 1;
-                        while let Some(mut group) = groups.get::<LuaTable<_>, _, _>(j) {
-                            let x: f64 = get!(group, "x")?;
-                            let y: f64 = get!(group, "y")?;
+                // `_current_mission.mission.coalition.{blue,red}.country[i].{static|plane|helicopter|vehicle|ship}.group[j]
+                let keys = vec!["static", "plane", "helicopter", "vehicle", "ship"];
+                for key in keys {
+                    if let Some(mut assets) = country.get::<LuaTable<_>, _, _>(key) {
+                        if let Some(mut groups) = assets.get::<LuaTable<_>, _, _>("group") {
+                            let mut j = 1;
+                            while let Some(mut group) = groups.get::<LuaTable<_>, _, _>(j) {
+                                if let Some(mut units) = group.get::<LuaTable<_>, _, _>("units") {
+                                    let mut k = 1;
+                                    while let Some(mut unit) = units.get::<LuaTable<_>, _, _>(k) {
+                                        let x: f64 = get!(unit, "x")?;
+                                        let y: f64 = get!(unit, "y")?;
+                                        let alt: Option<f64> = get!(unit, "alt").ok();
+                                        let unit_id: u32 = get!(unit, "unitId")?;
 
-                            // read `group.units[1].unitId
-                            let mut units: LuaTable<_> = get!(group, "units")?;
-                            let mut first_unit: LuaTable<_> = get!(units, 1)?;
-                            let unit_id: i32 = get!(first_unit, "unitId")?;
+                                        mission_units.push(MissionUnit {
+                                            id: unit_id,
+                                            name: String::new(),
+                                            x,
+                                            y,
+                                            alt: alt.unwrap_or(0.0),
+                                        });
 
-                            static_units.push(CommTower {
-                                id: unit_id,
-                                name: String::new(),
-                                x,
-                                y,
-                                alt: 0.0,
-                            });
-
-                            j += 1;
-                        }
-                    }
-                }
-
-                // `_current_mission.mission.coalition.{blue,red}.country[i].ship.group[j].units[k]
-                if let Some(mut ships) = country.get::<LuaTable<_>, _, _>("ship") {
-                    if let Some(mut groups) = ships.get::<LuaTable<_>, _, _>("group") {
-                        let mut j = 1;
-                        while let Some(mut group) = groups.get::<LuaTable<_>, _, _>(j) {
-                            if let Some(mut units) = group.get::<LuaTable<_>, _, _>("units") {
-                                let mut k = 1;
-                                while let Some(mut unit) = units.get::<LuaTable<_>, _, _>(k) {
-                                    let unit_id: u32 = get!(unit, "unitId")?;
-
-                                    ship_units.push(Ship {
-                                        id: unit_id,
-                                        name: String::new(),
-                                    });
-
-                                    k += 1;
+                                        k += 1;
+                                    }
                                 }
-                            }
 
-                            j += 1;
+                                j += 1;
+                            }
                         }
                     }
                 }
@@ -216,23 +199,16 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
             }
         }
 
-        (static_units, ship_units)
+        mission_units
     };
 
-    // extract the names for all static and ship units
+    // extract the names for all units
     {
         // read `DCS.getUnitProperty`
         let mut dcs: LuaTable<_> = get!(lua, "DCS")?;
         let mut get_unit_property: LuaFunction<_> = get!(dcs, "getUnitProperty")?;
 
-        for mut unit in &mut static_units {
-            // 3 = DCS.UNIT_NAME
-            unit.name = get_unit_property
-                .call_with_args((unit.id, 3))
-                .map_err(|_| new_lua_call_error("getUnitProperty"))?;
-        }
-
-        for mut unit in &mut ship_units {
+        for mut unit in &mut mission_units {
             // 3 = DCS.UNIT_NAME
             unit.name = get_unit_property
                 .call_with_args((unit.id, 3))
@@ -240,7 +216,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         }
     }
 
-    // read the terrain height for all airdromes and static units
+    // read the terrain height for all airdromes and units
     {
         // read `Terrain.GetHeight`
         let mut terrain: LuaTable<_> = get!(lua, "Terrain")?;
@@ -252,10 +228,12 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                 .map_err(|_| new_lua_call_error("getHeight"))?;
         }
 
-        for mut unit in &mut static_units {
-            unit.alt = get_height
-                .call_with_args((unit.x, unit.y))
-                .map_err(|_| new_lua_call_error("getHeight"))?;
+        for mut unit in &mut mission_units {
+            if unit.alt == 0.0 {
+                unit.alt = get_height
+                    .call_with_args((unit.x, unit.y))
+                    .map_err(|_| new_lua_call_error("getHeight"))?;
+            }
         }
     }
 
@@ -323,15 +301,15 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         })
         .collect();
 
-    // check all statics weather they represent and ATIS station and if so, combine them with
+    // check all units if they represent and ATIS station and if so, combine them with
     // their corresponding airfield
-    stations.extend(static_units.into_iter().filter_map(|static_unit| {
-        extract_station_config(&static_unit.name).and_then(|config| {
+    stations.extend(mission_units.iter().filter_map(|mission_unit| {
+        extract_station_config(&mission_unit.name).and_then(|config| {
             airfields.remove(&config.name).map(|mut airfield| {
                 airfield.traffic_freq = config.traffic;
-                airfield.position.x = static_unit.x;
-                airfield.position.y = static_unit.y;
-                airfield.position.alt = static_unit.alt;
+                airfield.position.x = mission_unit.x;
+                airfield.position.y = mission_unit.y;
+                airfield.position.alt = mission_unit.alt;
 
                 Station {
                     name: config.name,
@@ -354,15 +332,29 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         }
     };
 
-    stations.extend(ship_units.into_iter().filter_map(|ship_unit| {
-        extract_station_config(&ship_unit.name).map(|config| Station {
+    stations.extend(mission_units.iter().filter_map(|mission_unit| {
+        extract_station_config(&mission_unit.name).map(|config| Station {
             name: config.name.clone(),
             freq: config.atis,
             tts: config.tts.unwrap_or_else(|| default_voice.clone()),
             transmitter: Transmitter::Carrier(Carrier {
                 name: config.name,
-                unit_id: ship_unit.id,
-                unit_name: ship_unit.name,
+                unit_id: mission_unit.id,
+                unit_name: mission_unit.name.clone(),
+            }),
+            rpc: Some(rpc.clone()),
+        })
+    }));
+
+    stations.extend(mission_units.iter().filter_map(|mission_unit| {
+        extract_custom_broadcast_config(&mission_unit.name).map(|config| Station {
+            name: mission_unit.name.clone(),
+            freq: config.freq,
+            tts: config.tts.unwrap_or_else(|| default_voice.clone()),
+            transmitter: Transmitter::Custom(Custom {
+                unit_id: mission_unit.id,
+                unit_name: mission_unit.name.clone(),
+                message: config.message,
             }),
             rpc: Some(rpc.clone()),
         })
@@ -396,18 +388,13 @@ fn new_lua_call_error(method_name: &str) -> anyhow::Error {
     anyhow!("failed to call lua function {}", method_name)
 }
 
-struct CommTower {
-    id: i32,
+#[derive(Debug)]
+struct MissionUnit {
+    id: u32,
     name: String,
     x: f64,
     y: f64,
     alt: f64,
-}
-
-#[derive(Debug)]
-struct Ship {
-    id: u32,
-    name: String,
 }
 
 #[derive(Debug, PartialEq)]
@@ -456,7 +443,7 @@ fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
 
 fn extract_station_config(config: &str) -> Option<StationConfig> {
     let re = RegexBuilder::new(
-        r"ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?(,[ ]?VOICE ([a-zA-Z-:]+))?",
+        r"^ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?(,[ ]?VOICE ([a-zA-Z-:]+))?$",
     )
     .case_insensitive(true)
     .build()
@@ -480,9 +467,42 @@ fn extract_station_config(config: &str) -> Option<StationConfig> {
     })
 }
 
+#[derive(Debug, PartialEq)]
+struct BroadcastConfig {
+    freq: u64,
+    message: String,
+    tts: Option<TextToSpeechProvider>,
+}
+
+fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> {
+    let re = RegexBuilder::new(
+        r"^BROADCAST ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?VOICE ([a-zA-Z-:]+))?:[ ]*(.+)$",
+    )
+    .case_insensitive(true)
+    .build()
+    .unwrap();
+    re.captures(config).map(|caps| {
+        dbg!(&caps);
+        let freq = caps.get(1).unwrap().as_str();
+        let freq = (f32::from_str(freq).unwrap() * 1_000_000.0) as u64;
+        let tts = caps
+            .get(4)
+            .and_then(|s| TextToSpeechProvider::from_str(s.as_str()).ok());
+        let message = caps.get(5).unwrap().as_str();
+        BroadcastConfig {
+            freq,
+            message: message.to_string(),
+            tts,
+        }
+    })
+}
+
 #[cfg(test)]
 mod test {
-    use super::{extract_frequencies, extract_station_config, StationConfig};
+    use super::{
+        extract_custom_broadcast_config, extract_frequencies, extract_station_config,
+        BroadcastConfig, StationConfig,
+    };
     use datis_core::tts::{aws, gcloud, TextToSpeechProvider};
 
     #[test]
@@ -630,6 +650,29 @@ mod test {
                 name: "Kutaisi".to_string(),
                 atis: 131_400_000,
                 traffic: None,
+                tts: Some(TextToSpeechProvider::AmazonWebServices {
+                    voice: aws::VoiceKind::Brian
+                }),
+            })
+        );
+    }
+
+    #[test]
+    fn test_broadcast_config_extraction() {
+        assert_eq!(
+            extract_custom_broadcast_config("BROADCAST 251: Bla bla"),
+            Some(BroadcastConfig {
+                freq: 251_000_000,
+                message: "Bla bla".to_string(),
+                tts: None,
+            })
+        );
+
+        assert_eq!(
+            extract_custom_broadcast_config("BROADCAST 251.000, VOICE AWS:Brian: Bla bla"),
+            Some(BroadcastConfig {
+                freq: 251_000_000,
+                message: "Bla bla".to_string(),
                 tts: Some(TextToSpeechProvider::AmazonWebServices {
                     voice: aws::VoiceKind::Brian
                 }),

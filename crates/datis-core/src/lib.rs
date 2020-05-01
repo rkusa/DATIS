@@ -239,6 +239,9 @@ async fn run(
         Transmitter::Carrier(unit) => {
             client.set_unit(unit.unit_id, &unit.unit_name);
         }
+        Transmitter::Custom(custom) => {
+            client.set_unit(custom.unit_id, &custom.unit_name);
+        }
     }
     let pos = client.position_handle();
 
@@ -354,6 +357,12 @@ async fn audio_broadcast(
                     delay_for(Duration::from_secs(10)).await;
                     // always create a new report for carriers, since they are usually
                     // constantly moving
+                    break;
+                }
+                Transmitter::Custom(_) => {
+                    delay_for(Duration::from_secs(1)).await;
+                    // always create a new report to get an update on the position of the
+                    // broadcasting unit
                     break;
                 }
             }

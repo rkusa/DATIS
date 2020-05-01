@@ -16,6 +16,13 @@ pub struct Station {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum Transmitter {
+    Airfield(Airfield),
+    Carrier(Carrier),
+    Custom(Custom),
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct Airfield {
     pub name: String,
     pub position: Position,
@@ -32,9 +39,10 @@ pub struct Carrier {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Transmitter {
-    Airfield(Airfield),
-    Carrier(Carrier),
+pub struct Custom {
+    pub unit_id: u32,
+    pub unit_name: String,
+    pub message: String,
 }
 
 pub struct Report {
@@ -95,6 +103,27 @@ impl Station {
                     Ok(None)
                 }
             }
+            (Some(rpc), Transmitter::Custom(custom)) => {
+                let pos = rpc
+                    .get_unit_position(&custom.unit_name)
+                    .await
+                    .context("failed to retrieve unit position")?;
+
+                if let Some(pos) = pos {
+                    let position = rpc
+                        .to_lat_lng(&pos)
+                        .await
+                        .context("failed to retrieve unit position")?;
+
+                    Ok(Some(Report {
+                        textual: custom.message.clone(),
+                        spoken: custom.message.clone(),
+                        position,
+                    }))
+                } else {
+                    Ok(None)
+                }
+            }
             _ => Ok(None),
         }
     }
@@ -127,6 +156,11 @@ impl Station {
                     position: LatLngPosition::default(),
                 }))
             }
+            Transmitter::Custom(custom) => Ok(Some(Report {
+                textual: custom.message.clone(),
+                spoken: custom.message.clone(),
+                position: LatLngPosition::default(),
+            })),
         }
     }
 }
