@@ -155,7 +155,7 @@ impl MissionRpc {
         match rx.await? {
             Response::Success(v) => Ok(Some(serde_json::from_value(v)?)),
             Response::Error(err) => {
-                error!("failed to get unit position: {}", err);
+                error!("failed to get position of unit {}: {}", name, err);
                 Ok(None)
             }
         }
@@ -172,7 +172,7 @@ impl MissionRpc {
         match rx.await? {
             Response::Success(v) => Ok(Some(serde_json::from_value(v)?)),
             Response::Error(err) => {
-                error!("failed to get unit heading: {}", err);
+                error!("failed to get heading of unit {}: {}", name, err);
                 Ok(None)
             }
         }

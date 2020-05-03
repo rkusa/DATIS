@@ -287,7 +287,7 @@ async fn audio_broadcast(
             Some(report) => report,
             None => {
                 debug!(
-                    "No report available right for station {}. Trying again in 30 seconds ...",
+                    "No report available for station {}. Trying again in 30 seconds ...",
                     station.name
                 );
                 // postpone the next playback of the report by some seconds ...

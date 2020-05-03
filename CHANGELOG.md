@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Fix WIN as default voice not working
 
+### Changed
+- **Breaking:** Carrier reports must now be prefixed with `CARRIER` instead of `ATIS`, eg.: `CARRIER Mother 250.000`
+
 ## [1.0.0-alpha.10] - 2020-05-01
 ### Added
 - Added default voice setting to DATIS settings

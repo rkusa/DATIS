@@ -116,11 +116,10 @@ ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE WIN
 
 _I know, there is no such thing like a carrier ATIS in real life - though still a useful feature until we get the DCS carrier module._
 
-Setup like [Using Static Units](https://github.com/rkusa/DATIS#using-static-units), but instead of adding the `ATIS` name pattern to the name of a static unit, put it into the name of your carrier unt (not its group's name!) that should broadcast the report.
+Setup like [Using Static Units](https://github.com/rkusa/DATIS#using-static-units), but instead of adding the `ATIS` name pattern to the name of a static unit, put it into the name of your carrier unit (not its group's name!) that should broadcast the report and prefix it with `CARRIER`.
 
 ![Example](./docs/carrier.jpg)
 
-Known issue: It will broadcast on the unit's frequency and not on the frequency setup in the `ATIS` name pattern.
 
 ## Build
 

@@ -89,7 +89,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         let mut get_mission_description: LuaFunction<_> = get!(dcs, "getMissionDescription")?;
         let mission_situation: String = get_mission_description.call()?;
 
-        extract_frequencies(&mission_situation)
+        extract_atis_station_frequencies(&mission_situation)
     };
 
     // collect all airfields on the current loaded terrain
@@ -304,7 +304,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     // check all units if they represent and ATIS station and if so, combine them with
     // their corresponding airfield
     stations.extend(mission_units.iter().filter_map(|mission_unit| {
-        extract_station_config(&mission_unit.name).and_then(|config| {
+        extract_atis_station_config(&mission_unit.name).and_then(|config| {
             airfields.remove(&config.name).map(|mut airfield| {
                 airfield.traffic_freq = config.traffic;
                 airfield.position.x = mission_unit.x;
@@ -332,45 +332,78 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         }
     };
 
-    stations.extend(mission_units.iter().filter_map(|mission_unit| {
-        extract_station_config(&mission_unit.name).map(|config| Station {
-            name: config.name.clone(),
-            freq: config.atis,
-            tts: config.tts.unwrap_or_else(|| default_voice.clone()),
-            transmitter: Transmitter::Carrier(Carrier {
-                name: config.name,
-                unit_id: mission_unit.id,
-                unit_name: mission_unit.name.clone(),
-            }),
-            rpc: Some(rpc.clone()),
-        })
-    }));
-
-    stations.extend(mission_units.iter().filter_map(|mission_unit| {
-        extract_custom_broadcast_config(&mission_unit.name).map(|config| Station {
-            name: mission_unit.name.clone(),
-            freq: config.freq,
-            tts: config.tts.unwrap_or_else(|| default_voice.clone()),
-            transmitter: Transmitter::Custom(Custom {
-                unit_id: mission_unit.id,
-                unit_name: mission_unit.name.clone(),
-                message: config.message,
-            }),
-            rpc: Some(rpc.clone()),
-        })
-    }));
-
-    debug!("Valid ATIS Stations:");
-    for station in &stations {
-        debug!(
-            "  - {} (Freq: {}, Voice: {:?})",
-            station.name, station.freq, station.tts
-        );
-    }
-
     if stations.is_empty() {
-        warn!("No ATIS stations found ...");
+        info!("No ATIS stations found ...");
+    } else {
+        info!("ATIS Stations:");
+        for station in &stations {
+            info!(
+                "  - {} (Freq: {}, Voice: {:?})",
+                station.name, station.freq, station.tts
+            );
+        }
     }
+
+    let carriers = mission_units
+        .iter()
+        .filter_map(|mission_unit| {
+            extract_carrier_station_config(&mission_unit.name).map(|config| Station {
+                name: config.name.clone(),
+                freq: config.atis,
+                tts: config.tts.unwrap_or_else(|| default_voice.clone()),
+                transmitter: Transmitter::Carrier(Carrier {
+                    name: config.name,
+                    unit_id: mission_unit.id,
+                    unit_name: mission_unit.name.clone(),
+                }),
+                rpc: Some(rpc.clone()),
+            })
+        })
+        .collect::<Vec<_>>();
+
+    if carriers.is_empty() {
+        info!("No Carrier stations found ...");
+    } else {
+        info!("Carrier Stations:");
+        for station in &carriers {
+            info!(
+                "  - {} (Freq: {}, Voice: {:?})",
+                station.name, station.freq, station.tts
+            );
+        }
+    }
+
+    let broadcasts = mission_units
+        .iter()
+        .filter_map(|mission_unit| {
+            extract_custom_broadcast_config(&mission_unit.name).map(|config| Station {
+                name: mission_unit.name.clone(),
+                freq: config.freq,
+                tts: config.tts.unwrap_or_else(|| default_voice.clone()),
+                transmitter: Transmitter::Custom(Custom {
+                    unit_id: mission_unit.id,
+                    unit_name: mission_unit.name.clone(),
+                    message: config.message,
+                }),
+                rpc: Some(rpc.clone()),
+            })
+        })
+        .collect::<Vec<_>>();
+
+    if broadcasts.is_empty() {
+        info!("No custom Broadcast stations found ...");
+    } else {
+        info!("Broadcast Stations:");
+        for station in &broadcasts {
+            info!(
+                "  - {} (Freq: {}, Voice: {:?})",
+                station.name, station.freq, station.tts
+            );
+        }
+    }
+
+    stations.extend(carriers);
+    stations.extend(broadcasts);
 
     Ok(Info {
         stations,
@@ -405,7 +438,7 @@ struct StationConfig {
     tts: Option<TextToSpeechProvider>,
 }
 
-fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
+fn extract_atis_station_frequencies(situation: &str) -> HashMap<String, StationConfig> {
     // extract ATIS stations and frequencies
     let re = Regex::new(r"ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
     let mut stations: HashMap<String, StationConfig> = re
@@ -441,7 +474,7 @@ fn extract_frequencies(situation: &str) -> HashMap<String, StationConfig> {
     stations
 }
 
-fn extract_station_config(config: &str) -> Option<StationConfig> {
+fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
     let re = RegexBuilder::new(
         r"^ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?(,[ ]?VOICE ([a-zA-Z-:]+))?$",
     )
@@ -467,6 +500,30 @@ fn extract_station_config(config: &str) -> Option<StationConfig> {
     })
 }
 
+fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
+    let re = RegexBuilder::new(
+        r"^CARRIER ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?VOICE ([a-zA-Z-:]+))?$",
+    )
+    .case_insensitive(true)
+    .build()
+    .unwrap();
+    re.captures(config).map(|caps| {
+        dbg!(&caps);
+        let name = caps.get(1).unwrap().as_str();
+        let atis_freq = caps.get(2).unwrap().as_str();
+        let atis_freq = (f64::from_str(atis_freq).unwrap() * 1_000_000.0) as u64;
+        let tts = caps
+            .get(5)
+            .and_then(|s| TextToSpeechProvider::from_str(s.as_str()).ok());
+        StationConfig {
+            name: name.to_string(),
+            atis: atis_freq,
+            traffic: None,
+            tts,
+        }
+    })
+}
+
 #[derive(Debug, PartialEq)]
 struct BroadcastConfig {
     freq: u64,
@@ -482,7 +539,6 @@ fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> {
     .build()
     .unwrap();
     re.captures(config).map(|caps| {
-        dbg!(&caps);
         let freq = caps.get(1).unwrap().as_str();
         let freq = (f32::from_str(freq).unwrap() * 1_000_000.0) as u64;
         let tts = caps
@@ -500,14 +556,15 @@ fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> {
 #[cfg(test)]
 mod test {
     use super::{
-        extract_custom_broadcast_config, extract_frequencies, extract_station_config,
-        BroadcastConfig, StationConfig,
+        extract_atis_station_config, extract_atis_station_frequencies,
+        extract_carrier_station_config, extract_custom_broadcast_config, BroadcastConfig,
+        StationConfig,
     };
     use datis_core::tts::{aws, gcloud, TextToSpeechProvider};
 
     #[test]
     fn test_mission_situation_extraction() {
-        let freqs = extract_frequencies(
+        let freqs = extract_atis_station_frequencies(
             r#"
             ATIS Mineralnye Vody 251.000
             ATIS Batumi 131.5
@@ -554,9 +611,9 @@ mod test {
     }
 
     #[test]
-    fn test_config_extraction() {
+    fn test_atis_config_extraction() {
         assert_eq!(
-            extract_station_config("ATIS Kutaisi 251"),
+            extract_atis_station_config("ATIS Kutaisi 251"),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
                 atis: 251_000_000,
@@ -566,7 +623,7 @@ mod test {
         );
 
         assert_eq!(
-            extract_station_config("ATIS Mineralnye Vody 251"),
+            extract_atis_station_config("ATIS Mineralnye Vody 251"),
             Some(StationConfig {
                 name: "Mineralnye Vody".to_string(),
                 atis: 251_000_000,
@@ -576,7 +633,7 @@ mod test {
         );
 
         assert_eq!(
-            extract_station_config("ATIS Senaki-Kolkhi 251"),
+            extract_atis_station_config("ATIS Senaki-Kolkhi 251"),
             Some(StationConfig {
                 name: "Senaki-Kolkhi".to_string(),
                 atis: 251_000_000,
@@ -586,7 +643,7 @@ mod test {
         );
 
         assert_eq!(
-            extract_station_config("ATIS Kutaisi 251.000, TRAFFIC 123.45"),
+            extract_atis_station_config("ATIS Kutaisi 251.000, TRAFFIC 123.45"),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
                 atis: 251_000_000,
@@ -596,7 +653,9 @@ mod test {
         );
 
         assert_eq!(
-            extract_station_config("ATIS Kutaisi 251.000, TRAFFIC 123.45, VOICE en-US-Standard-E"),
+            extract_atis_station_config(
+                "ATIS Kutaisi 251.000, TRAFFIC 123.45, VOICE en-US-Standard-E"
+            ),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
                 atis: 251_000_000,
@@ -608,7 +667,7 @@ mod test {
         );
 
         assert_eq!(
-            extract_station_config("ATIS Kutaisi 251.000, VOICE en-US-Standard-E"),
+            extract_atis_station_config("ATIS Kutaisi 251.000, VOICE en-US-Standard-E"),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
                 atis: 251_000_000,
@@ -620,7 +679,7 @@ mod test {
         );
 
         assert_eq!(
-            extract_station_config("ATIS Kutaisi 131.400"),
+            extract_atis_station_config("ATIS Kutaisi 131.400"),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
                 atis: 131_400_000,
@@ -631,9 +690,44 @@ mod test {
     }
 
     #[test]
+    fn test_carrier_config_extraction() {
+        assert_eq!(
+            extract_carrier_station_config("CARRIER Mother 251"),
+            Some(StationConfig {
+                name: "Mother".to_string(),
+                atis: 251_000_000,
+                traffic: None,
+                tts: None,
+            })
+        );
+
+        assert_eq!(
+            extract_carrier_station_config("CARRIER Mother 131.400"),
+            Some(StationConfig {
+                name: "Mother".to_string(),
+                atis: 131_400_000,
+                traffic: None,
+                tts: None,
+            })
+        );
+
+        assert_eq!(
+            extract_carrier_station_config("CARRIER Mother 251.000, VOICE en-US-Standard-E"),
+            Some(StationConfig {
+                name: "Mother".to_string(),
+                atis: 251_000_000,
+                traffic: None,
+                tts: Some(TextToSpeechProvider::GoogleCloud {
+                    voice: gcloud::VoiceKind::StandardE
+                }),
+            })
+        );
+    }
+
+    #[test]
     fn test_cloud_provider_prefix_extraction() {
         assert_eq!(
-            extract_station_config("ATIS Kutaisi 131.400, VOICE GC:en-US-Standard-D"),
+            extract_atis_station_config("ATIS Kutaisi 131.400, VOICE GC:en-US-Standard-D"),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
                 atis: 131_400_000,
@@ -645,7 +739,7 @@ mod test {
         );
 
         assert_eq!(
-            extract_station_config("ATIS Kutaisi 131.400, VOICE AWS:Brian"),
+            extract_atis_station_config("ATIS Kutaisi 131.400, VOICE AWS:Brian"),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
                 atis: 131_400_000,
