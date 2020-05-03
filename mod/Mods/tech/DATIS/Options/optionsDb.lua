@@ -1,8 +1,8 @@
 local DbOption = require("Options.DbOption")
 
 return {
-  defaultVoice = DbOption.new():setValue("win"):combo({
-    DbOption.Item(_("Windows integrated TTS")):Value("win"),
+  defaultVoice = DbOption.new():setValue("WIN"):combo({
+    DbOption.Item(_("Windows integrated TTS")):Value("WIN"),
     DbOption.Item(_("GCloud: en-US-Standard-B")):Value("GC:en-US-Standard-B"),
     DbOption.Item(_("GCloud: en-US-Standard-C")):Value("GC:en-US-Standard-C"),
     DbOption.Item(_("GCloud: en-US-Standard-D")):Value("GC:en-US-Standard-D"),

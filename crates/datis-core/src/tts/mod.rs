@@ -50,17 +50,17 @@ impl FromStr for TextToSpeechProvider {
         let v: Vec<&str> = s.splitn(2, ':').collect();
         match v.as_slice() {
             &[prefix, voice] => match prefix {
-                "GC" => {
+                "GC" | "gc" => {
                     return Ok(TextToSpeechProvider::GoogleCloud {
                         voice: gcloud::VoiceKind::from_str(voice)?,
                     })
                 }
-                "AWS" => {
+                "AWS" | "aws" => {
                     return Ok(TextToSpeechProvider::AmazonWebServices {
                         voice: aws::VoiceKind::from_str(voice)?,
                     })
                 }
-                "WIN" => {
+                "WIN" | "win" => {
                     return Ok(TextToSpeechProvider::Windows {
                         voice: Some(voice.to_string()),
                     })
@@ -68,7 +68,7 @@ impl FromStr for TextToSpeechProvider {
                 _ => {}
             },
             &[voice] if voice.len() > 0 => {
-                if voice == "WIN" {
+                if voice == "WIN" || voice == "win" {
                     return Ok(TextToSpeechProvider::Windows { voice: None });
                 } else {
                     return Ok(TextToSpeechProvider::GoogleCloud {
