@@ -33,7 +33,7 @@ use futures::future::{self, abortable, AbortHandle, Either, FutureExt};
 use futures::sink::SinkExt;
 use futures::stream::{SplitSink, SplitStream, StreamExt};
 use srs::{Client, VoiceStream};
-use tokio::runtime::Runtime;
+use tokio::runtime::{self, Runtime};
 use tokio::time::delay_for;
 
 pub struct Datis {
@@ -62,7 +62,10 @@ impl Datis {
             gcloud_key: None,
             aws_config: None,
             port: 5002,
-            runtime: Runtime::new()?,
+            runtime: runtime::Builder::new()
+                .threaded_scheduler()
+                .enable_all()
+                .build()?,
             started: false,
             abort_handles: Vec::new(),
             executable_path: None,
