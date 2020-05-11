@@ -286,6 +286,14 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     // initialize the dynamic weather component
     let rpc = MissionRpc::new(clouds, fog_thickness, fog_visibility)?;
 
+    let default_voice = match TextToSpeechProvider::from_str(&default_voice) {
+        Ok(default_voice) => default_voice,
+        Err(err) => {
+            warn!("Invalid default voice `{}`: {}", default_voice, err);
+            TextToSpeechProvider::default()
+        }
+    };
+
     // combine the frequencies that have extracted from the mission's situation with their
     // corresponding airfield
     let mut stations: Vec<Station> = frequencies
@@ -294,7 +302,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
             airfields.remove(&name).map(|airfield| Station {
                 name,
                 freq: freq.atis,
-                tts: TextToSpeechProvider::default(),
+                tts: default_voice.clone(),
                 transmitter: Transmitter::Airfield(airfield),
                 rpc: Some(rpc.clone()),
             })
@@ -316,21 +324,13 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                     freq: config.atis,
                     tts: config
                         .tts
-                        .unwrap_or_else(|| TextToSpeechProvider::default()),
+                        .unwrap_or_else(|| default_voice.clone()),
                     transmitter: Transmitter::Airfield(airfield),
                     rpc: Some(rpc.clone()),
                 }
             })
         })
     }));
-
-    let default_voice = match TextToSpeechProvider::from_str(&default_voice) {
-        Ok(default_voice) => default_voice,
-        Err(err) => {
-            warn!("Invalid default voice `{}`: {}", default_voice, err);
-            TextToSpeechProvider::default()
-        }
-    };
 
     if stations.is_empty() {
         info!("No ATIS stations found ...");
