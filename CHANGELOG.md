@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.0.0-beta.3] - 2020-05-11
 ### Changed
 - Reduced the frequency in which RPC requests from ATIS stations are handled inside the DCS hook of DATIS to one request every 2 seconds (it was one request every half second before). This change will slow down the initial start of all stations a bit, but shouldn't be noticeable otherwise.
 

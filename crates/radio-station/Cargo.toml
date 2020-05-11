@@ -1,6 +1,6 @@
 [package]
 name = "dcs-radio-station"
-version = "1.0.0-beta.2"
+version = "1.0.0-beta.3"
 authors = ["Markus Ast <m@rkusa.st>"]
 edition = "2018"
 
