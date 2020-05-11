@@ -52,7 +52,7 @@ local i = 0
 
 function datis_simulation_frame()
   i = i + 1
-  if i > 50 then -- roughly twice a second
+  if i > 200 then -- roughly every 2 seconds
     i = 0
 
     local ok, err = pcall(datis_next)
