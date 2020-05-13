@@ -6,6 +6,35 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.0.0] - 2020-05-13
+
+No changes since the previous pre-release (`1.0.0-beta.3`), the following is just a summary of change since version `0.10.0`.
+
+### Added
+- Added default voice option to DATIS settings
+- Units can now broadcast custom messages. Just name a unit with the following patter `BROADCAST {frequency}[, VOICE {voice name}]: {custom message}` and the `{custom message}` will be converted to speech using the voice `{voice name}` and broadcasted over the `{frequency}`.
+- Support for Windows' TTS as an additional TTS provider #24
+- Possibility to select a voice for Windows' TTS (e.g. `VOICE WIN:David`, or `VOICE WIN:Zira`)
+- Carrier ATIS (reports altimeter, BRC and Case variant to be used; eg.: `CARRIER Mother 250.000`)
+- Support for AWS Polly as an additional TTS provider (implemented by @16AGR-Durham)
+- The internals of DATIS are no based on async Rust. With that, DATIS does not create two threads for each ATIS station anymore (max. number of threads is now the number of cores available to the system).
+
+### Changed
+- **Breaking:** Upgraded SRS protocol to 1.8.0.0 (requires SRS server version 1.8.x.x)
+- **Breaking:** Made `WIN` the default voice (instead of `GC:en-US-Standard-C`)
+- Every unit can now act as an ATIS station (not just statics)
+- Every unit can now act as a Carrier station (not just ships; not really a useful feature, just a side-effect)
+- Start each airfield station with a random information letter #39
+- Reworked how DATIS communicates to the running mission - DATIS now has a way to ask the running mission about updates (this RPC functionality handles one request every 2 seconds)
+
+### Fixed
+- Fixed wind speed unit (convert the m/s received from DCS to knots) #40
+- In some cases stations stopped transmitting every ~0.5 secs should be fixed
+- Restore consistent ~3sec pause between reports
+- Fixed DATIS crashing MP servers
+- Possibly fixed DATIS not picking up weather updates for missions with dynamic weather #16
+- Derive a visibility value from cloud and fog weather settings (instead of using the visibility mission setting that never changes)
+
 ## [1.0.0-beta.3] - 2020-05-11
 ### Changed
 - Reduced the frequency in which RPC requests from ATIS stations are handled inside the DCS hook of DATIS to one request every 2 seconds (it was one request every half second before). This change will slow down the initial start of all stations a bit, but shouldn't be noticeable otherwise.
