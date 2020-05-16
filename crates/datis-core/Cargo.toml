@@ -19,7 +19,8 @@ rusoto_polly = "0.43"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 srs = { path = "../srs" }
-tokio = { version = "0.2", features = ["time", "rt-threaded"] }
+tokio = { version = "0.2", features = ["time", "rt-threaded", "blocking"] }
+win-tts = { path = "../win-tts" }
 
 [features]
 default = []
