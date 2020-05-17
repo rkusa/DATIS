@@ -43,6 +43,7 @@ pub struct WeatherInfo {
     pub temperature: f64,        // in °C
     pub pressure_qnh: f64,       // in N/m2
     pub pressure_qfe: f64,       // in N/m2
+    pub position: Position,
 }
 
 #[derive(Clone)]
@@ -141,6 +142,7 @@ impl MissionRpc {
             temperature: data.temp,
             pressure_qnh,
             pressure_qfe: data.pressure,
+            position: pos.clone(),
         })
     }
 

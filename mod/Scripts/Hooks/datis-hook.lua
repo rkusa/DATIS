@@ -101,6 +101,9 @@ function datis_handleRequest(method, params)
     local get_unit_position = [[
       local unit = Unit.getByName("]] .. params.name .. [[")
       if unit == nil then
+        unit = StaticObject.getByName("]] .. params.name .. [[")
+      end
+      if unit == nil then
         return ""
       else
         local pos = unit:getPoint()

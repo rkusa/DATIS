@@ -245,6 +245,9 @@ async fn run(
         Transmitter::Custom(custom) => {
             client.set_unit(custom.unit_id, &custom.unit_name);
         }
+        Transmitter::Weather(weather) => {
+            client.set_unit(weather.unit_id, &weather.unit_name);
+        }
     }
     let pos = client.position_handle();
 
@@ -277,7 +280,14 @@ async fn audio_broadcast(
     tts_config: &TextToSpeechConfig,
     exporter: Option<&ReportExporter>,
 ) -> Result<(), anyhow::Error> {
-    let interval = Duration::from_secs(60 * 60); // 60min
+    let interval = match &station.transmitter {
+        Transmitter::Weather(_) => {
+            Duration::from_secs(60 * 15) // 15min
+        }
+        _ => {
+            Duration::from_secs(60 * 60) // 60min
+        }
+    };
     let mut interval_start;
     let mut report_ix = 0;
     let mut previous_report = "".to_string();
@@ -353,7 +363,7 @@ async fn audio_broadcast(
 
             // postpone the next playback of the report by some seconds ...
             match &station.transmitter {
-                Transmitter::Airfield(_) => {
+                Transmitter::Airfield(_) | Transmitter::Weather(_) => {
                     delay_for(Duration::from_secs(3)).await;
                 }
                 Transmitter::Carrier(_) => {

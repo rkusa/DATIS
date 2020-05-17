@@ -8,13 +8,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Changed the internal implementation of how DATIS talks to Windows' TTS (from calling a .NET application to a pure Rust implementation that uses WinRT bindings)
 
+### Added
+- Added weather stations. Weather stations are similar to ATIS stations, except that they are not related to any airfield. Their report is pretty much the same, except the active runway and the traffic frequency. To setup a weather station, name a unit with the following pattern `WEATHER {name} {frequency}[, VOICE {voice name}]`. The station will report the weather the unit's position.
+
+### Fixed
+- Fixed broadcast stations to work with statics.
+
 ## [1.0.0] - 2020-05-13
 
 No changes since the previous pre-release (`1.0.0-beta.3`), the following is just a summary of change since version `0.10.0`.
 
 ### Added
 - Added default voice option to DATIS settings
-- Units can now broadcast custom messages. Just name a unit with the following patter `BROADCAST {frequency}[, VOICE {voice name}]: {custom message}` and the `{custom message}` will be converted to speech using the voice `{voice name}` and broadcasted over the `{frequency}`.
+- Units can now broadcast custom messages. Just name a unit with the following pattern `BROADCAST {frequency}[, VOICE {voice name}]: {custom message}` and the `{custom message}` will be converted to speech using the voice `{voice name}` and broadcasted over the `{frequency}`.
 - Support for Windows' TTS as an additional TTS provider #24
 - Possibility to select a voice for Windows' TTS (e.g. `VOICE WIN:David`, or `VOICE WIN:Zira`)
 - Carrier ATIS (reports altimeter, BRC and Case variant to be used; eg.: `CARRIER Mother 250.000`)

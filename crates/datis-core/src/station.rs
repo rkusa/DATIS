@@ -20,6 +20,7 @@ pub enum Transmitter {
     Airfield(Airfield),
     Carrier(Carrier),
     Custom(Custom),
+    Weather(WeatherTransmitter),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -43,6 +44,14 @@ pub struct Custom {
     pub unit_id: u32,
     pub unit_name: String,
     pub message: String,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct WeatherTransmitter {
+    pub name: String,
+    pub unit_id: u32,
+    pub unit_name: String,
+    pub info_ltr_offset: usize,
 }
 
 pub struct Report {
@@ -124,13 +133,38 @@ impl Station {
                     Ok(None)
                 }
             }
-            _ => Ok(None),
+            (Some(rpc), Transmitter::Weather(weather)) => {
+                let pos = rpc
+                    .get_unit_position(&weather.unit_name)
+                    .await
+                    .context("failed to retrieve unit position")?;
+
+                if let Some(pos) = pos {
+                    let weather_info = rpc
+                        .get_weather_at(&pos)
+                        .await
+                        .context("failed to retrieve weather")?;
+                    let position = rpc
+                        .to_lat_lng(&pos)
+                        .await
+                        .context("failed to retrieve unit position")?;
+
+                    Ok(Some(Report {
+                        textual: weather.generate_report(report_nr, &weather_info, false)?,
+                        spoken: weather.generate_report(report_nr, &weather_info, true)?,
+                        position,
+                    }))
+                } else {
+                    Ok(None)
+                }
+            }
+            (None, _) => Ok(None),
         }
     }
 
     #[cfg(feature = "static-weather")]
     pub async fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
-        let weather = WeatherInfo {
+        let weather_info = WeatherInfo {
             clouds: None,
             visibility: None,
             wind_speed: 2.5,
@@ -138,12 +172,13 @@ impl Station {
             temperature: 22.0,
             pressure_qnh: 101_500.0,
             pressure_qfe: 101_500.0,
+            position: Position::default(),
         };
 
         match &self.transmitter {
             Transmitter::Airfield(airfield) => Ok(Some(Report {
-                textual: airfield.generate_report(report_nr, &weather, false)?,
-                spoken: airfield.generate_report(report_nr, &weather, true)?,
+                textual: airfield.generate_report(report_nr, &weather_info, false)?,
+                spoken: airfield.generate_report(report_nr, &weather_info, true)?,
                 position: LatLngPosition::default(),
             })),
             Transmitter::Carrier(unit) => {
@@ -151,14 +186,19 @@ impl Station {
                 let mission_hour = 7;
 
                 Ok(Some(Report {
-                    textual: unit.generate_report(&weather, heading, mission_hour, false)?,
-                    spoken: unit.generate_report(&weather, heading, mission_hour, true)?,
+                    textual: unit.generate_report(&weather_info, heading, mission_hour, false)?,
+                    spoken: unit.generate_report(&weather_info, heading, mission_hour, true)?,
                     position: LatLngPosition::default(),
                 }))
             }
             Transmitter::Custom(custom) => Ok(Some(Report {
                 textual: custom.message.clone(),
                 spoken: custom.message.clone(),
+                position: LatLngPosition::default(),
+            })),
+            Transmitter::Weather(weather) => Ok(Some(Report {
+                textual: weather.generate_report(report_nr, &weather_info, false)?,
+                spoken: weather.generate_report(report_nr, &weather_info, true)?,
                 position: LatLngPosition::default(),
             })),
         }
@@ -378,6 +418,99 @@ impl Carrier {
     }
 }
 
+impl WeatherTransmitter {
+    pub fn generate_report(
+        &self,
+        report_nr: usize,
+        weather: &WeatherInfo,
+        spoken: bool,
+    ) -> Result<String, anyhow::Error> {
+        #[cfg(not(test))]
+        let _break = if spoken { "\n" } else { "" };
+        #[cfg(test)]
+        let _break = if spoken { "| " } else { "" };
+
+        let information_letter = phonetic_alphabet::lookup(self.info_ltr_offset + report_nr);
+        let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
+
+        report += &format!(
+            "This is weather station {} information {}. {}",
+            self.name, information_letter, _break
+        );
+
+        // TODO: reduce redundancy with ATIS report generation
+
+        let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
+        report += &format!(
+            "Wind {} at {} knots. {}",
+            pronounce_number(wind_dir, spoken),
+            pronounce_number((weather.wind_speed * 1.94384).round(), spoken), // to knots
+            _break,
+        );
+
+        let mut visibility = None;
+        if let Some(ref clouds_report) = weather.clouds {
+            if weather.position.alt > clouds_report.base as f64
+                && weather.position.alt < clouds_report.base as f64 + clouds_report.thickness as f64
+                && clouds_report.density >= 9
+            {
+                // the airport is within completely condensed clouds
+                visibility = Some(0);
+            }
+        }
+
+        if let Some(visibility) = visibility.or(weather.visibility) {
+            // 9260 m = 5 nm
+            if visibility < 9_260 {
+                report += &format!("{}. {}", get_visibility_report(visibility, spoken), _break);
+            }
+        }
+
+        if let Some(clouds_report) = weather
+            .clouds
+            .as_ref()
+            .and_then(|clouds| get_clouds_report(clouds, spoken))
+        {
+            report += &format!("{}. {}", clouds_report, _break);
+        }
+
+        report += &format!(
+            "Temperature {} celcius. {}",
+            pronounce_number(round(weather.temperature, 1), spoken),
+            _break,
+        );
+
+        report += &format!(
+            "ALTIMETER {}. {}",
+            // inHg, but using 0.02953 instead of 0.0002953 since we don't want to speak the
+            // DECIMAL here
+            pronounce_number((weather.pressure_qnh * 0.02953).round(), spoken),
+            _break,
+        );
+
+        report += &format!("REMARKS. {}", _break,);
+        report += &format!(
+            "{} hectopascal. {}",
+            pronounce_number((weather.pressure_qnh / 100.0).round(), spoken), // to hPA
+            _break,
+        );
+        report += &format!(
+            "QFE {} or {}. {}",
+            pronounce_number((weather.pressure_qfe * 0.02953).round(), spoken), // to inHg
+            pronounce_number((weather.pressure_qfe / 100.0).round(), spoken),   // to hPA
+            _break,
+        );
+
+        report += &format!("End information {}.", information_letter);
+
+        if spoken {
+            report += "\n</speak>";
+        }
+
+        Ok(report)
+    }
+}
+
 fn get_visibility_report(visibility: u32, spoken: bool) -> String {
     let visibility = round(m_to_nm(f64::from(visibility)), 1);
     format!("Visibility {}", pronounce_number(visibility, spoken))
@@ -450,7 +583,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_report() {
+    async fn test_atis_report() {
         let station = Station {
             name: String::from("Kutaisi"),
             freq: 251_000_000,
@@ -536,5 +669,63 @@ mod test {
             create_clouds_report(8500, 10, 2),
             Some("Cloud conditions overcast 2 7 5, rain and thunderstorm".to_string())
         );
+    }
+
+    #[tokio::test]
+    async fn test_carrier_report() {
+        let station = Station {
+            name: String::from("Mother"),
+            freq: 251_000_000,
+            tts: TextToSpeechProvider::default(),
+            transmitter: Transmitter::Carrier(Carrier {
+                name: "Stennis".to_string(),
+                unit_id: 42,
+                unit_name: "Stennis".to_string(),
+            }),
+            rpc: None,
+        };
+
+        let report = station.generate_report(26).await.unwrap().unwrap();
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nNINER NINER, | Stennis\'s wind ZERO ZERO 6 at 3 knots, | altimeter 2 NINER NINER 7, | CASE 1, | BRC 1 ZERO 3 1 3, | expected final heading 1 ZERO 3 ZERO 4, | report initial.\n</speak>");
+        assert_eq!(report.textual, "99, Stennis\'s wind 006 at 3 knots, altimeter 2997, CASE 1, BRC 10313, expected final heading 10304, report initial.");
+    }
+
+    #[tokio::test]
+    async fn test_custom_broadcast_report() {
+        let station = Station {
+            name: String::from("Broadcast station"),
+            freq: 251_000_000,
+            tts: TextToSpeechProvider::default(),
+            transmitter: Transmitter::Custom(Custom {
+                unit_id: 42,
+                unit_name: "Soldier".to_string(),
+                message: "Hello world".to_string(),
+            }),
+            rpc: None,
+        };
+
+        let report = station.generate_report(26).await.unwrap().unwrap();
+        assert_eq!(report.spoken, "Hello world");
+        assert_eq!(report.textual, "Hello world");
+    }
+
+    #[tokio::test]
+    async fn test_weather_report() {
+        let station = Station {
+            name: String::from("Mother"),
+            freq: 251_000_000,
+            tts: TextToSpeechProvider::default(),
+            transmitter: Transmitter::Weather(WeatherTransmitter {
+                name: "Mountain Range".to_string(),
+                unit_id: 42,
+                unit_name: "Weather Post".to_string(),
+                info_ltr_offset: 15, // Should be "Papa"
+            }),
+            rpc: None,
+        };
+
+        let report = station.generate_report(26).await.unwrap().unwrap();
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nThis is weather station Mountain Range information Papa. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Papa.\n</speak>");
+        assert_eq!(report.textual, "This is weather station Mountain Range information Papa. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Papa.");
     }
 }

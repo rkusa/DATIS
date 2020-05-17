@@ -92,6 +92,9 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         extract_atis_station_frequencies(&mission_situation)
     };
 
+    // Create a random generator for creating the information letter offset.
+    let mut rng = rand::thread_rng();
+
     // collect all airfields on the current loaded terrain
     let mut airfields = {
         let mut airfields = HashMap::new();
@@ -102,9 +105,6 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         let mut airdromes: LuaTable<_> = get_terrain_config
             .call_with_args("Airdromes")
             .map_err(|_| new_lua_call_error("GetTerrainConfig"))?;
-
-        // Create a random generator for creating the information letter offset.
-        let mut rng = rand::thread_rng();
 
         // on Caucasus, airdromes start at the index 12, others start at 1; also hlua's table
         // iterator does not work for tables of tables, which is why we are just iterating
@@ -322,9 +322,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                 Station {
                     name: config.name,
                     freq: config.atis,
-                    tts: config
-                        .tts
-                        .unwrap_or_else(|| default_voice.clone()),
+                    tts: config.tts.unwrap_or_else(|| default_voice.clone()),
                     transmitter: Transmitter::Airfield(airfield),
                     rpc: Some(rpc.clone()),
                 }
@@ -402,8 +400,39 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         }
     }
 
+    let weather_stations = mission_units
+        .iter()
+        .filter_map(|mission_unit| {
+            extract_weather_station_config(&mission_unit.name).map(|config| Station {
+                name: mission_unit.name.clone(),
+                freq: config.freq,
+                tts: config.tts.unwrap_or_else(|| default_voice.clone()),
+                transmitter: Transmitter::Weather(WeatherTransmitter {
+                    name: config.name,
+                    unit_id: mission_unit.id,
+                    unit_name: mission_unit.name.clone(),
+                    info_ltr_offset: rng.gen_range(0, 25),
+                }),
+                rpc: Some(rpc.clone()),
+            })
+        })
+        .collect::<Vec<_>>();
+
+    if weather_stations.is_empty() {
+        info!("No weather stations found ...");
+    } else {
+        info!("Weather Stations:");
+        for station in &weather_stations {
+            info!(
+                "  - {} (Freq: {}, Voice: {:?})",
+                station.name, station.freq, station.tts
+            );
+        }
+    }
+
     stations.extend(carriers);
     stations.extend(broadcasts);
+    stations.extend(weather_stations);
 
     Ok(Info {
         stations,
@@ -508,7 +537,6 @@ fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
     .build()
     .unwrap();
     re.captures(config).map(|caps| {
-        dbg!(&caps);
         let name = caps.get(1).unwrap().as_str();
         let atis_freq = caps.get(2).unwrap().as_str();
         let atis_freq = (f64::from_str(atis_freq).unwrap() * 1_000_000.0) as u64;
@@ -553,13 +581,38 @@ fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> {
     })
 }
 
+#[derive(Debug, PartialEq)]
+struct WetherStationConfig {
+    name: String,
+    freq: u64,
+    tts: Option<TextToSpeechProvider>,
+}
+
+fn extract_weather_station_config(config: &str) -> Option<WetherStationConfig> {
+    let re = RegexBuilder::new(
+        r"^WEATHER ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?VOICE ([a-zA-Z-:]+))?$",
+    )
+    .case_insensitive(true)
+    .build()
+    .unwrap();
+    re.captures(config).map(|caps| {
+        let name = caps.get(1).unwrap().as_str();
+        let freq = caps.get(2).unwrap().as_str();
+        let freq = (f64::from_str(freq).unwrap() * 1_000_000.0) as u64;
+        let tts = caps
+            .get(5)
+            .and_then(|s| TextToSpeechProvider::from_str(s.as_str()).ok());
+        WetherStationConfig {
+            name: name.to_string(),
+            freq,
+            tts,
+        }
+    })
+}
+
 #[cfg(test)]
 mod test {
-    use super::{
-        extract_atis_station_config, extract_atis_station_frequencies,
-        extract_carrier_station_config, extract_custom_broadcast_config, BroadcastConfig,
-        StationConfig,
-    };
+    use super::*;
     use datis_core::tts::{aws, gcloud, TextToSpeechProvider};
 
     #[test]
@@ -769,6 +822,40 @@ mod test {
                 message: "Bla bla".to_string(),
                 tts: Some(TextToSpeechProvider::AmazonWebServices {
                     voice: aws::VoiceKind::Brian
+                }),
+            })
+        );
+    }
+
+    #[test]
+    fn test_weather_station_config_extraction() {
+        assert_eq!(
+            extract_weather_station_config("WEATHER Shooting Range 251"),
+            Some(WetherStationConfig {
+                name: "Shooting Range".to_string(),
+                freq: 251_000_000,
+                tts: None,
+            })
+        );
+
+        assert_eq!(
+            extract_weather_station_config("WEATHER Coast 131.400"),
+            Some(WetherStationConfig {
+                name: "Coast".to_string(),
+                freq: 131_400_000,
+                tts: None,
+            })
+        );
+
+        assert_eq!(
+            extract_weather_station_config(
+                "WEATHER Mountain Range 251.000, VOICE en-US-Standard-E"
+            ),
+            Some(WetherStationConfig {
+                name: "Mountain Range".to_string(),
+                freq: 251_000_000,
+                tts: Some(TextToSpeechProvider::GoogleCloud {
+                    voice: gcloud::VoiceKind::StandardE
                 }),
             })
         );

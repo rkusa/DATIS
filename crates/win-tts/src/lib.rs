@@ -1,11 +1,11 @@
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::{Arc, Condvar, Mutex};
 
 use thiserror::Error;
+use tokio::task;
 use winrt::foundation::{AsyncOperationCompletedHandler, AsyncStatus};
 use winrt::media::speech_synthesis::SpeechSynthesizer;
 use winrt::windows::foundation::IAsyncOperation;
 use winrt::windows::storage::streams::DataReader;
-use tokio::task;
 
 pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>, Error> {
     let ssml = ssml.into();
@@ -100,8 +100,8 @@ fn block_on<T: winrt::RuntimeType + 'static>(
 
     let (lock, cvar) = &*pair;
     let mut completed = lock.lock().unwrap();
-    while (*completed).is_none()  {
-        completed = cvar.wait(completed ).unwrap();
+    while (*completed).is_none() {
+        completed = cvar.wait(completed).unwrap();
     }
 
     completed.take().unwrap()
@@ -128,7 +128,7 @@ pub enum Error {
     #[error("Error calling WinRT API: {0:?}")]
     WinRT(winrt::Error),
     #[error("An async operation failed: {0}")]
-    AsyncOperation(#[from] AsyncOperationError)
+    AsyncOperation(#[from] AsyncOperationError),
 }
 
 impl From<winrt::Error> for Error {
