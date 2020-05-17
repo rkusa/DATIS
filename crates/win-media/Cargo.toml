@@ -1,6 +1,6 @@
 [package]
 name = "win-media"
-version = "0.1.0"
+version = "1.0.0-rc.1"
 authors = ["Markus Ast <m@rkusa.st>"]
 edition = "2018"
 
