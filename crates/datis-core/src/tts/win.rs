@@ -7,6 +7,7 @@ pub struct WindowsConfig {
     pub voice: Option<String>,
 }
 
+#[cfg(target_os = "windows")]
 pub async fn text_to_speech(
     ssml: &str,
     config: &WindowsConfig,
@@ -35,6 +36,14 @@ pub async fn text_to_speech(
     .unwrap()?;
 
     Ok(frames)
+}
+
+#[cfg(not(target_os = "windows"))]
+pub async fn text_to_speech(
+    _ssml: &str,
+    _config: &WindowsConfig,
+) -> Result<Vec<Vec<u8>>, anyhow::Error> {
+    Err(anyhow!("WIN voice only supported on Windows"))
 }
 
 fn vector_i16(byte_stream: bytes::Bytes) -> Vec<i16> {

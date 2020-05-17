@@ -20,6 +20,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 srs = { path = "../srs" }
 tokio = { version = "0.2", features = ["time", "rt-threaded", "blocking"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
 win-tts = { path = "../win-tts" }
 
 [features]
