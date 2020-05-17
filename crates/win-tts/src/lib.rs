@@ -2,10 +2,10 @@ use std::sync::{Arc, Condvar, Mutex};
 
 use thiserror::Error;
 use tokio::task;
-use winrt::foundation::{AsyncOperationCompletedHandler, AsyncStatus};
-use winrt::media::speech_synthesis::SpeechSynthesizer;
-use winrt::windows::foundation::IAsyncOperation;
-use winrt::windows::storage::streams::DataReader;
+use win_media::foundation::{AsyncOperationCompletedHandler, AsyncStatus};
+use win_media::media::speech_synthesis::SpeechSynthesizer;
+use win_media::windows::foundation::IAsyncOperation;
+use win_media::windows::storage::streams::DataReader;
 
 pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>, Error> {
     let ssml = ssml.into();
@@ -73,7 +73,7 @@ pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>
     Ok(buf)
 }
 
-fn block_on<T: winrt::RuntimeType + 'static>(
+fn block_on<T: win_media::RuntimeType + 'static>(
     task: impl Into<IAsyncOperation<T>>,
 ) -> Result<T, AsyncOperationError> {
     let pair = Arc::new((Mutex::new(None), Condvar::new()));
@@ -114,11 +114,11 @@ pub enum AsyncOperationError {
     #[error("The async operation failed with the error code: {0}")]
     Failed(i32),
     #[error("The async operation failed: {0:?}")]
-    Error(winrt::Error),
+    Error(win_media::Error),
 }
 
-impl From<winrt::Error> for AsyncOperationError {
-    fn from(err: winrt::Error) -> Self {
+impl From<win_media::Error> for AsyncOperationError {
+    fn from(err: win_media::Error) -> Self {
         AsyncOperationError::Error(err)
     }
 }
@@ -126,13 +126,13 @@ impl From<winrt::Error> for AsyncOperationError {
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Error calling WinRT API: {0:?}")]
-    WinRT(winrt::Error),
+    WinRT(win_media::Error),
     #[error("An async operation failed: {0}")]
     AsyncOperation(#[from] AsyncOperationError),
 }
 
-impl From<winrt::Error> for Error {
-    fn from(err: winrt::Error) -> Self {
+impl From<win_media::Error> for Error {
+    fn from(err: win_media::Error) -> Self {
         Error::WinRT(err)
     }
 }

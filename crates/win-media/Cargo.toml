@@ -1,5 +1,5 @@
 [package]
-name = "winrt"
+name = "win-media"
 version = "0.1.0"
 authors = ["Markus Ast <m@rkusa.st>"]
 edition = "2018"
