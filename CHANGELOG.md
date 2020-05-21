@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Update shutdown procedure to gracefully shut down all stations instead of killing them
 
 ## [1.1.0-rc.1] - 2020-05-17
 ### Changed

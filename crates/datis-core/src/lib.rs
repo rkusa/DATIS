@@ -29,11 +29,13 @@ use crate::tts::{
     win::{self, WindowsConfig},
     TextToSpeechConfig, TextToSpeechProvider,
 };
-use futures::future::{self, abortable, AbortHandle, Either, FutureExt};
+use futures::future::FutureExt;
+use futures::select;
 use futures::sink::SinkExt;
-use futures::stream::{SplitSink, SplitStream, StreamExt};
+use futures::stream::{SplitSink, StreamExt};
 use srs::{Client, VoiceStream};
 use tokio::runtime::{self, Runtime};
+use tokio::sync::oneshot;
 use tokio::time::delay_for;
 
 pub struct Datis {
@@ -44,7 +46,7 @@ pub struct Datis {
     port: u16,
     runtime: Runtime,
     started: bool,
-    abort_handles: Vec<AbortHandle>,
+    shutdown_signals: Vec<oneshot::Sender<()>>,
     executable_path: Option<String>,
 }
 
@@ -67,7 +69,7 @@ impl Datis {
                 .enable_all()
                 .build()?,
             started: false,
-            abort_handles: Vec::new(),
+            shutdown_signals: Vec::new(),
             executable_path: None,
         })
     }
@@ -163,14 +165,18 @@ impl Datis {
                 }
             };
 
-            let (f, abort_handle) = abortable(spawn(
-                station.clone(),
-                self.port,
-                config,
-                self.exporter.clone(),
-            ));
-            self.abort_handles.push(abort_handle);
-            self.runtime.spawn(f.map(|_| ()));
+            let (tx, rx) = oneshot::channel();
+            self.shutdown_signals.push(tx);
+            self.runtime.spawn(
+                spawn(
+                    station.clone(),
+                    self.port,
+                    config,
+                    self.exporter.clone(),
+                    rx,
+                )
+                .map(|_| ()),
+            );
         }
 
         debug!("Started all ATIS stations");
@@ -187,14 +193,12 @@ impl Datis {
     }
 
     pub fn pause(&mut self) -> Result<(), anyhow::Error> {
-        let abort_handles = mem::replace(&mut self.abort_handles, Vec::new());
-        for handle in abort_handles {
-            handle.abort();
-        }
+        debug!("Shutting down all stations");
 
-        let rt = mem::replace(&mut self.runtime, Runtime::new()?);
-        mem::drop(rt); // shutdown
-        debug!("Shut down all ATIS stations");
+        let shutdown_signals = mem::replace(&mut self.shutdown_signals, Vec::new());
+        for signal in shutdown_signals {
+            let _ = signal.send(());
+        }
 
         self.started = false;
 
@@ -207,17 +211,33 @@ async fn spawn(
     port: u16,
     tts_config: TextToSpeechConfig,
     exporter: Option<ReportExporter>,
+    shutdown_signal: oneshot::Receiver<()>,
 ) {
     let name = format!("ATIS {}", station.name);
     debug!("Connecting {} to 127.0.0.1:{}", name, port);
 
+    let mut shutdown_signal = shutdown_signal.fuse();
     loop {
-        if let Err(err) = run(&station, port, &tts_config, exporter.as_ref()).await {
-            error!("{} failed: {:?}", name, err);
-        }
+        let (tx, rx) = oneshot::channel();
+        let mut r = Box::pin(run(&station, port, &tts_config, exporter.as_ref(), rx)).fuse();
 
-        info!("Restarting ATIS {} in 60 seconds ...", station.name);
-        delay_for(Duration::from_secs(60)).await;
+        select! {
+            result = r => {
+                if let Err(err) = result
+                {
+                    error!("{} failed: {:?}", name, err);
+                }
+
+                info!("Restarting ATIS {} in 60 seconds ...", station.name);
+                // TODO: handle shutdown signal during the delay
+                delay_for(Duration::from_secs(60)).await;
+            }
+            _ = shutdown_signal => {
+                let _ = tx.send(());
+                let _ = r.await; // run until stopped
+                break;
+            }
+        }
     }
 }
 
@@ -226,6 +246,7 @@ async fn run(
     port: u16,
     tts_config: &TextToSpeechConfig,
     exporter: Option<&ReportExporter>,
+    shutdown_signal: oneshot::Receiver<()>,
 ) -> Result<(), anyhow::Error> {
     let name = format!("ATIS {}", station.name);
     let mut client = Client::new(&name, station.freq);
@@ -251,24 +272,38 @@ async fn run(
     }
     let pos = client.position_handle();
 
+    let (tx, rx) = oneshot::channel();
+
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
-    let (sink, stream) = client.start(addr, None).await?.split();
+    let (sink, stream) = client.start(addr, None, rx).await?.split();
 
-    let rx = Box::pin(recv_voice_packets(stream));
-    let tx = Box::pin(audio_broadcast(sink, station, pos, tts_config, exporter));
+    let mut stream = stream.fuse();
+    let mut shutdown_signal = shutdown_signal.fuse();
+    let mut broadcast = Box::pin(audio_broadcast(sink, station, pos, tts_config, exporter)).fuse();
 
-    match future::try_select(rx, tx).await {
-        Err(Either::Left((err, _))) => Err(err.into()),
-        Err(Either::Right((err, _))) => Err(err.into()),
-        _ => Ok(()),
+    loop {
+        select! {
+            packet = stream.next() => {
+                if let Some(packet) = packet {
+                    packet?;
+                    // we are currently not interested in the received voice packets, so simply discard them
+                }
+            }
+
+            result = broadcast => {
+                return result;
+            }
+
+            _ = shutdown_signal => {
+                // shutdown socket
+                let _ =tx.send(());
+
+                break;
+            }
+        }
     }
-}
 
-async fn recv_voice_packets(mut stream: SplitStream<VoiceStream>) -> Result<(), anyhow::Error> {
-    while let Some(packet) = stream.next().await {
-        packet?;
-        // we are currently not interested in the received voice packets, so simply discard them
-    }
+    log::debug!("Station {} successfully shut down", station.name);
 
     Ok(())
 }

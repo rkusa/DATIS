@@ -15,12 +15,15 @@ use crate::message::{
 use crate::messages_codec::MessagesCodec;
 use crate::voice_codec::*;
 use futures::channel::mpsc;
-use futures::future::{self, Either, FutureExt, TryFutureExt};
+use futures::future::FutureExt;
+use futures::select;
 use futures::sink::{Sink, SinkExt};
-use futures::stream::{SplitSink, SplitStream, Stream, StreamExt};
+use futures::stream::{SplitStream, Stream, StreamExt};
+use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpStream, UdpSocket};
-use tokio::time::delay_for;
-use tokio_util::codec::Framed;
+use tokio::sync::oneshot::Receiver;
+use tokio::time;
+use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio_util::udp::UdpFramed;
 
 const SRS_VERSION: &str = "1.8.0.0";
@@ -46,58 +49,151 @@ impl VoiceStream {
         client: Client,
         addr: SocketAddr,
         game_source: Option<mpsc::UnboundedReceiver<GameMessage>>,
+        shutdown_signal: Receiver<()>,
     ) -> Result<Self, io::Error> {
         let recv_voice = game_source.is_some();
 
         let tcp = TcpStream::connect(addr).await?;
-        let (sink, stream) = Framed::new(tcp, MessagesCodec::new()).split();
+        let (stream, sink) = tcp.into_split();
+        let mut messages_sink = FramedWrite::new(sink, MessagesCodec::new());
+        let messages_stream = FramedRead::new(stream, MessagesCodec::new());
 
         let server_settings = ServerSettings(Arc::new(ServerSettingsInner {
             los_enabled: AtomicBool::new(false),
             distance_enabled: AtomicBool::new(false),
         }));
 
-        let a = Box::pin(recv_updates(stream, server_settings.clone()));
-        let b = Box::pin(send_updates(
-            client.clone(),
-            sink,
-            game_source,
-            server_settings,
-        ));
-
         let local_addr: SocketAddr = "0.0.0.0:0".parse().unwrap();
         let udp = UdpSocket::bind(local_addr).await?;
         udp.connect(addr).await?;
-        let (sink, stream) = UdpFramed::new(udp, VoiceCodec::new()).split();
-        let (tx, rx) = mpsc::channel(32);
+        let (mut voice_sink, voice_stream) = UdpFramed::new(udp, VoiceCodec::new()).split();
+        let (mut tx, mut rx) = mpsc::channel(32);
+        let tx2 = tx.clone();
 
-        let c = Box::pin(send_voice_pings(client.clone(), tx.clone(), recv_voice));
-        let d = Box::pin(forward_packets(rx, sink, addr));
+        let client2 = client.clone();
+        let heartbeat = async move {
+            let mut messages_stream = messages_stream.fuse();
 
-        let ab = future::try_select(a, b)
-            .map_ok(|_| ())
-            .map_err(|err| match err {
-                Either::Left((err, _)) => err,
-                Either::Right((err, _)) => err,
-            });
-        let cd = future::try_select(c, d)
-            .map_ok(|_| ())
-            .map_err(|err| match err {
-                Either::Left((err, _)) => err,
-                Either::Right((err, _)) => err,
-            });
-        let heartbeat = future::try_select(ab, cd)
-            .map_ok(|_| ())
-            .map_err(|err| match err {
-                Either::Left((err, _)) => err,
-                Either::Right((err, _)) => err,
-            });
+            // send sync message to receive server settings
+            messages_sink.send(create_sync_message(&client)).await?;
+
+            // send initial Update message
+            messages_sink
+                .send(create_radio_update_message(&client))
+                .await?;
+
+            let mut old_pos = client.position();
+            let mut position_update_interval = time::interval(Duration::from_secs(60)).fuse();
+            let mut voice_ping_interval = time::interval(Duration::from_secs(5)).fuse();
+            let mut game_source_interval = time::interval(Duration::from_secs(5)).fuse();
+            let mut shutdown_signal = shutdown_signal.fuse();
+            let mut last_game_msg = None;
+            let (_tx, noop_game_source) = mpsc::unbounded();
+            let send_client_position_updates = game_source.is_none();
+            let mut game_source = game_source.unwrap_or(noop_game_source);
+
+            let mut sguid = [0; 22];
+            sguid.clone_from_slice(client.sguid().as_bytes());
+
+            loop {
+                select! {
+                    // receive control messages
+                    msg = messages_stream.next() => {
+                        if let Some(msg) = msg {
+                            let msg = msg?;
+
+                            // update server settings
+                            if let Some(settings) = msg.server_settings {
+                                server_settings.0.los_enabled.store(
+                                    settings.get("LOS_ENABLED").map(|s| s.as_str()) == Some("True"),
+                                    Ordering::Relaxed,
+                                );
+                                server_settings.0.distance_enabled.store(
+                                    settings.get("DISTANCE_ENABLED").map(|s| s.as_str()) == Some("true"),
+                                    Ordering::Relaxed,
+                                );
+                            }
+
+                            // handle message
+                            match msg.msg_type {
+                                MsgType::VersionMismatch => {
+                                    return Err(anyhow!(
+                                        "Version mismatch between DATIS ({}) and the SRS server ({})",
+                                        SRS_VERSION,
+                                        msg.version
+                                    ));
+                                }
+                                _ => {
+                                    // discard other messages for now
+                                }
+                            }
+                        } else {
+                            log::debug!("Messages stream was closed, closing voice stream");
+                            break;
+                        }
+                    }
+
+                    // Sends updates about the client to the server. If `game_source` is set,
+                    // the position and frequency from the latest received `GameMessage` is used.
+                    // Otherwise, the parameters set in the `client` struct are used.
+                    _ = position_update_interval.next() => {
+                        if !send_client_position_updates {
+                            continue;
+                        }
+
+                        // keep the position of the station updated
+                        let new_pos = client.position();
+                        let los_enabled = server_settings.0.los_enabled.load(Ordering::Relaxed);
+                        let distance_enabled = server_settings.0.distance_enabled.load(Ordering::Relaxed);
+                        if (los_enabled || distance_enabled) && new_pos != old_pos {
+                            log::debug!(
+                                "Position of {} changed, sending a new update message",
+                                client.name()
+                            );
+                            messages_sink.send(create_update_message(&client)).await?;
+                            old_pos = new_pos;
+                        }
+                    }
+
+                    msg = game_source.next() => {
+                        if let Some(msg) = msg {
+                            last_game_msg = Some(msg);
+                        }
+                    }
+
+                    _ = game_source_interval.next() => {
+                        if let Some(msg) = &last_game_msg {
+                            messages_sink.send(radio_message_from_game(&client, msg)).await?;
+                        }
+                    }
+
+                    _ = voice_ping_interval.next() => {
+                        if recv_voice {
+                            tx.send(Packet::Ping(sguid.clone())).await?;
+                        }
+                    }
+
+                    packet = rx.next() => {
+                        if let Some(p) = packet  {
+                            voice_sink.send((p, addr)).await?;
+                        }
+                    }
+
+                    _ = shutdown_signal => {
+                        messages_sink.into_inner().shutdown();
+                        break;
+                    }
+                }
+            }
+
+            Ok(())
+        };
 
         Ok(VoiceStream {
-            voice_stream: stream,
-            voice_sink: tx,
+            voice_stream,
+            voice_sink: tx2,
             heartbeat: Box::pin(heartbeat),
-            client,
+            client: client2,
             packet_id: 1,
         })
     }
@@ -174,136 +270,6 @@ impl Sink<Vec<u8>> for VoiceStream {
         let s = self.get_mut();
         Pin::new(&mut s.voice_sink).poll_close(cx)
     }
-}
-
-async fn recv_updates(
-    mut stream: SplitStream<Framed<TcpStream, MessagesCodec>>,
-    server_settings: ServerSettings,
-) -> Result<(), anyhow::Error> {
-    while let Some(msg) = stream.next().await {
-        let msg = msg?;
-        if let Some(settings) = msg.server_settings {
-            server_settings.0.los_enabled.store(
-                settings.get("LOS_ENABLED").map(|s| s.as_str()) == Some("True"),
-                Ordering::Relaxed,
-            );
-            server_settings.0.distance_enabled.store(
-                settings.get("DISTANCE_ENABLED").map(|s| s.as_str()) == Some("true"),
-                Ordering::Relaxed,
-            );
-        }
-
-        match msg.msg_type {
-            MsgType::VersionMismatch => {
-                return Err(anyhow!(
-                    "Version mismatch between DATIS ({}) and the SRS server ({})",
-                    SRS_VERSION,
-                    msg.version
-                ));
-            }
-            _ => {
-                // discard other messages for now
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Sends updates about the client to the server. If `game_source` is set,
-/// the position and frequency from the latest received `GameMessage` is used.
-/// Otherwise, the parameters set in the `client` struct are used.
-async fn send_updates<G>(
-    client: Client,
-    mut sink: SplitSink<Framed<TcpStream, MessagesCodec>, Message>,
-    game_source: Option<G>,
-    server_settings: ServerSettings,
-) -> Result<(), anyhow::Error>
-where
-    G: Stream<Item = GameMessage> + Unpin,
-{
-    // send sync message to receive server settings
-    sink.send(create_sync_message(&client)).await?;
-
-    // send initial Update message
-    sink.send(create_radio_update_message(&client)).await?;
-
-    if let Some(mut game_source) = game_source {
-        let mut last_game_msg = None;
-
-        loop {
-            let delay = delay_for(Duration::from_secs(5));
-            match future::select(game_source.next(), delay).await {
-                Either::Left((Some(msg), _)) => {
-                    last_game_msg = Some(msg);
-                }
-                Either::Left((None, _)) => {
-                    break;
-                }
-                Either::Right((_, _)) => {
-                    // debug!("Game message timeout")
-                }
-            }
-
-            match &last_game_msg {
-                Some(msg) => sink.send(radio_message_from_game(&client, msg)).await?,
-                None => {}
-            }
-        }
-
-        log::warn!("Game source disconnected");
-
-        Ok(())
-    } else {
-        // TODO: send position updates only if either LOS or Distance is enabled on the server
-        let mut old_pos = client.position();
-        loop {
-            delay_for(Duration::from_secs(60)).await;
-
-            // keep the position of the station updated
-            let new_pos = client.position();
-            let los_enabled = server_settings.0.los_enabled.load(Ordering::Relaxed);
-            let distance_enabled = server_settings.0.distance_enabled.load(Ordering::Relaxed);
-            if (los_enabled || distance_enabled) && new_pos != old_pos {
-                log::debug!(
-                    "Position of {} changed, sending a new update message",
-                    client.name()
-                );
-                sink.send(create_update_message(&client)).await?;
-                old_pos = new_pos;
-            }
-        }
-    }
-}
-
-async fn send_voice_pings(
-    client: Client,
-    mut tx: mpsc::Sender<Packet>,
-    recv_voice: bool,
-) -> Result<(), anyhow::Error> {
-    // TODO: is there a future that never resolves
-    let mut sguid = [0; 22];
-    sguid.clone_from_slice(client.sguid().as_bytes());
-
-    loop {
-        if recv_voice {
-            tx.send(Packet::Ping(sguid.clone())).await?;
-        }
-
-        delay_for(Duration::from_secs(5)).await;
-    }
-}
-
-async fn forward_packets(
-    mut rx: mpsc::Receiver<Packet>,
-    mut sink: SplitSink<UdpFramed<VoiceCodec>, (Packet, SocketAddr)>,
-    addr: SocketAddr,
-) -> Result<(), anyhow::Error> {
-    while let Some(p) = rx.next().await {
-        sink.send((p, addr)).await?;
-    }
-
-    Ok(())
 }
 
 fn create_radio_update_message(client: &Client) -> Message {

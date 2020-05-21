@@ -1,10 +1,10 @@
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 
-use futures::channel::mpsc;
-
 use crate::message::{create_sguid, GameMessage, LatLngPosition};
 use crate::voice_stream::VoiceStream;
+use futures::channel::mpsc;
+use tokio::sync::oneshot::Receiver;
 
 #[derive(Debug, Clone)]
 pub struct UnitInfo {
@@ -82,8 +82,9 @@ impl Client {
         self,
         addr: SocketAddr,
         game_source: Option<mpsc::UnboundedReceiver<GameMessage>>,
+        shutdown_signal: Receiver<()>,
     ) -> Result<VoiceStream, anyhow::Error> {
-        let stream = VoiceStream::new(self, addr, game_source).await?;
+        let stream = VoiceStream::new(self, addr, game_source, shutdown_signal).await?;
         Ok(stream)
     }
 }
