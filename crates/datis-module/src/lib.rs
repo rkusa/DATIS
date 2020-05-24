@@ -53,32 +53,17 @@ pub fn init(lua: &mut Lua<'_>) -> Result<String, anyhow::Error> {
 
         let requests = FileAppender::builder().append(false).build(log_file)?;
 
+        let log_level = if is_debug_loglevel {
+            LevelFilter::Debug
+        } else {
+            LevelFilter::Info
+        };
         let config = Config::builder()
             .appender(Appender::builder().build("file", Box::new(requests)))
-            .logger(Logger::builder().build(
-                "datis",
-                if is_debug_loglevel {
-                    LevelFilter::Debug
-                } else {
-                    LevelFilter::Info
-                },
-            ))
-            .logger(Logger::builder().build(
-                "datis_core",
-                if is_debug_loglevel {
-                    LevelFilter::Debug
-                } else {
-                    LevelFilter::Info
-                },
-            ))
-            .logger(Logger::builder().build(
-                "srs",
-                if is_debug_loglevel {
-                    LevelFilter::Debug
-                } else {
-                    LevelFilter::Info
-                },
-            ))
+            .logger(Logger::builder().build("datis", log_level))
+            .logger(Logger::builder().build("datis_core", log_level))
+            .logger(Logger::builder().build("srs", log_level))
+            .logger(Logger::builder().build("win_tts", log_level))
             .build(Root::builder().appender("file").build(LevelFilter::Off))?;
 
         log4rs::init_config(config)?;

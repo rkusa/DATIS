@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Update shutdown procedure to gracefully shut down all stations instead of killing them
 
+### Fixed
+- Fixed Windows' TTS to try use an english voice by default
+- Add Windows' TTS related logs to the DATIS.log file
+
 ## [1.1.0-rc.1] - 2020-05-17
 ### Changed
 - Changed the internal implementation of how DATIS talks to Windows' TTS (from calling a .NET application to a pure Rust implementation that uses WinRT bindings)

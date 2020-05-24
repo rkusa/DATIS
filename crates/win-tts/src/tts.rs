@@ -15,11 +15,10 @@ pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>
 
         // Note, there does not seem to be a way to explicitly set 16000kHz, 16 audio bits per
         // sample and mono channel.
-
+        let mut voice_found = false;
         if let Some(ref voice) = voice {
             let all_voices = SpeechSynthesizer::all_voices()?;
             let len = all_voices.size()? as usize;
-            let mut found = false;
             for i in 0..len {
                 let v = all_voices.get_at(i as u32)?;
                 let lang = v.language()?.to_string();
@@ -30,28 +29,44 @@ pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>
                 let name = v.display_name()?.to_string();
                 if name.ends_with(voice) {
                     synth.set_voice(v)?;
-                    found = true;
+                    voice_found = true;
+                    break;
+                }
+            }
+        } else {
+            // default to the first english voice in the list
+            let all_voices = SpeechSynthesizer::all_voices()?;
+            let len = all_voices.size()? as usize;
+            for i in 0..len {
+                let v = all_voices.get_at(i as u32)?;
+                let lang = v.language()?.to_string();
+                if lang.starts_with("en-") {
+                    let name = v.display_name()?.to_string();
+                    log::debug!("Using WIN voice: {}", name);
+                    synth.set_voice(v)?;
+                    voice_found = true;
                     break;
                 }
             }
 
-            if !found {
-                log::warn!(
-                    "WIN voice `{}` not found, using default voice instead",
-                    voice
-                );
+            if !voice_found {
+                log::warn!("Could not find any english Windows TTS voice" );
+            }
+        }
 
-                log::info!("Available WIN voices are (you don't have to include the `Microsoft` prefix in the name):");
-                for i in 0..len {
-                    let v = all_voices.get_at(i as u32)?;
-                    let lang = v.language()?.to_string();
-                    if !lang.starts_with("en-") {
-                        continue;
-                    }
-
-                    let name = v.display_name()?.to_string();
-                    log::info!("- {}", name);
+        if !voice_found {
+            let all_voices = SpeechSynthesizer::all_voices()?;
+            let len = all_voices.size()? as usize;
+            log::info!("Available WIN voices are (you don't have to include the `Microsoft` prefix in the name):");
+            for i in 0..len {
+                let v = all_voices.get_at(i as u32)?;
+                let lang = v.language()?.to_string();
+                if !lang.starts_with("en-") {
+                    continue;
                 }
+
+                let name = v.display_name()?.to_string();
+                log::info!("- {}", name);
             }
         }
 
