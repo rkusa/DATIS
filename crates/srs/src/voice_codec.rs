@@ -59,7 +59,9 @@ pub struct VoicePacket {
     pub frequencies: Vec<Frequency>,
     pub unit_id: u32,
     pub packet_id: u64,
-    pub sguid: [u8; 22],
+    pub hop_count: u8,
+    pub transmission_sguid: [u8; 22],
+    pub client_sguid: [u8; 22],
 }
 
 impl Decoder for VoiceCodec {
@@ -122,9 +124,13 @@ impl Decoder for VoiceCodec {
 
             let unit_id = rd.read_u32::<LittleEndian>()?;
             let packet_id = rd.read_u64::<LittleEndian>()?;
+            let hop_count = rd.read_u8()?;
 
-            let mut sguid = [0; 22];
-            rd.read_exact(&mut sguid)?;
+            let mut transmission_sguid = [0; 22];
+            rd.read_exact(&mut transmission_sguid)?;
+
+            let mut client_sguid = [0; 22];
+            rd.read_exact(&mut client_sguid)?;
 
             assert_eq!(rd.position(), len);
 
@@ -133,7 +139,9 @@ impl Decoder for VoiceCodec {
                 frequencies,
                 unit_id,
                 packet_id,
-                sguid,
+                hop_count,
+                transmission_sguid,
+                client_sguid,
             })))
         } else {
             self.is_head = false;
@@ -154,7 +162,8 @@ impl Encoder<Packet> for VoiceCodec {
             Packet::Voice(packet) => packet,
         };
 
-        let capacity = 4 + packet.audio_part.len() + packet.frequencies.len() * 10 + 4 + 8 + 22;
+        let capacity =
+            4 + packet.audio_part.len() + packet.frequencies.len() * 10 + 4 + 8 + 1 + 22 + 22;
         let mut wd = Cursor::new(Vec::with_capacity(capacity));
 
         // header segment will be written at the end
@@ -189,7 +198,9 @@ impl Encoder<Packet> for VoiceCodec {
         // - FIXED SEGMENT
         wd.write_u32::<LittleEndian>(packet.unit_id)?;
         wd.write_u64::<LittleEndian>(packet.packet_id)?;
-        wd.write_all(&packet.sguid)?;
+        wd.write_u8(packet.hop_count)?; // retransmission hop count
+        wd.write_all(&packet.transmission_sguid)?; // transmission guid
+        wd.write_all(&packet.client_sguid)?; // client guid
 
         // - HEADER SEGMENT
         wd.set_position(0);

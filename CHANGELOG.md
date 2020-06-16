@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.0.0-beta.1] - 2020-06-16
+### Changed
+- **Breaking:** Upgraded SRS protocol to 1.9.0.0 (requires SRS server version 1.9.x.x)
+
 ## [1.1.0] - 2020-05-24
 ### Changed
 - Update shutdown procedure to gracefully shut down all stations instead of killing them

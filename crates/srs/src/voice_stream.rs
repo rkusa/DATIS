@@ -26,7 +26,7 @@ use tokio::time;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio_util::udp::UdpFramed;
 
-const SRS_VERSION: &str = "1.8.0.0";
+const SRS_VERSION: &str = "1.9.0.0";
 
 pub struct VoiceStream {
     voice_sink: mpsc::Sender<Packet>,
@@ -252,7 +252,9 @@ impl Sink<Vec<u8>> for VoiceStream {
             }],
             unit_id: self.client.unit().map(|u| u.id).unwrap_or(0),
             packet_id: self.packet_id,
-            sguid,
+            hop_count: 0,
+            transmission_sguid: sguid,
+            client_sguid: sguid,
         };
 
         let s = self.get_mut();
