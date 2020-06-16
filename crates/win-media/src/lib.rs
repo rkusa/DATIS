@@ -4,12 +4,12 @@
 #[cfg(target_os = "windows")]
 winrt::import!(
     dependencies
-        "os"
-    modules
-        "windows.foundation"
-        "windows.storage.streams"
-        "windows.media.speechsynthesis"
-        "windows.system"
+        os
+    types
+        windows::foundation::*
+        windows::storage::streams::*
+        windows::media::speechsynthesis::*
+        windows::system::*
 );
 
 #[cfg(target_os = "windows")]

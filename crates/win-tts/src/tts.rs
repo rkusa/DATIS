@@ -10,7 +10,7 @@ use win_media::windows::storage::streams::DataReader;
 pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>, Error> {
     let ssml = ssml.into();
     let voice = voice.map(String::from);
-    let buf = task::spawn_blocking(move || {
+    let buf = task::spawn_blocking(move || -> Result<Vec<u8>, Error> {
         let synth = SpeechSynthesizer::new()?;
 
         // Note, there does not seem to be a way to explicitly set 16000kHz, 16 audio bits per
@@ -82,7 +82,7 @@ pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>
         let mut buf = vec![0u8; size as usize];
         rd.read_bytes(buf.as_mut_slice())?;
 
-        Ok::<Vec<u8>, AsyncOperationError>(buf)
+        Ok(buf)
     }).await.unwrap()?;
 
     Ok(buf)
@@ -101,7 +101,9 @@ fn block_on<T: win_media::RuntimeType + 'static>(
             let result = match status {
                 AsyncStatus::Canceled => Err(AsyncOperationError::Canceled),
                 AsyncStatus::Completed => Ok(op.get_results()?),
-                AsyncStatus::Error => Err(AsyncOperationError::Failed(op.error_code()?.value)),
+                AsyncStatus::Error => {
+                    Err(AsyncOperationError::Failed(op.error_code()?.value as u32))
+                }
                 _ => return Ok(()),
             };
 
@@ -127,27 +129,25 @@ pub enum AsyncOperationError {
     #[error("The async operation got canceled")]
     Canceled,
     #[error("The async operation failed with the error code: {0}")]
-    Failed(i32),
-    #[error("The async operation failed: {0:?}")]
-    Error(win_media::Error),
+    Failed(u32),
 }
 
 impl From<win_media::Error> for AsyncOperationError {
     fn from(err: win_media::Error) -> Self {
-        AsyncOperationError::Error(err)
+        AsyncOperationError::Failed(err.code().0)
     }
 }
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("Error calling WinRT API: {0:?}")]
-    WinRT(win_media::Error),
+    #[error("Calling WinRT API failed with error code: {0}")]
+    WinRT(u32),
     #[error("An async operation failed: {0}")]
     AsyncOperation(#[from] AsyncOperationError),
 }
 
 impl From<win_media::Error> for Error {
     fn from(err: win_media::Error) -> Self {
-        Error::WinRT(err)
+        Error::WinRT(err.code().0)
     }
 }
