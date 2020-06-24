@@ -151,9 +151,9 @@ Example:
 WEATHER Mountain Range 251.000, VOICE en-US-Standard-E
 ```
 
-### Development
+## Development
 
-## Crates
+### Crates
 
 - [**datis-cmd**](./crates/datis-cmd) - A utility to start DATIS from the command line. Mostly intended for testing-purposes.
 - [**datis-core**](./crates/datis-core) - The core functionality: generating the report and talking to SRS.
@@ -162,8 +162,8 @@ WEATHER Mountain Range 251.000, VOICE en-US-Standard-E
 - [**srs**](./crates/srs) - A re-usable Rust SRS client that is used for all the other crates.
 - [**win-media**](./crates/win-media) - Bindings to a subset of the Windows Runtime (separate crate to reduce the compile time during development).
 - [**win-tts**](./crates/win-tts) - A library to convert text to speech using the Window Runtime.
--
-## Build
+
+### Build
 
 Instead of building you can also use the pre-build mod from one of the [releases](https://github.com/rkusa/DATIS/releases).
 Otherwise, build with [Rust (stable)](https://rustup.rs/):
