@@ -104,7 +104,6 @@ pub extern "C" fn start(state: *mut ffi::lua_State) -> c_int {
                     datis.set_aws_keys(info.aws_key, info.aws_secret, info.aws_region);
                 }
                 datis.set_log_dir(log_dir);
-                datis.set_executable_path(info.executable_path);
                 Ok((datis, info.rpc))
             }) {
                 Ok((datis, mission_info)) => {

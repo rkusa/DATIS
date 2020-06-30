@@ -3,7 +3,6 @@ use tokio::task;
 
 #[derive(Clone)]
 pub struct WindowsConfig {
-    pub executable_path: Option<String>,
     pub voice: Option<String>,
 }
 
