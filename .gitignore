@@ -8,3 +8,4 @@ target
 /mod/*.zip
 *.wav
 *.ogg
+Cargo.lock
