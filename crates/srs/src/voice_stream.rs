@@ -247,7 +247,11 @@ impl Sink<Vec<u8>> for VoiceStream {
             audio_part: item,
             frequencies: vec![Frequency {
                 freq: self.client.freq() as f64,
-                modulation: Modulation::AM,
+                modulation: if self.client.freq() <= 87_995_000 {
+                    Modulation::FM
+                } else {
+                    Modulation::AM
+                },
                 encryption: Encryption::None,
             }],
             unit_id: self.client.unit().map(|u| u.id).unwrap_or(0),

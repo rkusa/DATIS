@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Added `--port` option to radio-station command #52
 
+### Changed
+- Frequencies below or equal to `87.995` will now automatically use an `FM` modulation (everything else will continue to be `AM`) #51
+
 ## [2.0.0] - 2020-06-20
 No changes since `2.0.0-beta.1`.
 
