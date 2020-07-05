@@ -705,6 +705,7 @@ mod test {
             freq: 251_000_000,
             tts: TextToSpeechProvider::default(),
             transmitter: Transmitter::Custom(Custom {
+                position: Some(Position::default()),
                 unit_id: 42,
                 unit_name: "Soldier".to_string(),
                 message: "Hello world".to_string(),
@@ -725,6 +726,7 @@ mod test {
             tts: TextToSpeechProvider::default(),
             transmitter: Transmitter::Weather(WeatherTransmitter {
                 name: "Mountain Range".to_string(),
+                position: Some(Position::default()),
                 unit_id: 42,
                 unit_name: "Weather Post".to_string(),
                 info_ltr_offset: 15, // Should be "Papa"
