@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.1.0] - 2020-07-05
+
 **Manually upgrade step needed:** The mod was moved from `Mods/tech` to `Mods/services`. After upgrading DATIS, please remove the old mod directory `Mods/tech/DATIS` manually.
 
 ### Added
