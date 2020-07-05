@@ -41,6 +41,7 @@ pub struct Carrier {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Custom {
+    pub position: Option<Position>,
     pub unit_id: u32,
     pub unit_name: String,
     pub message: String,
@@ -49,6 +50,7 @@ pub struct Custom {
 #[derive(Debug, PartialEq, Clone)]
 pub struct WeatherTransmitter {
     pub name: String,
+    pub position: Option<Position>,
     pub unit_id: u32,
     pub unit_name: String,
     pub info_ltr_offset: usize,
@@ -113,10 +115,13 @@ impl Station {
                 }
             }
             (Some(rpc), Transmitter::Custom(custom)) => {
-                let pos = rpc
-                    .get_unit_position(&custom.unit_name)
-                    .await
-                    .context("failed to retrieve unit position")?;
+                let pos = match &custom.position {
+                    Some(pos) => Some(pos.clone()),
+                    None => rpc
+                        .get_unit_position(&custom.unit_name)
+                        .await
+                        .context("failed to retrieve unit position")?,
+                };
 
                 if let Some(pos) = pos {
                     let position = rpc
@@ -134,10 +139,13 @@ impl Station {
                 }
             }
             (Some(rpc), Transmitter::Weather(weather)) => {
-                let pos = rpc
-                    .get_unit_position(&weather.unit_name)
-                    .await
-                    .context("failed to retrieve unit position")?;
+                let pos = match &weather.position {
+                    Some(pos) => Some(pos.clone()),
+                    None => rpc
+                        .get_unit_position(&weather.unit_name)
+                        .await
+                        .context("failed to retrieve unit position")?,
+                };
 
                 if let Some(pos) = pos {
                     let weather_info = rpc

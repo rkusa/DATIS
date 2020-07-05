@@ -173,6 +173,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                                             x,
                                             y,
                                             alt: alt.unwrap_or(0.0),
+                                            is_static: key == "static",
                                         });
 
                                         k += 1;
@@ -369,6 +370,15 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                 freq: config.freq,
                 tts: config.tts.unwrap_or_else(|| default_voice.clone()),
                 transmitter: Transmitter::Custom(Custom {
+                    position: if mission_unit.is_static {
+                        Some(Position {
+                            x: mission_unit.x,
+                            y: mission_unit.y,
+                            alt: mission_unit.alt,
+                        })
+                    } else {
+                        None
+                    },
                     unit_id: mission_unit.id,
                     unit_name: mission_unit.name.clone(),
                     message: config.message,
@@ -399,6 +409,15 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                 tts: config.tts.unwrap_or_else(|| default_voice.clone()),
                 transmitter: Transmitter::Weather(WeatherTransmitter {
                     name: config.name,
+                    position: if mission_unit.is_static {
+                        Some(Position {
+                            x: mission_unit.x,
+                            y: mission_unit.y,
+                            alt: mission_unit.alt,
+                        })
+                    } else {
+                        None
+                    },
                     unit_id: mission_unit.id,
                     unit_name: mission_unit.name.clone(),
                     info_ltr_offset: rng.gen_range(0, 25),
@@ -446,6 +465,7 @@ struct MissionUnit {
     x: f64,
     y: f64,
     alt: f64,
+    is_static: bool,
 }
 
 #[derive(Debug, PartialEq)]
