@@ -3,8 +3,7 @@
 !.gitkeep
 target
 **/*.rs.bk
-/mod/Mods/tech/DATIS/bin/datis.dll
-/mod/Mods/tech/DATIS/bin/*.exe
+/mod/Mods/services/DATIS/bin/datis.dll
 /mod/*.zip
 *.wav
 *.ogg

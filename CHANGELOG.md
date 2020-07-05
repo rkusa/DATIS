@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+**Manually upgrade step needed:** The mod was moved from `Mods/tech` to `Mods/services`. After upgrading DATIS, please remove the old mod directory `Mods/tech/DATIS` manually.
+
 ### Added
 - Added `--port` option to radio-station command #52
 
@@ -12,7 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Frequencies below or equal to `87.995` will now automatically use an `FM` modulation (everything else will continue to be `AM`) #51
 
 ### Fixed
-- Fix weather and broadcast stations that are using static units #56
+- Fixed weather and broadcast stations that are using static units #56
+- Fixed DCS not authorized error by moving mod from `Mods/tech` to `Mods/services` #53
 
 ## [2.0.0] - 2020-06-20
 No changes since `2.0.0-beta.1`.

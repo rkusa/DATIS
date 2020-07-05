@@ -1,4 +1,4 @@
-package.cpath = package.cpath..";"..lfs.writedir().."Mods\\tech\\DATIS\\bin\\?.dll;"
+package.cpath = package.cpath..";"..lfs.writedir().."Mods\\services\\DATIS\\bin\\?.dll;"
 
 local datis = nil
 local isStarted = false
