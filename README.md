@@ -25,9 +25,6 @@ The mods uses the Window' built-in TTS by default, but can also either use Googl
 
 ## Installation
 
-~~_Before you start, be aware that this mod requires either a Google Cloud (Gcloud) or Amazon Web Services (AWS) account._~~
-_Since version 1.0.0-alpha.2 it is possible to use Windows' built-in TTS engine, so a cloud account is not necessary anymore (but still useful for a wider range of voice choices)._
-
 [Build it](#build) yourself and use the content inside the `mod` directory or use the pre-build mod from one of the [releases](https://github.com/rkusa/DATIS/releases).
 
 1. Copy the content (`Mods` and `Scripts` directory) into `Saved Games\DCS.openbeta\`.
