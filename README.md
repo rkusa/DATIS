@@ -43,6 +43,8 @@ For information about the free tier of both GCloud and AWS see:
 - https://cloud.google.com/text-to-speech/pricing
 - https://aws.amazon.com/polly/pricing/
 
+![Settings](./docs/settings.jpg)
+
 ## Setup
 
 ### Setup ATIS stations
