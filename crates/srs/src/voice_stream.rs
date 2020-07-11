@@ -26,6 +26,7 @@ use tokio::time;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio_util::udp::UdpFramed;
 
+use std::default::Default;
 const SRS_VERSION: &str = "1.9.0.0";
 
 pub struct VoiceStream {
@@ -279,6 +280,35 @@ impl Sink<Vec<u8>> for VoiceStream {
             transmission_sguid: sguid,
             client_sguid: sguid,
         };
+
+        let s = self.get_mut();
+        s.packet_id = s.packet_id.wrapping_add(1);
+
+        Pin::new(&mut s.voice_sink).start_send(packet.into())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_sink).poll_flush(cx)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_sink).poll_close(cx)
+    }
+}
+
+impl Sink<VoicePacket> for VoiceStream {
+    type Error = mpsc::SendError;
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_sink).poll_ready(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, mut packet: VoicePacket) -> Result<(), Self::Error> {
+        let mut sguid = [0; 22];
+        sguid.clone_from_slice(self.client.sguid().as_bytes());
+        packet.client_sguid = sguid;
 
         let s = self.get_mut();
         s.packet_id = s.packet_id.wrapping_add(1);
