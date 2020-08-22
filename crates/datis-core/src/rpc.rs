@@ -1,26 +1,13 @@
-use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
+use std::ops::Deref;
+use std::sync::Arc;
 
 use crate::station::{LatLngPosition, Position};
-use futures::channel::oneshot::{channel, Receiver, Sender};
-use serde_json::Value;
+use dcs_module_rpc::Error;
+use serde::Deserialize;
+use serde_json::json;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum Response {
-    Success(Value),
-    Error(String),
-}
-
-#[derive(Debug)]
-pub struct PendingRequest {
-    method: String,
-    params: Option<Value>,
-    tx: Sender<Response>,
-}
-
-#[derive(Debug)]
 pub struct MissionRpcInner {
-    queue: VecDeque<PendingRequest>,
+    rpc: dcs_module_rpc::RPC<()>,
     clouds: Option<Clouds>,
     fog_thickness: u32,  // in m
     fog_visibility: u32, // in m
@@ -47,32 +34,20 @@ pub struct WeatherInfo {
 }
 
 #[derive(Clone)]
-pub struct MissionRpc(Arc<Mutex<MissionRpcInner>>);
+pub struct MissionRpc(Arc<MissionRpcInner>);
 
 impl MissionRpc {
-    pub fn new(
-        clouds: Option<Clouds>,
-        fog_thickness: u32,
-        fog_visibility: u32,
-    ) -> Result<Self, anyhow::Error> {
-        Ok(MissionRpc(Arc::new(Mutex::new(MissionRpcInner {
-            queue: VecDeque::new(),
+    pub fn new(clouds: Option<Clouds>, fog_thickness: u32, fog_visibility: u32) -> Self {
+        MissionRpc(Arc::new(MissionRpcInner {
+            rpc: dcs_module_rpc::RPC::new(),
             clouds,
             fog_thickness,
             fog_visibility,
-        }))))
+        }))
     }
 
-    pub fn try_next(&self) -> Option<PendingRequest> {
-        if let Ok(mut inner) = self.0.try_lock() {
-            inner.queue.pop_front()
-        } else {
-            None
-        }
-    }
-
-    pub async fn get_weather_at(&self, pos: &Position) -> Result<WeatherInfo, anyhow::Error> {
-        #[derive(Deserialize)]
+    pub async fn get_weather_at(&self, pos: &Position) -> Result<WeatherInfo, Error> {
+        #[derive(Debug, Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct Data {
             wind_speed: f64,
@@ -81,50 +56,32 @@ impl MissionRpc {
             pressure: f64,
         }
 
-        let (rx, clouds, visibility) = {
-            let (req, rx) = PendingRequest::new(
+        let clouds = self.0.clouds.clone();
+
+        let visibility = if self.0.fog_thickness > 200 {
+            Some(self.0.fog_visibility)
+        } else {
+            None
+        };
+
+        let data: Data = self
+            .0
+            .rpc
+            .request(
                 "get_weather",
                 Some(json!({ "x": pos.x, "y": pos.y, "alt": 0})),
-            );
-
-            let mut inner = self.0.lock().unwrap();
-            inner.queue.push_back(req);
-
-            let clouds = inner.clouds.clone();
-
-            let visibility = if inner.fog_thickness > 200 {
-                Some(inner.fog_visibility)
-            } else {
-                None
-            };
-
-            (rx, clouds, visibility)
-        };
-
-        let data: Data = match rx.await? {
-            Response::Success(v) => serde_json::from_value(v)?,
-            Response::Error(err) => {
-                return Err(anyhow!("failed to get weather: {}", err));
-            }
-        };
+            )
+            .await?;
         let pressure_qnh = data.pressure;
 
-        let rx = {
-            let (req, rx) = PendingRequest::new(
+        let data: Data = self
+            .0
+            .rpc
+            .request(
                 "get_weather",
                 Some(json!({ "x": pos.x, "y": pos.y, "alt": pos.alt})),
-            );
-            let mut inner = self.0.lock().unwrap();
-            inner.queue.push_back(req);
-            rx
-        };
-
-        let data: Data = match rx.await? {
-            Response::Success(v) => serde_json::from_value(v)?,
-            Response::Error(err) => {
-                return Err(anyhow!("failed to get weather: {}", err));
-            }
-        };
+            )
+            .await?;
 
         // convert to degrees and rotate wind direction
         let mut wind_dir = data.wind_dir.to_degrees() - 180.0;
@@ -146,55 +103,25 @@ impl MissionRpc {
         })
     }
 
-    pub async fn get_unit_position(&self, name: &str) -> Result<Option<Position>, anyhow::Error> {
-        let rx = {
-            let (req, rx) = PendingRequest::new("get_unit_position", Some(json!({ "name": name })));
-            let mut inner = self.0.lock().unwrap();
-            inner.queue.push_back(req);
-            rx
-        };
-
-        match rx.await? {
-            Response::Success(v) => Ok(Some(serde_json::from_value(v)?)),
-            Response::Error(err) => {
-                error!("failed to get position of unit {}: {}", name, err);
-                Ok(None)
-            }
-        }
+    pub async fn get_unit_position(&self, name: &str) -> Result<Position, Error> {
+        self.0
+            .rpc
+            .request("get_unit_position", Some(json!({ "name": name })))
+            .await
     }
 
-    pub async fn get_unit_heading(&self, name: &str) -> Result<Option<f64>, anyhow::Error> {
-        let rx = {
-            let (req, rx) = PendingRequest::new("get_unit_heading", Some(json!({ "name": name })));
-            let mut inner = self.0.lock().unwrap();
-            inner.queue.push_back(req);
-            rx
-        };
-
-        match rx.await? {
-            Response::Success(v) => Ok(Some(serde_json::from_value(v)?)),
-            Response::Error(err) => {
-                error!("failed to get heading of unit {}: {}", name, err);
-                Ok(None)
-            }
-        }
+    pub async fn get_unit_heading(&self, name: &str) -> Result<Option<f64>, Error> {
+        self.0
+            .rpc
+            .request("get_unit_heading", Some(json!({ "name": name })))
+            .await
     }
 
-    async fn get_abs_time(&self) -> Result<f64, anyhow::Error> {
-        let rx = {
-            let (req, rx) = PendingRequest::new("get_abs_time", None);
-            let mut inner = self.0.lock().unwrap();
-            inner.queue.push_back(req);
-            rx
-        };
-
-        match rx.await? {
-            Response::Success(v) => Ok(serde_json::from_value(v)?),
-            Response::Error(err) => Err(anyhow!("failed to get abs time: {}", err)),
-        }
+    async fn get_abs_time(&self) -> Result<f64, Error> {
+        self.0.rpc.request::<(), _>("get_abs_time", None).await
     }
 
-    pub async fn get_mission_hour(&self) -> Result<u16, anyhow::Error> {
+    pub async fn get_mission_hour(&self) -> Result<u16, Error> {
         let mut time = self.get_abs_time().await?;
         let mut h = 0;
 
@@ -211,46 +138,21 @@ impl MissionRpc {
         Ok(h)
     }
 
-    pub async fn to_lat_lng(&self, pos: &Position) -> Result<LatLngPosition, anyhow::Error> {
-        let rx = {
-            let (req, rx) = PendingRequest::new(
+    pub async fn to_lat_lng(&self, pos: &Position) -> Result<LatLngPosition, Error> {
+        self.0
+            .rpc
+            .request(
                 "to_lat_lng",
                 Some(json!({ "x": pos.x, "y": pos.y, "alt": pos.alt})),
-            );
-            let mut inner = self.0.lock().unwrap();
-            inner.queue.push_back(req);
-            rx
-        };
-
-        match rx.await? {
-            Response::Success(v) => Ok(serde_json::from_value(v)?),
-            Response::Error(err) => Err(anyhow!("failed to get abs time: {}", err)),
-        }
+            )
+            .await
     }
 }
 
-impl PendingRequest {
-    pub fn new(method: &str, params: Option<Value>) -> (Self, Receiver<Response>) {
-        let (tx, rx) = channel();
-        (
-            PendingRequest {
-                method: method.to_string(),
-                params,
-                tx,
-            },
-            rx,
-        )
-    }
+impl Deref for MissionRpc {
+    type Target = dcs_module_rpc::RPC<()>;
 
-    pub fn method(&self) -> &str {
-        &self.method
-    }
-
-    pub fn take_params(&mut self) -> Option<Value> {
-        self.params.take()
-    }
-
-    pub fn receive(self, res: Response) {
-        let _ = self.tx.send(res);
+    fn deref(&self) -> &Self::Target {
+        &self.0.rpc
     }
 }

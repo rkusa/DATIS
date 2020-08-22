@@ -8,15 +8,15 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-anyhow = "1.0"
-const-cstr = "0.3"
 datis-core = { path = "../datis-core" }
-hlua51 = { git = "https://github.com/rkusa/hlua51.git" }
-libc = "0.2"
+log4rs = "0.13"
 log = "0.4"
-log4rs = "0.12"
-lua51-sys = { git = "https://github.com/rkusa/hlua51.git" }
+mlua = { version = "0.4", default-features = false, features = ["lua51", "module"] }
+mlua_derive = "0.4"
+once_cell = "1.4.0"
 rand = "0.7.3"
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+serde_mlua = { git = "https://github.com/rkusa/serde_mlua.git", branch = "master" }
+thiserror = "1.0"

@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate log;
-
 use std::str::FromStr;
 
 use clap::{App, Arg};
@@ -66,7 +63,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let freq = if let Ok(n) = u64::from_str(freq) {
         n
     } else {
-        error!("The provided frequency is not a valid number");
+        log::error!("The provided frequency is not a valid number");
         return Ok(());
     };
 
@@ -74,7 +71,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tts = match TextToSpeechProvider::from_str(&tts) {
         Ok(tts) => tts,
         Err(err) => {
-            error!("The privided TTS provider/voice is invalid: {}", err);
+            log::error!("The privided TTS provider/voice is invalid: {}", err);
             return Ok(());
         }
     };

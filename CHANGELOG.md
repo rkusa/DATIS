@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+- Rewrote the Lua module based on the excelent [mlua](https://github.com/khvzak/mlua). This removes all `unsafe` code from DATIS and allows to dynamically link against DCS' Lua dll instead of statically linking against one (which is discouraged for Lua modules).
+- Rewrote the RPC between DATIS and DCS to directly serialize/deserialize Lua data structures instead of going through JSON.
+
 ## [2.1.0] - 2020-07-05
 
 **Manually upgrade step needed:** The mod was moved from `Mods/tech` to `Mods/services`. After upgrading DATIS, please remove the old mod directory `Mods/tech/DATIS` manually.

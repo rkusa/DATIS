@@ -4,7 +4,7 @@ use std::str::FromStr;
 use datis_core::rpc::*;
 use datis_core::station::*;
 use datis_core::tts::TextToSpeechProvider;
-use hlua51::{Lua, LuaFunction, LuaTable};
+use mlua::prelude::{Lua, LuaTable, LuaTableExt};
 use rand::Rng;
 use regex::{Regex, RegexBuilder};
 
@@ -18,67 +18,15 @@ pub struct Info {
     pub rpc: MissionRpc,
 }
 
-pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
-    debug!("Extracting ATIS stations from Mission Situation");
-
-    let default_voice = {
-        // OptionsData.getPlugin("DATIS", "defaultVoice")
-        let mut options_data: LuaTable<_> = get!(lua, "OptionsData")?;
-        let mut get_plugin: LuaFunction<_> = get!(options_data, "getPlugin")?;
-
-        let default_voice: String = get_plugin
-            .call_with_args(("DATIS", "defaultVoice"))
-            .map_err(|_| new_lua_call_error("getPlugin"))?;
-
-        default_voice
-    };
-
-    // read gcloud access key option
-    let (gcloud_key, aws_key, aws_secret, aws_region) = {
-        // OptionsData.getPlugin("DATIS", "gcloudAccessKey")
-        let mut options_data: LuaTable<_> = get!(lua, "OptionsData")?;
-        let mut get_plugin: LuaFunction<_> = get!(options_data, "getPlugin")?;
-
-        let gcloud_key: String = get_plugin
-            .call_with_args(("DATIS", "gcloudAccessKey"))
-            .map_err(|_| new_lua_call_error("getPlugin"))?;
-
-        let aws_key: String = get_plugin
-            .call_with_args(("DATIS", "awsAccessKey"))
-            .map_err(|_| new_lua_call_error("getPlugin"))?;
-
-        let aws_secret: String = get_plugin
-            .call_with_args(("DATIS", "awsPrivateKey"))
-            .map_err(|_| new_lua_call_error("getPlugin"))?;
-
-        let aws_region: String = get_plugin
-            .call_with_args(("DATIS", "awsRegion"))
-            .map_err(|_| new_lua_call_error("getPlugin"))?;
-
-        (gcloud_key, aws_key, aws_secret, aws_region)
-    };
-
-    // read srs server port
-    let srs_port = {
-        // OptionsData.getPlugin("DATIS", "srsPort")
-        let mut options_data: LuaTable<_> = get!(lua, "OptionsData")?;
-        let mut get_plugin: LuaFunction<_> = get!(options_data, "getPlugin")?;
-
-        let port: u16 = get_plugin
-            .call_with_args(("DATIS", "srsPort"))
-            .map_err(|_| new_lua_call_error("getPlugin"))?;
-        info!("Using SRS Server port: {}", port);
-        port
-    };
+pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
+    let options = get_options(lua)?;
+    log::info!("Using SRS Server port: {}", options.srs_port);
 
     // extract frequencies from mission briefing, which is retrieved from
     // `DCS.getMissionDescription()`
     let frequencies = {
-        let mut dcs: LuaTable<_> = get!(lua, "DCS")?;
-
-        let mut get_mission_description: LuaFunction<_> = get!(dcs, "getMissionDescription")?;
-        let mission_situation: String = get_mission_description.call()?;
-
+        let dcs: LuaTable<'_> = lua.globals().get("DCS")?;
+        let mission_situation: String = dcs.call_function("getMissionDescription", ())?;
         extract_atis_station_frequencies(&mission_situation)
     };
 
@@ -90,33 +38,29 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         let mut airfields = HashMap::new();
 
         // read `Terrain.GetTerrainConfig('Airdromes')`
-        let mut terrain: LuaTable<_> = get!(lua, "Terrain")?;
-        let mut get_terrain_config: LuaFunction<_> = get!(terrain, "GetTerrainConfig")?;
-        let mut airdromes: LuaTable<_> = get_terrain_config
-            .call_with_args("Airdromes")
-            .map_err(|_| new_lua_call_error("GetTerrainConfig"))?;
+        let terrain: LuaTable<'_> = lua.globals().get("Terrain")?;
+        let airdromes: LuaTable<'_> = terrain.call_function("GetTerrainConfig", "Airdromes")?;
 
         // on Caucasus, airdromes start at the index 12, others start at 1; also hlua's table
         // iterator does not work for tables of tables, which is why we are just iterating
         // from 1 to 50 an check whether there is an airdrome table at this index or not
         for i in 1..=50 {
-            if let Some(mut airdrome) = airdromes.get::<LuaTable<_>, _, _>(i) {
-                let display_name: String = get!(airdrome, "display_name")?;
+            if let Some(airdrome) = airdromes.get::<_, Option<LuaTable<'_>>>(i)? {
+                let display_name: String = airdrome.get("display_name")?;
 
                 let (x, y) = {
-                    let mut reference_point: LuaTable<_> = get!(airdrome, "reference_point")?;
-                    let x: f64 = get!(reference_point, "x")?;
-                    let y: f64 = get!(reference_point, "y")?;
+                    let reference_point: LuaTable<'_> = airdrome.get("reference_point")?;
+                    let x: f64 = reference_point.get("x")?;
+                    let y: f64 = reference_point.get("y")?;
                     (x, y)
                 };
 
                 let mut runways: Vec<String> = Vec::new();
-                let mut rwys: LuaTable<_> = get!(airdrome, "runways")?;
-                let mut j = 0;
-                while let Some(mut rw) = rwys.get::<LuaTable<_>, _, _>(j) {
-                    j += 1;
-                    let start: String = get!(rw, "start")?;
-                    let end: String = get!(rw, "end")?;
+                let rwys: LuaTable<'_> = airdrome.get("runways")?;
+                for rwy in rwys.sequence_values::<LuaTable<'_>>() {
+                    let rwy = rwy?;
+                    let start: String = rwy.get("start")?;
+                    let end: String = rwy.get("end")?;
                     runways.push(start);
                     runways.push(end);
                 }
@@ -139,33 +83,35 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
 
     // extract all mission statics and ship units to later look for ATIS configs in their names
     let mut mission_units = {
-        let mut current_mission: LuaTable<_> = get!(lua, "_current_mission")?;
-        let mut mission: LuaTable<_> = get!(current_mission, "mission")?;
-        let mut coalitions: LuaTable<_> = get!(mission, "coalition")?;
+        let current_mission: LuaTable<'_> = lua.globals().get("_current_mission")?;
+        let mission: LuaTable<'_> = current_mission.get("mission")?;
+        let coalitions: LuaTable<'_> = mission.get("coalition")?;
 
         let mut mission_units = Vec::new();
 
         let keys = vec!["blue", "red"];
         for key in keys {
-            let mut coalition: LuaTable<_> = get!(coalitions, key)?;
-            let mut countries: LuaTable<_> = get!(coalition, "country")?;
+            let coalition: LuaTable<'_> = coalitions.get(key)?;
+            let countries: LuaTable<'_> = coalition.get("country")?;
 
-            let mut i = 1;
-            while let Some(mut country) = countries.get::<LuaTable<_>, _, _>(i) {
+            for country in countries.sequence_values::<LuaTable<'_>>() {
                 // `_current_mission.mission.coalition.{blue,red}.country[i].{static|plane|helicopter|vehicle|ship}.group[j]
+                let country = country?;
                 let keys = vec!["static", "plane", "helicopter", "vehicle", "ship"];
                 for key in keys {
-                    if let Some(mut assets) = country.get::<LuaTable<_>, _, _>(key) {
-                        if let Some(mut groups) = assets.get::<LuaTable<_>, _, _>("group") {
-                            let mut j = 1;
-                            while let Some(mut group) = groups.get::<LuaTable<_>, _, _>(j) {
-                                if let Some(mut units) = group.get::<LuaTable<_>, _, _>("units") {
-                                    let mut k = 1;
-                                    while let Some(mut unit) = units.get::<LuaTable<_>, _, _>(k) {
-                                        let x: f64 = get!(unit, "x")?;
-                                        let y: f64 = get!(unit, "y")?;
-                                        let alt: Option<f64> = get!(unit, "alt").ok();
-                                        let unit_id: u32 = get!(unit, "unitId")?;
+                    if let Some(assets) = country.get::<_, Option<LuaTable<'_>>>(key)? {
+                        if let Some(groups) = assets.get::<_, Option<LuaTable<'_>>>("group")? {
+                            for group in groups.sequence_values::<LuaTable<'_>>() {
+                                let group = group?;
+                                if let Some(units) =
+                                    group.get::<_, Option<LuaTable<'_>>>("units")?
+                                {
+                                    for unit in units.sequence_values::<LuaTable<'_>>() {
+                                        let unit = unit?;
+                                        let x: f64 = unit.get("x")?;
+                                        let y: f64 = unit.get("y")?;
+                                        let alt: Option<f64> = unit.get("alt").ok();
+                                        let unit_id: u32 = unit.get("unitId")?;
 
                                         mission_units.push(MissionUnit {
                                             id: unit_id,
@@ -175,18 +121,12 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                                             alt: alt.unwrap_or(0.0),
                                             is_static: key == "static",
                                         });
-
-                                        k += 1;
                                     }
                                 }
-
-                                j += 1;
                             }
                         }
                     }
                 }
-
-                i += 1;
             }
         }
 
@@ -196,34 +136,26 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     // extract the names for all units
     {
         // read `DCS.getUnitProperty`
-        let mut dcs: LuaTable<_> = get!(lua, "DCS")?;
-        let mut get_unit_property: LuaFunction<_> = get!(dcs, "getUnitProperty")?;
-
+        let dcs: LuaTable<'_> = lua.globals().get("DCS")?;
         for mut unit in &mut mission_units {
             // 3 = DCS.UNIT_NAME
-            unit.name = get_unit_property
-                .call_with_args((unit.id, 3))
-                .map_err(|_| new_lua_call_error("getUnitProperty"))?;
+            unit.name = dcs.call_function("getUnitProperty", (unit.id, 3))?;
         }
     }
 
     // read the terrain height for all airdromes and units
     {
         // read `Terrain.GetHeight`
-        let mut terrain: LuaTable<_> = get!(lua, "Terrain")?;
-        let mut get_height: LuaFunction<_> = get!(terrain, "GetHeight")?;
+        let terrain: LuaTable<'_> = lua.globals().get("Terrain")?;
 
         for mut airfield in airfields.values_mut() {
-            airfield.position.alt = get_height
-                .call_with_args((airfield.position.x, airfield.position.y))
-                .map_err(|_| new_lua_call_error("getHeight"))?;
+            airfield.position.alt =
+                terrain.call_function("GetHeight", (airfield.position.x, airfield.position.y))?;
         }
 
         for mut unit in &mut mission_units {
             if unit.alt == 0.0 {
-                unit.alt = get_height
-                    .call_with_args((unit.x, unit.y))
-                    .map_err(|_| new_lua_call_error("getHeight"))?;
+                unit.alt = terrain.call_function("GetHeight", (unit.x, unit.y))?;
             }
         }
     }
@@ -231,24 +163,24 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     // extract the current mission's weather kind and static weather configuration
     let (clouds, fog_thickness, fog_visibility) = {
         // read `_current_mission.mission.weather`
-        let mut current_mission: LuaTable<_> = get!(lua, "_current_mission")?;
-        let mut mission: LuaTable<_> = get!(current_mission, "mission")?;
-        let mut weather: LuaTable<_> = get!(mission, "weather")?;
+        let current_mission: LuaTable<'_> = lua.globals().get("_current_mission")?;
+        let mission: LuaTable<'_> = current_mission.get("mission")?;
+        let weather: LuaTable<'_> = mission.get("weather")?;
 
         // read `_current_mission.mission.weather.atmosphere_type`
-        let atmosphere_type: f64 = get!(weather, "atmosphere_type")?;
+        let atmosphere_type: f64 = weather.get("atmosphere_type")?;
         let is_dynamic = atmosphere_type != 0.0;
 
         let clouds = {
             if is_dynamic {
                 None
             } else {
-                let mut clouds: LuaTable<_> = get!(weather, "clouds")?;
+                let clouds: LuaTable<'_> = weather.get("clouds")?;
                 Some(Clouds {
-                    base: get!(clouds, "base")?,
-                    density: get!(clouds, "density")?,
-                    thickness: get!(clouds, "thickness")?,
-                    iprecptns: get!(clouds, "iprecptns")?,
+                    base: clouds.get("base")?,
+                    density: clouds.get("density")?,
+                    thickness: clouds.get("thickness")?,
+                    iprecptns: clouds.get("iprecptns")?,
                 })
             }
         };
@@ -256,9 +188,9 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         // Note: `weather.visibility` is always the same, which is why we cannot use it here
         // and use the fog instead to derive some kind of visibility
 
-        let mut fog: LuaTable<_> = get!(weather, "fog")?;
-        let fog_thickness: u32 = get!(fog, "thickness")?;
-        let fog_visibility: u32 = get!(fog, "visibility")?;
+        let fog: LuaTable<'_> = weather.get("fog")?;
+        let fog_thickness: u32 = fog.get("thickness")?;
+        let fog_visibility: u32 = fog.get("visibility")?;
 
         (clouds, fog_thickness, fog_visibility)
     };
@@ -266,21 +198,22 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     // YOLO initialize the atmosphere, because DCS initializes it only after hitting the
     // "Briefing" button, which is something most of the time not done for "dedicated" servers
     {
-        lua.execute::<()>(
+        lua.load(
             r#"
-            local Weather = require 'Weather'
-            Weather.initAtmospere(_current_mission.mission.weather)
-        "#,
-        )?;
+                local Weather = require 'Weather'
+                Weather.initAtmospere(_current_mission.mission.weather)
+            "#,
+        )
+        .exec()?;
     }
 
     // initialize the dynamic weather component
-    let rpc = MissionRpc::new(clouds, fog_thickness, fog_visibility)?;
+    let rpc = MissionRpc::new(clouds, fog_thickness, fog_visibility);
 
-    let default_voice = match TextToSpeechProvider::from_str(&default_voice) {
+    let default_voice = match TextToSpeechProvider::from_str(&options.default_voice) {
         Ok(default_voice) => default_voice,
         Err(err) => {
-            warn!("Invalid default voice `{}`: {}", default_voice, err);
+            log::warn!("Invalid default voice `{}`: {}", options.default_voice, err);
             TextToSpeechProvider::default()
         }
     };
@@ -322,13 +255,15 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
     }));
 
     if stations.is_empty() {
-        info!("No ATIS stations found ...");
+        log::info!("No ATIS stations found");
     } else {
-        info!("ATIS Stations:");
+        log::info!("ATIS Stations:");
         for station in &stations {
-            info!(
+            log::info!(
                 "  - {} (Freq: {}, Voice: {:?})",
-                station.name, station.freq, station.tts
+                station.name,
+                station.freq,
+                station.tts
             );
         }
     }
@@ -351,13 +286,15 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         .collect::<Vec<_>>();
 
     if carriers.is_empty() {
-        info!("No Carrier stations found ...");
+        log::info!("No Carrier stations found");
     } else {
-        info!("Carrier Stations:");
+        log::info!("Carrier Stations:");
         for station in &carriers {
-            info!(
+            log::info!(
                 "  - {} (Freq: {}, Voice: {:?})",
-                station.name, station.freq, station.tts
+                station.name,
+                station.freq,
+                station.tts
             );
         }
     }
@@ -389,13 +326,15 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         .collect::<Vec<_>>();
 
     if broadcasts.is_empty() {
-        info!("No custom Broadcast stations found ...");
+        log::info!("No custom Broadcast stations found");
     } else {
-        info!("Broadcast Stations:");
+        log::info!("Broadcast Stations:");
         for station in &broadcasts {
-            info!(
+            log::info!(
                 "  - {} (Freq: {}, Voice: {:?})",
-                station.name, station.freq, station.tts
+                station.name,
+                station.freq,
+                station.tts
             );
         }
     }
@@ -408,7 +347,6 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                 freq: config.freq,
                 tts: config.tts.unwrap_or_else(|| default_voice.clone()),
                 transmitter: Transmitter::Weather(WeatherTransmitter {
-                    name: config.name,
                     position: if mission_unit.is_static {
                         Some(Position {
                             x: mission_unit.x,
@@ -418,6 +356,7 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
                     } else {
                         None
                     },
+                    name: config.name,
                     unit_id: mission_unit.id,
                     unit_name: mission_unit.name.clone(),
                     info_ltr_offset: rng.gen_range(0, 25),
@@ -428,13 +367,15 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
         .collect::<Vec<_>>();
 
     if weather_stations.is_empty() {
-        info!("No weather stations found ...");
+        log::info!("No weather stations found");
     } else {
-        info!("Weather Stations:");
+        log::info!("Weather Stations:");
         for station in &weather_stations {
-            info!(
+            log::info!(
                 "  - {} (Freq: {}, Voice: {:?})",
-                station.name, station.freq, station.tts
+                station.name,
+                station.freq,
+                station.tts
             );
         }
     }
@@ -445,17 +386,43 @@ pub fn extract(mut lua: Lua<'static>) -> Result<Info, anyhow::Error> {
 
     Ok(Info {
         stations,
+        gcloud_key: options.gcloud_key,
+        aws_key: options.aws_key,
+        aws_secret: options.aws_secret,
+        aws_region: options.aws_region,
+        srs_port: options.srs_port,
+        rpc,
+    })
+}
+
+struct Options {
+    default_voice: String,
+    gcloud_key: String,
+    aws_key: String,
+    aws_secret: String,
+    aws_region: String,
+    srs_port: u16,
+}
+
+fn get_options(lua: &Lua) -> Result<Options, mlua::Error> {
+    let options_data: LuaTable<'_> = lua.globals().get("OptionsData")?;
+
+    // OptionsData.getPlugin("DATIS", "defaultVoice")
+    let default_voice = options_data.call_function("getPlugin", ("DATIS", "defaultVoice"))?;
+    let gcloud_key = options_data.call_function("getPlugin", ("DATIS", "gcloudAccessKey"))?;
+    let aws_key = options_data.call_function("getPlugin", ("DATIS", "awsAccessKey"))?;
+    let aws_secret = options_data.call_function("getPlugin", ("DATIS", "awsPrivateKey"))?;
+    let aws_region = options_data.call_function("getPlugin", ("DATIS", "awsRegion"))?;
+    let srs_port: u16 = options_data.call_function("getPlugin", ("DATIS", "srsPort"))?;
+
+    Ok(Options {
+        default_voice,
         gcloud_key,
         aws_key,
         aws_secret,
         aws_region,
         srs_port,
-        rpc,
     })
-}
-
-fn new_lua_call_error(method_name: &str) -> anyhow::Error {
-    anyhow!("failed to call lua function {}", method_name)
 }
 
 #[derive(Debug)]

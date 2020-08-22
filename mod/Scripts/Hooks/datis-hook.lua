@@ -52,7 +52,7 @@ local i = 0
 
 function datis_simulation_frame()
   i = i + 1
-  if i > 200 then -- roughly every 2 seconds
+  if i > 100 then -- roughly every 1 seconds
     i = 0
 
     local ok, err = pcall(datis_next)
@@ -69,11 +69,7 @@ function datis_next()
 end
 
 function datis_handleRequest(method, params)
-  -- log.write("[DATIS]", log.INFO, "RECV " .. method .. " " .. params)
-
-  if params ~= nil then
-    params = net.json2lua(params)
-  end
+  -- log.write("[DATIS]", log.INFO, "RECV " .. method)
 
   if method == "get_weather" then
     local position = {
@@ -89,12 +85,12 @@ function datis_handleRequest(method, params)
     })
 
     return {
-      result = net.lua2json({
+      result = {
         windSpeed = wind.v,
         windDir = wind.a,
         temp = temp,
         pressure = pressure,
-      })
+      }
     }
 
   elseif method == "get_unit_position" then
@@ -122,11 +118,11 @@ function datis_handleRequest(method, params)
     local x, y, z = string.match(result, "(%-?[0-9%.-]+):(%-?[0-9%.]+):(%-?[0-9%.]+)")
 
     return {
-      result = net.lua2json({
+      result = {
         x = tonumber(x),
         y = tonumber(y),
         z = tonumber(z),
-      })
+      }
     }
 
   elseif method == "get_unit_heading" then
@@ -157,7 +153,7 @@ function datis_handleRequest(method, params)
     end
 
     return {
-      result = net.lua2json(tonumber(result))
+      result = tonumber(result)
     }
 
   elseif method == "get_abs_time" then
@@ -168,7 +164,7 @@ function datis_handleRequest(method, params)
     local result = net.dostring_in("server", get_abs_time)
 
     return {
-      result = net.lua2json(tonumber(result))
+      result = tonumber(result)
     }
 
   elseif method == "to_lat_lng" then
@@ -179,11 +175,11 @@ function datis_handleRequest(method, params)
     local result = net.dostring_in("server", to_lat_lng)
     local lat, lng, alt = string.match(result, "(%-?[0-9%.-]+):(%-?[0-9%.]+):(%-?[0-9%.]+)")
     return {
-      result = net.lua2json({
+      result = {
         lat = tonumber(lat),
         lng = tonumber(lng),
         alt = tonumber(alt),
-      })
+      }
     }
 
   else

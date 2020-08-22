@@ -1,12 +1,6 @@
 #![warn(rust_2018_idioms)]
 
 #[macro_use]
-extern crate log;
-#[macro_use]
-extern crate serde_json;
-#[macro_use]
-extern crate serde;
-#[macro_use]
 extern crate anyhow;
 
 pub mod export;
@@ -56,7 +50,7 @@ struct AwsConfig {
 }
 
 impl Datis {
-    pub fn new(stations: Vec<Station>) -> Result<Self, anyhow::Error> {
+    pub fn new(stations: Vec<Station>) -> Result<Self, Error> {
         Ok(Datis {
             stations,
             exporter: None,
@@ -98,7 +92,7 @@ impl Datis {
         self.exporter = Some(exporter);
     }
 
-    pub fn start(&mut self) -> Result<(), anyhow::Error> {
+    pub fn start(&mut self) -> Result<(), Error> {
         if self.started {
             return Ok(());
         }
@@ -114,7 +108,7 @@ impl Datis {
                             voice,
                         })
                     } else {
-                        error!(
+                        log::error!(
                             "Cannot start {} with TTS provider {:?} due to missing Google Cloud key",
                             station.name, station.tts
                         );
@@ -134,9 +128,11 @@ impl Datis {
                             region: match rusoto_core::Region::from_str(region) {
                                 Ok(region) => region,
                                 Err(err) => {
-                                    error!(
+                                    log::error!(
                                         "Cannot start {} due to invalid AWS region {}: {}",
-                                        station.name, region, err
+                                        station.name,
+                                        region,
+                                        err
                                     );
                                     continue;
                                 }
@@ -144,7 +140,7 @@ impl Datis {
                             voice,
                         })
                     } else {
-                        error!(
+                        log::error!(
                             "Cannot start {} due to missing AWS key, secret or region",
                             station.name
                         );
@@ -172,21 +168,21 @@ impl Datis {
             );
         }
 
-        debug!("Started all ATIS stations");
+        log::debug!("Started all ATIS stations");
 
         Ok(())
     }
 
-    pub fn stop(mut self) -> Result<(), anyhow::Error> {
+    pub fn stop(mut self) -> Result<(), Error> {
         self.pause()
     }
 
-    pub fn resume(&mut self) -> Result<(), anyhow::Error> {
+    pub fn resume(&mut self) -> Result<(), Error> {
         self.start()
     }
 
-    pub fn pause(&mut self) -> Result<(), anyhow::Error> {
-        debug!("Shutting down all stations");
+    pub fn pause(&mut self) -> Result<(), Error> {
+        log::debug!("Shutting down all stations");
 
         let shutdown_signals = mem::replace(&mut self.shutdown_signals, Vec::new());
         for signal in shutdown_signals {
@@ -199,6 +195,12 @@ impl Datis {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Runtime error: {0}")]
+    Runtime(#[from] std::io::Error),
+}
+
 async fn spawn(
     station: Station,
     port: u16,
@@ -207,7 +209,7 @@ async fn spawn(
     shutdown_signal: oneshot::Receiver<()>,
 ) {
     let name = format!("ATIS {}", station.name);
-    debug!("Connecting {} to 127.0.0.1:{}", name, port);
+    log::debug!("Connecting {} to 127.0.0.1:{}", name, port);
 
     let mut shutdown_signal = shutdown_signal.fuse();
     loop {
@@ -218,10 +220,10 @@ async fn spawn(
             result = r => {
                 if let Err(err) = result
                 {
-                    error!("{} failed: {:?}", name, err);
+                    log::error!("{} failed: {:?}", name, err);
                 }
 
-                info!("Restarting ATIS {} in 60 seconds ...", station.name);
+                log::info!("Restarting ATIS {} in 60 seconds ...", station.name);
                 // TODO: handle shutdown signal during the delay
                 delay_for(Duration::from_secs(60)).await;
             }
@@ -327,7 +329,7 @@ async fn audio_broadcast(
         let report = match station.generate_report(report_ix).await? {
             Some(report) => report,
             None => {
-                debug!(
+                log::debug!(
                     "No report available for station {}. Trying again in 30 seconds ...",
                     station.name
                 );
@@ -338,11 +340,11 @@ async fn audio_broadcast(
         };
         if let Some(exporter) = exporter {
             if let Err(err) = exporter.export(&station.name, report.textual) {
-                error!("Error exporting report: {}", err);
+                log::error!("Error exporting report: {}", err);
             }
         }
 
-        debug!("{} Position: {:?}", station.name, report.position);
+        log::debug!("{} Position: {:?}", station.name, report.position);
 
         {
             let mut pos = position.write().unwrap();
@@ -350,10 +352,10 @@ async fn audio_broadcast(
         }
 
         report_ix += 1;
-        debug!("Report: {}", report.spoken);
+        log::debug!("Report: {}", report.spoken);
 
         if report.spoken != previous_report {
-            debug!("{} report has changed -> executing TTS", station.name);
+            log::debug!("{} report has changed -> executing TTS", station.name);
             // only to TTS if the report has changed from the previous iteration
             frames = match tts_config {
                 TextToSpeechConfig::GoogleCloud(config) => {

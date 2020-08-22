@@ -168,6 +168,9 @@ Instead of building you can also use the pre-build mod from one of the [releases
 Otherwise, build with [Rust (stable)](https://rustup.rs/):
 
 ```
+$env:LUA_LIB_NAME="lua"
+$env:LUA_LIB=(Get-Item -Path ".\").FullName+"/lua5.1/"
+$env:LUA_INC=(Get-Item -Path ".\").FullName+"/lua5.1/include"
 make release
 ```
 

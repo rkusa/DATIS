@@ -5,6 +5,8 @@ use rusoto_core::request::HttpClient;
 use rusoto_core::Region;
 use rusoto_credential::StaticProvider;
 use rusoto_polly::{Polly, PollyClient, SynthesizeSpeechInput};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum VoiceKind {

@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 
 use crate::message::{create_sguid, GameMessage, LatLngPosition};
-use crate::voice_stream::VoiceStream;
+use crate::voice_stream::{VoiceStream, VoiceStreamError};
 use futures::channel::mpsc;
 use tokio::sync::oneshot::Receiver;
 
@@ -83,7 +83,7 @@ impl Client {
         addr: SocketAddr,
         game_source: Option<mpsc::UnboundedReceiver<GameMessage>>,
         shutdown_signal: Receiver<()>,
-    ) -> Result<VoiceStream, anyhow::Error> {
+    ) -> Result<VoiceStream, VoiceStreamError> {
         let stream = VoiceStream::new(self, addr, game_source, shutdown_signal).await?;
         Ok(stream)
     }

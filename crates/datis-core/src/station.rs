@@ -94,7 +94,7 @@ impl Station {
                     .await
                     .context("failed to retrieve unit heading")?;
 
-                if let (Some(pos), Some(heading)) = (pos, heading) {
+                if let (pos, Some(heading)) = (pos, heading) {
                     let weather = rpc
                         .get_weather_at(&pos)
                         .await
@@ -116,55 +116,47 @@ impl Station {
             }
             (Some(rpc), Transmitter::Custom(custom)) => {
                 let pos = match &custom.position {
-                    Some(pos) => Some(pos.clone()),
+                    Some(pos) => pos.clone(),
                     None => rpc
                         .get_unit_position(&custom.unit_name)
                         .await
                         .context("failed to retrieve unit position")?,
                 };
 
-                if let Some(pos) = pos {
-                    let position = rpc
-                        .to_lat_lng(&pos)
-                        .await
-                        .context("failed to retrieve unit position")?;
+                let position = rpc
+                    .to_lat_lng(&pos)
+                    .await
+                    .context("failed to retrieve unit position")?;
 
-                    Ok(Some(Report {
-                        textual: custom.message.clone(),
-                        spoken: custom.message.clone(),
-                        position,
-                    }))
-                } else {
-                    Ok(None)
-                }
+                Ok(Some(Report {
+                    textual: custom.message.clone(),
+                    spoken: custom.message.clone(),
+                    position,
+                }))
             }
             (Some(rpc), Transmitter::Weather(weather)) => {
                 let pos = match &weather.position {
-                    Some(pos) => Some(pos.clone()),
+                    Some(pos) => pos.clone(),
                     None => rpc
                         .get_unit_position(&weather.unit_name)
                         .await
                         .context("failed to retrieve unit position")?,
                 };
 
-                if let Some(pos) = pos {
-                    let weather_info = rpc
-                        .get_weather_at(&pos)
-                        .await
-                        .context("failed to retrieve weather")?;
-                    let position = rpc
-                        .to_lat_lng(&pos)
-                        .await
-                        .context("failed to retrieve unit position")?;
+                let weather_info = rpc
+                    .get_weather_at(&pos)
+                    .await
+                    .context("failed to retrieve weather")?;
+                let position = rpc
+                    .to_lat_lng(&pos)
+                    .await
+                    .context("failed to retrieve unit position")?;
 
-                    Ok(Some(Report {
-                        textual: weather.generate_report(report_nr, &weather_info, false)?,
-                        spoken: weather.generate_report(report_nr, &weather_info, true)?,
-                        position,
-                    }))
-                } else {
-                    Ok(None)
-                }
+                Ok(Some(Report {
+                    textual: weather.generate_report(report_nr, &weather_info, false)?,
+                    spoken: weather.generate_report(report_nr, &weather_info, true)?,
+                    position,
+                }))
             }
             (None, _) => Ok(None),
         }
@@ -226,7 +218,7 @@ impl Airfield {
                     return Some(&rwy);
                 }
             } else {
-                error!("Error parsing runway: {}", rwy);
+                log::error!("Error parsing runway: {}", rwy);
             }
         }
 
@@ -256,7 +248,7 @@ impl Airfield {
             let rwy = pronounce_number(rwy, spoken);
             report += &format!("Runway in use is {}. {}", rwy, _break);
         } else {
-            error!("Could not find active runway for {}", self.name);
+            log::error!("Could not find active runway for {}", self.name);
         }
 
         let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());

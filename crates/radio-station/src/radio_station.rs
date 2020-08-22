@@ -103,7 +103,7 @@ async fn radio_broadcast<P: AsRef<Path>>(
     let mut audio_files = Vec::new();
     for path in file_paths {
         if path.extension().is_none() || path.extension().unwrap() != "ogg" {
-            warn!("Ignoring non .ogg file: {:?}", path);
+            log::warn!("Ignoring non .ogg file: {:?}", path);
             continue;
         }
 
@@ -113,16 +113,16 @@ async fn radio_broadcast<P: AsRef<Path>>(
             if let Some(duration) = meta.get_duration() {
                 audio_files.push(OpusFile { path, duration });
             } else {
-                error!("Failed reading duration of {}", path.to_string_lossy());
+                log::error!("Failed reading duration of {}", path.to_string_lossy());
             }
         } else {
-            error!("{} is not opus encoded", path.to_string_lossy());
+            log::error!("{} is not opus encoded", path.to_string_lossy());
         }
     }
 
     loop {
         for OpusFile { ref path, .. } in &audio_files {
-            debug!("Playing {}", path.to_string_lossy());
+            log::debug!("Playing {}", path.to_string_lossy());
 
             let mut file = File::open(&path).await?;
             let mut contents = Vec::new();

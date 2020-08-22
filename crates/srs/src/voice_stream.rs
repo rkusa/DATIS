@@ -12,7 +12,7 @@ use crate::message::{
     Client as MsgClient, Coalition, GameMessage, Message, MsgType, Radio, RadioInfo,
     RadioSwitchControls,
 };
-use crate::messages_codec::MessagesCodec;
+use crate::messages_codec::{self, MessagesCodec};
 use crate::voice_codec::*;
 use futures::channel::mpsc;
 use futures::future::FutureExt;
@@ -31,7 +31,7 @@ const SRS_VERSION: &str = "1.9.0.0";
 pub struct VoiceStream {
     voice_sink: mpsc::Sender<Packet>,
     voice_stream: SplitStream<UdpFramed<VoiceCodec>>,
-    heartbeat: Pin<Box<dyn Send + Future<Output = Result<(), anyhow::Error>>>>,
+    heartbeat: Pin<Box<dyn Send + Future<Output = Result<(), VoiceStreamError>>>>,
     client: Client,
     packet_id: u64,
 }
@@ -44,13 +44,32 @@ struct ServerSettingsInner {
     distance_enabled: AtomicBool,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum VoiceStreamError {
+    #[error("{0}")]
+    Io(#[from] io::Error),
+    #[error("{0}")]
+    MessagesCodec(#[from] messages_codec::MessagesCodecError),
+    #[error("{0}")]
+    ChannelSend(#[from] futures::channel::mpsc::SendError),
+    #[error("Version mismatch between DATIS ({expected}) and the SRS server ({encountered})")]
+    VersionMismatch {
+        expected: String,
+        encountered: String,
+    },
+    #[error("Voice stream was closed unexpectedly")]
+    Closed,
+    #[error("TCP connection was closed unexpectedly")]
+    ConnectionClosed,
+}
+
 impl VoiceStream {
     pub async fn new(
         client: Client,
         addr: SocketAddr,
         game_source: Option<mpsc::UnboundedReceiver<GameMessage>>,
         shutdown_signal: Receiver<()>,
-    ) -> Result<Self, io::Error> {
+    ) -> Result<Self, VoiceStreamError> {
         let recv_voice = game_source.is_some();
 
         let tcp = TcpStream::connect(addr).await?;
@@ -117,11 +136,11 @@ impl VoiceStream {
                             // handle message
                             match msg.msg_type {
                                 MsgType::VersionMismatch => {
-                                    return Err(anyhow!(
-                                        "Version mismatch between DATIS ({}) and the SRS server ({})",
-                                        SRS_VERSION,
-                                        msg.version
-                                    ));
+                                    return Err(VoiceStreamError::VersionMismatch {
+                                        expected:                                         SRS_VERSION.to_string(),
+                                        encountered: msg.version,
+                                    }
+                                        );
                                 }
                                 _ => {
                                     // discard other messages for now
@@ -200,16 +219,14 @@ impl VoiceStream {
 }
 
 impl Stream for VoiceStream {
-    type Item = Result<VoicePacket, anyhow::Error>;
+    type Item = Result<VoicePacket, VoiceStreamError>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         let s = self.get_mut();
 
         match s.voice_stream.poll_next_unpin(cx) {
             Poll::Pending => {}
-            Poll::Ready(None) => {
-                return Poll::Ready(Some(Err(anyhow!("voice stream was closed unexpectedly"))))
-            }
+            Poll::Ready(None) => return Poll::Ready(Some(Err(VoiceStreamError::Closed))),
             Poll::Ready(Some(Ok((None, _)))) => {
                 // not enough data for the codec to create a new item
             }
@@ -223,7 +240,7 @@ impl Stream for VoiceStream {
             Poll::Pending => {}
             Poll::Ready(Err(err)) => return Poll::Ready(Some(Err(err.into()))),
             Poll::Ready(Ok(_)) => {
-                return Poll::Ready(Some(Err(anyhow!("TCP connection was closed unexpectedly"))));
+                return Poll::Ready(Some(Err(VoiceStreamError::ConnectionClosed)));
             }
         }
 

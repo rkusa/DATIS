@@ -1,8 +1,5 @@
 #![warn(rust_2018_idioms)]
 
-#[macro_use]
-extern crate log;
-
 mod radio_station;
 
 use std::str::FromStr;
@@ -55,14 +52,14 @@ pub async fn main() -> Result<(), anyhow::Error> {
     let port = if let Ok(n) = u16::from_str(port) {
         n
     } else {
-        error!("The provided Port is not a valid number");
+        log::error!("The provided Port is not a valid number");
         return Ok(());
     };
     let freq = matches.value_of("frequency").unwrap();
     let freq = if let Ok(n) = u64::from_str(freq) {
         n
     } else {
-        error!("The provided frequency is not a valid number");
+        log::error!("The provided frequency is not a valid number");
         return Ok(());
     };
 
@@ -71,7 +68,7 @@ pub async fn main() -> Result<(), anyhow::Error> {
     station.set_position(0.0, 0.0, 8000.);
     station.set_port(port);
 
-    info!("Start playing ...");
+    log::info!("Start playing ...");
     station.play(path, should_loop).await?;
 
     Ok(())

@@ -1,8 +1,5 @@
 #![recursion_limit = "512"]
 
-#[macro_use]
-extern crate anyhow;
-
 mod client;
 pub mod message;
 mod messages_codec;
