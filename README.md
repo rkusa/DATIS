@@ -49,9 +49,9 @@ While it is easiest to temporariely start DCS with a GUI even on a dedicated ser
 
 ```lua
 options = {
-   -- ...
+	-- ...
 	["plugins"] = {
-      -- ..
+		-- ..
 		["DATIS"] = {
 			["awsAccessKey"] = "Your AWS access key",
 			["awsPrivateKey"] = "Your AWS private key",
@@ -60,9 +60,9 @@ options = {
 			["defaultVoice"] = "WIN",
 			["gcloudAccessKey"] = "Your Google Cloud access key",
 			["srsPort"] = "5002",
-      },
-      -- ..
-   }
+		},
+		-- ..
+	}
 }
 ```
 
