@@ -45,6 +45,27 @@ For information about the free tier of both GCloud and AWS see:
 
 ![Settings](./docs/settings.jpg)
 
+While it is easiest to temporariely start DCS with a GUI even on a dedicated server for the sake of changing DATIS settings, they can also be changed by manually updating `Saved Games\DCS.openbeta\Config\options.lua`:
+
+```lua
+options = {
+   -- ...
+	["plugins"] = {
+      -- ..
+		["DATIS"] = {
+			["awsAccessKey"] = "Your AWS access key",
+			["awsPrivateKey"] = "Your AWS private key",
+			["awsRegion"] = "eu-central-1",
+			["debugLoggingEnabled"] = false,
+			["defaultVoice"] = "WIN",
+			["gcloudAccessKey"] = "Your Google Cloud access key",
+			["srsPort"] = "5002",
+      },
+      -- ..
+   }
+}
+```
+
 ## Setup
 
 ### Setup ATIS stations
