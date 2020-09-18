@@ -4,6 +4,7 @@ use std::str::FromStr;
 use datis_core::rpc::*;
 use datis_core::station::*;
 use datis_core::tts::TextToSpeechProvider;
+use datis_core::weather::Clouds;
 use mlua::prelude::{Lua, LuaTable, LuaTableExt};
 use rand::Rng;
 use regex::{Regex, RegexBuilder};

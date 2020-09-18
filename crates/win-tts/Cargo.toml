@@ -10,5 +10,5 @@ edition = "2018"
 futures = "0.3"
 log = "0.4"
 thiserror = "1.0"
-tokio = { version = "0.2", features = ["macros", "blocking"] }
+tokio = { version = "0.2", features = ["macros", "blocking", "rt-util"] }
 win-media = { path = "../win-media" }

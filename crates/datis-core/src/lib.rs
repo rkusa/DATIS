@@ -9,7 +9,7 @@ pub mod rpc;
 pub mod station;
 pub mod tts;
 mod utils;
-mod weather;
+pub mod weather;
 
 use std::mem;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};

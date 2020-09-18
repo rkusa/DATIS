@@ -130,7 +130,10 @@ impl Station {
 
                 Ok(Some(Report {
                     textual: custom.message.clone(),
-                    spoken: custom.message.clone(),
+                    spoken: format!(
+                        "<speak version=\"1.0\" xml:lang=\"en-US\">{}</speak>",
+                        escape_xml(&custom.message)
+                    ),
                     position,
                 }))
             }
@@ -193,7 +196,10 @@ impl Station {
             }
             Transmitter::Custom(custom) => Ok(Some(Report {
                 textual: custom.message.clone(),
-                spoken: custom.message.clone(),
+                spoken: format!(
+                    "<speak version=\"1.0\" xml:lang=\"en-US\">{}</speak>",
+                    escape_xml(&custom.message)
+                ),
                 position: LatLngPosition::default(),
             })),
             Transmitter::Weather(weather) => Ok(Some(Report {
@@ -543,6 +549,10 @@ fn get_clouds_report(clouds: &Clouds, spoken: bool) -> Option<String> {
     } else {
         None
     }
+}
+
+fn escape_xml(s: &str) -> String {
+    s.replace('<', "&lt;").replace('&', "&amp;")
 }
 
 mod phonetic_alphabet {
