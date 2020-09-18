@@ -41,41 +41,37 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
         let terrain: LuaTable<'_> = lua.globals().get("Terrain")?;
         let airdromes: LuaTable<'_> = terrain.call_function("GetTerrainConfig", "Airdromes")?;
 
-        // on Caucasus, airdromes start at the index 12, others start at 1; also hlua's table
-        // iterator does not work for tables of tables, which is why we are just iterating
-        // from 1 to 50 an check whether there is an airdrome table at this index or not
-        for i in 1..=50 {
-            if let Some(airdrome) = airdromes.get::<_, Option<LuaTable<'_>>>(i)? {
-                let display_name: String = airdrome.get("display_name")?;
+        for pair in airdromes.pairs::<usize, LuaTable<'_>>() {
+            let (_, airdrome) = pair?;
+            let display_name: String = airdrome.get("display_name")?;
 
-                let (x, y) = {
-                    let reference_point: LuaTable<'_> = airdrome.get("reference_point")?;
-                    let x: f64 = reference_point.get("x")?;
-                    let y: f64 = reference_point.get("y")?;
-                    (x, y)
-                };
+            let (x, y) = {
+                let reference_point: LuaTable<'_> = airdrome.get("reference_point")?;
+                let x: f64 = reference_point.get("x")?;
+                let y: f64 = reference_point.get("y")?;
+                (x, y)
+            };
 
-                let mut runways: Vec<String> = Vec::new();
-                let rwys: LuaTable<'_> = airdrome.get("runways")?;
-                for rwy in rwys.sequence_values::<LuaTable<'_>>() {
-                    let rwy = rwy?;
-                    let start: String = rwy.get("start")?;
-                    let end: String = rwy.get("end")?;
-                    runways.push(start);
-                    runways.push(end);
-                }
-
-                airfields.insert(
-                    display_name.clone(),
-                    Airfield {
-                        name: display_name,
-                        position: Position { x, y, alt: 0.0 },
-                        runways,
-                        traffic_freq: None,
-                        info_ltr_offset: rng.gen_range(0, 25),
-                    },
-                );
+            let mut runways: Vec<String> = Vec::new();
+            let rwys: LuaTable<'_> = airdrome.get("runways")?;
+            for pair in rwys.pairs::<usize, LuaTable<'_>>() {
+                let (_, rwy) = pair?;
+                let start: String = rwy.get("start")?;
+                let end: String = rwy.get("end")?;
+                runways.push(start);
+                runways.push(end);
             }
+
+            airfields.insert(
+                display_name.clone(),
+                Airfield {
+                    name: display_name,
+                    position: Position { x, y, alt: 0.0 },
+                    runways,
+                    traffic_freq: None,
+                    info_ltr_offset: rng.gen_range(0, 25),
+                },
+            );
         }
 
         airfields
