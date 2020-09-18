@@ -26,10 +26,7 @@ pub fn init(lua: &Lua) -> Result<String, mlua::Error> {
     };
     write_dir += "Logs\\";
 
-    if INITIALIZED
-        .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
-        .unwrap()
-    {
+    if INITIALIZED.swap(true, Ordering::Relaxed) {
         return Ok(write_dir);
     }
 
