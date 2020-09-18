@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use clap::{App, Arg};
-use datis_core::station::{Airfield, Custom, Position, Station, Transmitter};
+use datis_core::station::{Airfield, Position, Station, Transmitter};
 use datis_core::tts::TextToSpeechProvider;
 use datis_core::Datis;
 use dotenv::dotenv;
@@ -87,6 +87,8 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             traffic_freq: None,
             info_ltr_offset: 0,
         }),
+        #[cfg(test)]
+        rpc: None,
     };
     let mut datis = Datis::new(vec![station])?;
     datis.set_port(5002);
