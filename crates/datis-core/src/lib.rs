@@ -4,10 +4,12 @@
 extern crate anyhow;
 
 pub mod export;
+#[cfg(feature = "rpc")]
 pub mod rpc;
 pub mod station;
 pub mod tts;
 mod utils;
+mod weather;
 
 use std::mem;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -246,12 +248,19 @@ async fn run(
     let name = format!("ATIS {}", station.name);
     let mut client = Client::new(&name, station.freq);
     match &station.transmitter {
+        #[cfg(feature = "rpc")]
         Transmitter::Airfield(airfield) => {
             let pos = if let Some(rpc) = &station.rpc {
                 rpc.to_lat_lng(&airfield.position).await?
             } else {
                 LatLngPosition::default()
             };
+            client.set_position(pos);
+            // TODO: set unit?
+        }
+        #[cfg(not(feature = "rpc"))]
+        Transmitter::Airfield(_) => {
+            let pos = LatLngPosition::default();
             client.set_position(pos);
             // TODO: set unit?
         }

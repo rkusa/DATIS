@@ -1,10 +1,7 @@
-use crate::rpc::{Clouds, MissionRpc, WeatherInfo};
 use crate::tts::TextToSpeechProvider;
 use crate::utils::{m_to_ft, m_to_nm, pronounce_number, round};
+use crate::weather::{Clouds, WeatherInfo};
 pub use srs::message::{LatLngPosition, Position};
-
-#[cfg(not(feature = "static-weather"))]
-use anyhow::Context;
 
 #[derive(Clone)]
 pub struct Station {
@@ -12,7 +9,8 @@ pub struct Station {
     pub freq: u64,
     pub tts: TextToSpeechProvider,
     pub transmitter: Transmitter,
-    pub rpc: Option<MissionRpc>,
+    #[cfg(feature = "rpc")]
+    pub rpc: Option<crate::rpc::MissionRpc>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -65,8 +63,10 @@ pub struct Report {
 const SPEAK_START_TAG: &str = "<speak version=\"1.0\" xml:lang=\"en-US\">\n";
 
 impl Station {
-    #[cfg(not(feature = "static-weather"))]
+    #[cfg(feature = "rpc")]
     pub async fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
+        use anyhow::Context;
+
         match (self.rpc.as_ref(), &self.transmitter) {
             (Some(rpc), Transmitter::Airfield(airfield)) => {
                 let weather = rpc
@@ -162,7 +162,7 @@ impl Station {
         }
     }
 
-    #[cfg(feature = "static-weather")]
+    #[cfg(not(feature = "rpc"))]
     pub async fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
         let weather_info = WeatherInfo {
             clouds: None,

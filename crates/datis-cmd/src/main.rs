@@ -87,7 +87,6 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             traffic_freq: None,
             info_ltr_offset: 0,
         }),
-        rpc: None,
     };
     let mut datis = Datis::new(vec![station])?;
     datis.set_port(5002);

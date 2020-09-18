@@ -9,7 +9,7 @@ anyhow = "1.0"
 audiopus = "0.2"
 base64 = "0.12"
 bytes = "0.5"
-dcs-module-rpc = { git = "https://github.com/rkusa/dcs-module-rpc.git", branch = "master" }
+dcs-module-rpc = { git = "https://github.com/rkusa/dcs-module-rpc.git", branch = "master", optional = true }
 futures = "0.3"
 log = "0.4"
 ogg = "0.7"
@@ -27,5 +27,5 @@ tokio = { version = "0.2", features = ["time", "rt-threaded", "blocking", "sync"
 win-tts = { path = "../win-tts" }
 
 [features]
-default = []
-static-weather = []
+default = ["rpc"]
+rpc = ["dcs-module-rpc"]
