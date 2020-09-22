@@ -86,13 +86,12 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
 
         let mut mission_units = Vec::new();
 
-        let keys = vec!["blue", "red"];
-        for key in keys {
-            let coalition: LuaTable<'_> = coalitions.get(key)?;
+        for key in &["blue", "red", "neutrals"] {
+            let coalition: LuaTable<'_> = coalitions.get(*key)?;
             let countries: LuaTable<'_> = coalition.get("country")?;
 
             for country in countries.sequence_values::<LuaTable<'_>>() {
-                // `_current_mission.mission.coalition.{blue,red}.country[i].{static|plane|helicopter|vehicle|ship}.group[j]
+                // `_current_mission.mission.coalition.{blue,red,neutrals}.country[i].{static|plane|helicopter|vehicle|ship}.group[j]
                 let country = country?;
                 let keys = vec!["static", "plane", "helicopter", "vehicle", "ship"];
                 for key in keys {

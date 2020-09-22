@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.2.0-beta.3] - 2020-09-22
+
+### Fixed
+- Allow using neutral statics and units as ATIS/Weather/Broadcast stations #65
+
 ## [2.2.0-beta.2] - 2020-09-18
 
 ### Fixed
