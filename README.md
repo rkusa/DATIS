@@ -183,10 +183,17 @@ WEATHER Mountain Range 251.000, VOICE en-US-Standard-E
 - [**win-media**](./crates/win-media) - Bindings to a subset of the Windows Runtime (separate crate to reduce the compile time during development).
 - [**win-tts**](./crates/win-tts) - A library to convert text to speech using the Window Runtime.
 
+- 
+
 ### Build
 
 Instead of building you can also use the pre-build mod from one of the [releases](https://github.com/rkusa/DATIS/releases).
 Otherwise, build with [Rust (stable)](https://rustup.rs/):
+
+#### Dependencies
+
+- [Rust (stable)](https://rustup.rs/)
+- For testing? Lua - Todo: Link to http://luabinaries.sourceforge.net/ and rename??
 
 ```
 $env:LUA_LIB_NAME="lua"
