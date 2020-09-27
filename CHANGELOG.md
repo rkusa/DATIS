@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.2.0-beta.4] - 2020-09-27
+
+### Fixed
+- Fixed carrier boradcast to say "ninety-nine" instead of "niner niner" when addressing all personnel dialed to the frequency #66
+
 ## [2.2.0-beta.3] - 2020-09-22
 
 ### Fixed

@@ -351,7 +351,7 @@ impl Carrier {
 
         let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
 
-        report += &format!("{}, {}", pronounce_number(99, spoken), _break);
+        report += &format!("99, {}", _break);
 
         let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
         report += &format!(
