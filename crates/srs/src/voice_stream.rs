@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use crate::client::Client;
 use crate::message::{
-    Client as MsgClient, Coalition, GameMessage, Message, MsgType, Radio, RadioInfo,
+    Client as MsgClient, GameMessage, Message, MsgType, Radio, RadioInfo,
     RadioSwitchControls,
 };
 use crate::messages_codec::{self, MessagesCodec};
@@ -333,7 +333,7 @@ async fn create_radio_update_message(client: &Client) -> Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(client.name().to_string()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: Some(RadioInfo {
                 name: "DATIS Radios".to_string(),
                 ptt: false,
@@ -362,7 +362,7 @@ async fn create_update_message(client: &Client) -> Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(client.name().to_string()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: None,
             lat_lng_position: Some(pos.clone()),
         }),
@@ -378,7 +378,7 @@ async fn create_sync_message(client: &Client) -> Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(client.name().to_string()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: None,
             lat_lng_position: Some(pos.clone()),
         }),
@@ -395,7 +395,7 @@ fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Messa
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(game_message.name.clone()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: Some(RadioInfo {
                 name: game_message.name.clone(),
                 ptt: game_message.ptt,
