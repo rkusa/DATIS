@@ -229,12 +229,12 @@ pub struct Message {
 }
 
 /// Data received from the in-game srs-plugin.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct GameMessage {
     pub control: i32,
     pub name: String,
-    pub lat_lng_position: LatLngPosition,
+    pub lat_lng: LatLngPosition,
     pub ptt: bool,
     pub radios: Vec<Radio>,
     pub selected: i16,

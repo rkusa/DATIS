@@ -389,7 +389,7 @@ async fn create_sync_message(client: &Client) -> Message {
 }
 
 fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Message {
-    let pos = game_message.lat_lng_position.clone();
+    let pos = game_message.lat_lng.clone();
 
     Message {
         client: Some(MsgClient {
