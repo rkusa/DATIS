@@ -79,7 +79,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let station = Station {
         name: String::from("Test Station"),
         freq,
-        tts: tts,
+        tts,
         transmitter: Transmitter::Airfield(Airfield {
             name: String::from("Test"),
             position: Position::default(),
@@ -87,8 +87,6 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             traffic_freq: None,
             info_ltr_offset: 0,
         }),
-        #[cfg(test)]
-        rpc: None,
     };
     let mut datis = Datis::new(vec![station])?;
     datis.set_port(5002);

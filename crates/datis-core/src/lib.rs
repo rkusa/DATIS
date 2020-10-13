@@ -4,6 +4,7 @@
 extern crate anyhow;
 
 pub mod export;
+pub mod extract;
 #[cfg(feature = "rpc")]
 pub mod rpc;
 pub mod station;

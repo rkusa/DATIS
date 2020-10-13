@@ -41,8 +41,8 @@ impl fmt::Display for ReportExporterError {
         use self::ReportExporterError::*;
 
         match *self {
-            Io(_) => write!(f, "{}", "Error opening export file"),
-            Json(_) => write!(f, "{}", "Error exporting report"),
+            Io(_) => f.write_str("Error opening export file"),
+            Json(_) => f.write_str("Error exporting report"),
         }
     }
 }
