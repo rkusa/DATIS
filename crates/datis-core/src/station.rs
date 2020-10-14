@@ -246,7 +246,7 @@ impl Airfield {
         
         let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
 
-        let information_num = if self.info_ltr_override.is_some() {(self.info_ltr_override.unwrap().to_ascii_uppercase() as usize)-65} else {self.info_ltr_offset + report_nr};
+        let information_num = if let Some(ltr_override) = self.info_ltr_override {(ltr_override.to_ascii_uppercase() as usize)-65} else {self.info_ltr_offset + report_nr};
         let information_letter = phonetic_alphabet::lookup(information_num);
 
         report += &format!(
@@ -440,8 +440,7 @@ impl WeatherTransmitter {
         #[cfg(test)]
         let _break = if spoken { "| " } else { "" };
 
-        let information_num = if self.info_ltr_override.is_some() {(self.info_ltr_override.unwrap().to_ascii_uppercase() as usize)-65} else {self.info_ltr_offset + report_nr};
-
+        let information_num = if let Some(ltr_override) = self.info_ltr_override {(ltr_override.to_ascii_uppercase() as usize)-65} else {self.info_ltr_offset + report_nr};
         let information_letter = phonetic_alphabet::lookup(information_num);
         let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
 
