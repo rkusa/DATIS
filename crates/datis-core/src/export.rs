@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::{error, fmt};
+
+use futures::lock::Mutex;
 
 #[derive(Clone)]
 pub struct ReportExporter(Arc<Mutex<ReportExporterInner>>);
@@ -19,8 +21,8 @@ impl ReportExporter {
         })))
     }
 
-    pub fn export(&self, name: &str, report: String) -> Result<(), ReportExporterError> {
-        let mut inner = self.0.lock().unwrap();
+    pub async fn export(&self, name: &str, report: String) -> Result<(), ReportExporterError> {
+        let mut inner = self.0.lock().await;
         inner.reports.insert(name.to_string(), report);
 
         let mut file = File::create(&inner.path)?;
