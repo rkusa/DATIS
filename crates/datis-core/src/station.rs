@@ -8,7 +8,7 @@ pub struct Station {
     pub name: String,
     pub freq: u64,
     pub tts: TextToSpeechProvider,
-    pub transmitter: Transmitter,
+    pub transmitter: Transmitter,    
     #[cfg(feature = "rpc")]
     pub rpc: Option<crate::rpc::MissionRpc>,
 }
@@ -28,6 +28,7 @@ pub struct Airfield {
     pub runways: Vec<String>,
     pub traffic_freq: Option<u64>,
     pub info_ltr_offset: usize,
+    pub info_ltr_override: Option<char>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -52,6 +53,7 @@ pub struct WeatherTransmitter {
     pub unit_id: u32,
     pub unit_name: String,
     pub info_ltr_offset: usize,
+    pub info_ltr_override: Option<char>,
 }
 
 pub struct Report {
@@ -241,9 +243,11 @@ impl Airfield {
         let _break = if spoken { "\n" } else { "" };
         #[cfg(test)]
         let _break = if spoken { "| " } else { "" };
-
-        let information_letter = phonetic_alphabet::lookup(self.info_ltr_offset + report_nr);
+        
         let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
+
+        let information_num = if let Some(ltr_override) = self.info_ltr_override {(ltr_override.to_ascii_uppercase() as usize)-65} else {self.info_ltr_offset + report_nr};
+        let information_letter = phonetic_alphabet::lookup(information_num);
 
         report += &format!(
             "This is {} information {}. {}",
@@ -436,7 +440,8 @@ impl WeatherTransmitter {
         #[cfg(test)]
         let _break = if spoken { "| " } else { "" };
 
-        let information_letter = phonetic_alphabet::lookup(self.info_ltr_offset + report_nr);
+        let information_num = if let Some(ltr_override) = self.info_ltr_override {(ltr_override.to_ascii_uppercase() as usize)-65} else {self.info_ltr_offset + report_nr};
+        let information_letter = phonetic_alphabet::lookup(information_num);
         let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
 
         report += &format!(
@@ -580,6 +585,7 @@ mod test {
             runways: vec![String::from("04"), String::from("22R")],
             traffic_freq: None,
             info_ltr_offset: 0,
+            info_ltr_override: None
         };
 
         assert_eq!(airfield.get_active_runway(0.0), Some("04"));
@@ -604,6 +610,7 @@ mod test {
                 runways: vec![String::from("04"), String::from("22")],
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 0,
+                info_ltr_override: None
             }),
         };
 
@@ -624,12 +631,35 @@ mod test {
                 runways: vec![String::from("04"), String::from("22")],
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 15, // Should be "Papa"
+                info_ltr_override: None
             }),
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
         assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nThis is Kutaisi information Papa. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Papa.\n</speak>");
         assert_eq!(report.textual, "This is Kutaisi information Papa. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Papa.");
+    }
+
+    #[tokio::test]
+    async fn test_report_with_info_letter_override() {
+        let station = Station {
+            name: String::from("Kutaisi"),
+            freq: 251_000_000,
+            tts: TextToSpeechProvider::default(),
+            transmitter: Transmitter::Airfield(Airfield {
+                name: String::from("Kutaisi"),
+                position: Position::default(),
+                runways: vec![String::from("04"), String::from("22")],
+                traffic_freq: Some(249_500_000),
+                info_ltr_offset: 15,
+                info_ltr_override: Some('Q'),
+            }),
+            rpc: None,
+        };
+
+        let report = station.generate_report(26).await.unwrap().unwrap();
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nThis is Kutaisi information Quebec. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Papa.\n</speak>");
+        assert_eq!(report.textual, "This is Kutaisi information Quebec. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Papa.");
     }
 
     #[test]
@@ -730,7 +760,8 @@ mod test {
                 position: Some(Position::default()),
                 unit_id: 42,
                 unit_name: "Weather Post".to_string(),
-                info_ltr_offset: 15, // Should be "Papa"
+                info_ltr_offset: 15, // Should be "Papa",
+                info_ltr_override: None
             }),
         };
 

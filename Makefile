@@ -4,6 +4,9 @@ build:
 test:
 	cargo test --workspace --exclude datis
 
+test_debug:
+	cargo test -- --nocapture
+
 release:
 	cargo build --release --package datis
 	powershell copy target/release/datis.dll mod/Mods/services/DATIS/bin/
