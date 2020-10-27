@@ -13,3 +13,5 @@ jobs:
       run: rustup update
     - name: Run tests
       run: make test
+    - name: Codestyle
+      run: cargo fmt -- --check
