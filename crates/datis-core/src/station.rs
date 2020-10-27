@@ -605,7 +605,6 @@ mod test {
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 0,
             }),
-            rpc: None,
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
@@ -626,7 +625,6 @@ mod test {
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 15, // Should be "Papa"
             }),
-            rpc: None,
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
@@ -692,11 +690,10 @@ mod test {
                 unit_id: 42,
                 unit_name: "Stennis".to_string(),
             }),
-            rpc: None,
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nNINER NINER, | Stennis\'s wind ZERO ZERO 6 at 3 knots, | altimeter 2 NINER NINER 7, | CASE 1, | BRC 1 ZERO 3 1 3, | expected final heading 1 ZERO 3 ZERO 4, | report initial.\n</speak>");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\n99, | Stennis\'s wind ZERO ZERO 6 at 3 knots, | altimeter 2 NINER NINER 7, | CASE 1, | BRC 1 ZERO 3 1 3, | expected final heading 1 ZERO 3 ZERO 4, | report initial.\n</speak>");
         assert_eq!(report.textual, "99, Stennis\'s wind 006 at 3 knots, altimeter 2997, CASE 1, BRC 10313, expected final heading 10304, report initial.");
     }
 
@@ -712,11 +709,13 @@ mod test {
                 unit_name: "Soldier".to_string(),
                 message: "Hello world".to_string(),
             }),
-            rpc: None,
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "Hello world");
+        assert_eq!(
+            report.spoken,
+            "<speak version=\"1.0\" xml:lang=\"en-US\">Hello world</speak>"
+        );
         assert_eq!(report.textual, "Hello world");
     }
 
@@ -733,7 +732,6 @@ mod test {
                 unit_name: "Weather Post".to_string(),
                 info_ltr_offset: 15, // Should be "Papa"
             }),
-            rpc: None,
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();

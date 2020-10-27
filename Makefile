@@ -2,7 +2,7 @@ build:
 	cargo build
 
 test:
-	cargo test
+	cargo test --workspace --exclude datis
 
 release:
 	cargo build --release --package datis

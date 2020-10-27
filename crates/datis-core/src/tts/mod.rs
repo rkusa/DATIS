@@ -48,8 +48,8 @@ impl FromStr for TextToSpeechProvider {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let v: Vec<&str> = s.splitn(2, ':').collect();
-        match v.as_slice() {
-            &[prefix, voice] => match prefix {
+        match *v.as_slice() {
+            [prefix, voice] => match prefix {
                 "GC" | "gc" => {
                     return Ok(TextToSpeechProvider::GoogleCloud {
                         voice: gcloud::VoiceKind::from_str(voice)?,
@@ -67,7 +67,7 @@ impl FromStr for TextToSpeechProvider {
                 }
                 _ => {}
             },
-            &[voice] if voice.len() > 0 => {
+            [voice] if !voice.is_empty() => {
                 if voice == "WIN" || voice == "win" {
                     return Ok(TextToSpeechProvider::Windows { voice: None });
                 } else {

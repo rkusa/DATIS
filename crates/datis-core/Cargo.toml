@@ -13,6 +13,7 @@ dcs-module-rpc = { git = "https://github.com/rkusa/dcs-module-rpc.git", branch =
 futures = "0.3"
 log = "0.4"
 ogg = "0.7"
+regex = "1"
 reqwest = { version = "0.10", features = ["json"] }
 rusoto_core = "0.45"
 rusoto_credential = "0.45"
@@ -27,5 +28,5 @@ tokio = { version = "0.2", features = ["time", "rt-threaded", "blocking", "sync"
 win-tts = { path = "../win-tts" }
 
 [features]
-default = ["rpc"]
+default = []
 rpc = ["dcs-module-rpc"]

@@ -1,6 +1,3 @@
-use audiopus::{coder::Encoder, Application, Channels, SampleRate};
-use tokio::task;
-
 #[derive(Clone)]
 pub struct WindowsConfig {
     pub voice: Option<String>,
@@ -11,6 +8,9 @@ pub async fn text_to_speech(
     ssml: &str,
     config: &WindowsConfig,
 ) -> Result<Vec<Vec<u8>>, anyhow::Error> {
+    use audiopus::{coder::Encoder, Application, Channels, SampleRate};
+    use tokio::task;
+
     let wav = win_tts::tts(ssml, config.voice.as_deref()).await?;
 
     let frames = task::spawn_blocking(move || {
@@ -45,6 +45,7 @@ pub async fn text_to_speech(
     Err(anyhow!("WIN voice only supported on Windows"))
 }
 
+#[cfg(target_os = "windows")]
 fn vector_i16(byte_stream: bytes::Bytes) -> Vec<i16> {
     let len = byte_stream.len();
     let mut res: Vec<i16> = Vec::new();

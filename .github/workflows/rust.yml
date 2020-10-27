@@ -11,8 +11,4 @@ jobs:
     - name: Update Rust
       run: rustup update
     - name: Run tests
-      env:
-        LUA_LIB_NAME: lua
-        LUA_LIB: ${{github.workspace}}/lua5.1/
-        LUA_INC: ${{github.workspace}}/lua5.1/include
-      run: cargo test
+      run: make test

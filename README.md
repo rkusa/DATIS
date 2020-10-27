@@ -195,6 +195,12 @@ $env:LUA_INC=(Get-Item -Path ".\").FullName+"/lua5.1/include"
 make release
 ```
 
+### Run tests
+
+```bash
+make test
+```
+
 ## License
 
 [MIT](./LICENSE.md)
