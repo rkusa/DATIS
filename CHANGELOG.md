@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- The info letter an ATIS station starts at can now be configured (is randomly choosen otherwise). Thanks to @talbotmcinnis #69
+
 ### Fixed
 - Fixed possible station deadlock
 
