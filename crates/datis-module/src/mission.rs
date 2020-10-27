@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use datis_core::extract::*;
 use datis_core::rpc::*;
 use datis_core::station::*;
 use datis_core::tts::TextToSpeechProvider;
 use datis_core::weather::Clouds;
-use datis_core::extract::*;
 use mlua::prelude::{Lua, LuaTable, LuaTableExt};
 use rand::Rng;
 
@@ -358,7 +358,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                     unit_id: mission_unit.id,
                     unit_name: mission_unit.name.clone(),
                     info_ltr_offset: rng.gen_range(0, 25),
-                    info_ltr_override: None
+                    info_ltr_override: None,
                 }),
                 rpc: Some(rpc.clone()),
             })

@@ -100,7 +100,7 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
             atis: atis_freq,
             traffic: None,
             tts,
-            info_ltr_override: None
+            info_ltr_override: None,
         }
     })
 }
@@ -266,7 +266,9 @@ mod test {
         );
 
         assert_eq!(
-            extract_atis_station_config("ATIS Kutaisi 251.000, TRAFFIC 123.45, VOICE en-US-Standard-E, INFO Q"),
+            extract_atis_station_config(
+                "ATIS Kutaisi 251.000, TRAFFIC 123.45, VOICE en-US-Standard-E, INFO Q"
+            ),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
                 atis: 251_000_000,
