@@ -52,33 +52,65 @@ pub fn extract_atis_station_frequencies(situation: &str) -> HashMap<String, Stat
 
 pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
     let re = RegexBuilder::new(
-        r"^ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?(,[ ]?VOICE ([a-zA-Z-:]+))?(,[ ]?INFO ([a-zA-Z]))?$",
+        r"^ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)",
     )
     .case_insensitive(true)
     .build()
     .unwrap();
 
-    re.captures(config).map(|caps| {
-        let name = caps.get(1).unwrap().as_str();
-        let atis_freq = caps.get(2).unwrap().as_str();
-        let atis_freq = (f64::from_str(atis_freq).unwrap() * 1_000_000.0) as u64;
-        let traffic_freq = caps
-            .get(5)
-            .map(|freq| (f64::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64);
-        let tts = caps
-            .get(8)
-            .and_then(|s| TextToSpeechProvider::from_str(s.as_str()).ok());
-        let info_ltr = caps
-            .get(10)
-            .map(|ilo| ((ilo.as_str()).chars().next().unwrap().to_ascii_uppercase()) as char);
-        StationConfig {
-            name: name.to_string(),
-            atis: atis_freq,
-            traffic: traffic_freq,
-            tts,
-            info_ltr_override: info_ltr,
-        }
-    })
+    let caps = re.captures(config).unwrap();    
+    let name = caps.get(1).unwrap().as_str().to_string();
+    let atis_freq = caps.get(2).unwrap();
+    let atis_freq = (f64::from_str(atis_freq.as_str()).unwrap() * 1_000_000.0) as u64;
+
+    // Parse out voice, iff it exists
+    let re = RegexBuilder::new(
+        r",[ ]?VOICE ([a-zA-Z-:]+)",
+    )
+    .case_insensitive(true).build().unwrap();
+    let caps = re.captures(config);
+    let tts = if let Some(captured) = caps {
+        captured.get(1).map_or(None, 
+            |s| TextToSpeechProvider::from_str(s.as_str()).ok())
+    } else {
+        None
+    };
+
+    // Parse out traffic, iff it exists
+    let re = RegexBuilder::new(
+        r",[ ]?TRAFFIC ([1-3]\d{2}\.*\d{0,3})",
+    )
+    .case_insensitive(true).build().unwrap();
+    let caps = re.captures(config);
+    let traffic_freq = if let Some(captured) = caps {
+        captured.get(1).map_or(None, 
+            |freq| Some((f64::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64))
+    } else {
+        None
+    };
+
+    // Parse information letter override, iff it exists
+    let re = RegexBuilder::new(
+        r",[ ]?INFO ([a-zA-Z])",
+    )
+    .case_insensitive(true).build().unwrap();
+    let caps = re.captures(config);
+    let info_ltr_override = if let Some(captured) = caps {
+        captured.get(1).map_or(None, 
+            |param| (Some(param.as_str().chars().next().unwrap().to_ascii_uppercase())))
+    } else {
+        None
+    };
+
+    let result = StationConfig {
+        name: name,
+        atis: atis_freq,
+        traffic: traffic_freq,
+        tts,
+        info_ltr_override: info_ltr_override,
+    };
+
+    Some(result)
 }
 
 pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
@@ -386,6 +418,22 @@ mod test {
             })
         );
     }
+
+    // Test parameters in another order
+    assert_eq!(
+        extract_atis_station_config(
+            "ATIS Kutaisi 251.000, VOICE en-US-Standard-E, TRAFFIC 123.45"
+        ),
+        Some(StationConfig {
+            name: "Kutaisi".to_string(),
+            atis: 251_000_000,
+            traffic: Some(123_450_000),
+            tts: Some(TextToSpeechProvider::GoogleCloud {
+                voice: gcloud::VoiceKind::StandardE
+            }),
+            info_ltr_override: None,
+        })
+    );
 
     #[test]
     fn test_broadcast_config_extraction() {
