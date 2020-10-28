@@ -1,10 +1,11 @@
 use std::net::SocketAddr;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use crate::message::{create_sguid, GameMessage, LatLngPosition};
 use crate::voice_stream::{VoiceStream, VoiceStreamError};
 use futures::channel::mpsc;
 use tokio::sync::oneshot::Receiver;
+use tokio::sync::RwLock;
 
 #[derive(Debug, Clone)]
 pub struct UnitInfo {
@@ -44,8 +45,8 @@ impl Client {
         self.freq
     }
 
-    pub fn position(&self) -> LatLngPosition {
-        let p = self.pos.read().unwrap();
+    pub async fn position(&self) -> LatLngPosition {
+        let p = self.pos.read().await;
         p.clone()
     }
 
@@ -57,8 +58,8 @@ impl Client {
         self.unit.as_ref()
     }
 
-    pub fn set_position(&mut self, pos: LatLngPosition) {
-        let mut p = self.pos.write().unwrap();
+    pub async fn set_position(&mut self, pos: LatLngPosition) {
+        let mut p = self.pos.write().await;
         *p = pos;
     }
 

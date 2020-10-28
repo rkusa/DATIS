@@ -94,14 +94,16 @@ impl VoiceStream {
             let mut messages_stream = messages_stream.fuse();
 
             // send sync message to receive server settings
-            messages_sink.send(create_sync_message(&client)).await?;
+            messages_sink
+                .send(create_sync_message(&client).await)
+                .await?;
 
             // send initial Update message
             messages_sink
-                .send(create_radio_update_message(&client))
+                .send(create_radio_update_message(&client).await)
                 .await?;
 
-            let mut old_pos = client.position();
+            let mut old_pos = client.position().await;
             let mut position_update_interval = time::interval(Duration::from_secs(60)).fuse();
             let mut voice_ping_interval = time::interval(Duration::from_secs(5)).fuse();
             let mut game_source_interval = time::interval(Duration::from_secs(5)).fuse();
@@ -161,7 +163,7 @@ impl VoiceStream {
                         }
 
                         // keep the position of the station updated
-                        let new_pos = client.position();
+                        let new_pos = client.position().await;
                         let los_enabled = server_settings.0.los_enabled.load(Ordering::Relaxed);
                         let distance_enabled = server_settings.0.distance_enabled.load(Ordering::Relaxed);
                         if (los_enabled || distance_enabled) && new_pos != old_pos {
@@ -169,7 +171,7 @@ impl VoiceStream {
                                 "Position of {} changed, sending a new update message",
                                 client.name()
                             );
-                            messages_sink.send(create_update_message(&client)).await?;
+                            messages_sink.send(create_update_message(&client).await).await?;
                             old_pos = new_pos;
                         }
                     }
@@ -295,8 +297,8 @@ impl Sink<Vec<u8>> for VoiceStream {
     }
 }
 
-fn create_radio_update_message(client: &Client) -> Message {
-    let pos = client.position();
+async fn create_radio_update_message(client: &Client) -> Message {
+    let pos = client.position().await;
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
@@ -324,8 +326,8 @@ fn create_radio_update_message(client: &Client) -> Message {
     }
 }
 
-fn create_update_message(client: &Client) -> Message {
-    let pos = client.position();
+async fn create_update_message(client: &Client) -> Message {
+    let pos = client.position().await;
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
@@ -340,8 +342,8 @@ fn create_update_message(client: &Client) -> Message {
     }
 }
 
-fn create_sync_message(client: &Client) -> Message {
-    let pos = client.position();
+async fn create_sync_message(client: &Client) -> Message {
+    let pos = client.position().await;
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),

@@ -15,7 +15,7 @@ pub mod weather;
 use std::mem;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::export::ReportExporter;
@@ -32,7 +32,7 @@ use futures::sink::SinkExt;
 use futures::stream::{SplitSink, StreamExt};
 use srs::{Client, VoiceStream};
 use tokio::runtime::{self, Runtime};
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, RwLock};
 use tokio::time::delay_for;
 
 pub struct Datis {
@@ -256,13 +256,13 @@ async fn run(
             } else {
                 LatLngPosition::default()
             };
-            client.set_position(pos);
+            client.set_position(pos).await;
             // TODO: set unit?
         }
         #[cfg(not(feature = "rpc"))]
         Transmitter::Airfield(_) => {
             let pos = LatLngPosition::default();
-            client.set_position(pos);
+            client.set_position(pos).await;
             // TODO: set unit?
         }
         Transmitter::Carrier(unit) => {
@@ -357,7 +357,7 @@ async fn audio_broadcast(
         log::debug!("{} Position: {:?}", station.name, report.position);
 
         {
-            let mut pos = position.write().unwrap();
+            let mut pos = position.write().await;
             *pos = report.position;
         }
 

@@ -51,7 +51,7 @@ impl RadioStation {
         should_loop: bool,
     ) -> Result<(), anyhow::Error> {
         let mut client = Client::new(&self.name, self.freq);
-        client.set_position(self.position);
+        client.set_position(self.position).await;
 
         let (_tx, rx) = oneshot::channel();
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), self.port);
