@@ -71,6 +71,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                     runways,
                     traffic_freq: None,
                     info_ltr_offset: rng.gen_range(0, 25),
+                    info_ltr_override: None,
                 },
             );
         }
@@ -235,6 +236,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
         extract_atis_station_config(&mission_unit.name).and_then(|config| {
             airfields.remove(&config.name).map(|mut airfield| {
                 airfield.traffic_freq = config.traffic;
+                airfield.info_ltr_override = config.info_ltr_override;
                 airfield.position.x = mission_unit.x;
                 airfield.position.y = mission_unit.y;
                 airfield.position.alt = mission_unit.alt;
@@ -356,6 +358,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                     unit_id: mission_unit.id,
                     unit_name: mission_unit.name.clone(),
                     info_ltr_offset: rng.gen_range(0, 25),
+                    info_ltr_override: None
                 }),
                 rpc: Some(rpc.clone()),
             })

@@ -10,6 +10,7 @@ pub struct StationConfig {
     pub atis: u64,
     pub traffic: Option<u64>,
     pub tts: Option<TextToSpeechProvider>,
+    pub info_ltr_override: Option<char>,
 }
 
 pub fn extract_atis_station_frequencies(situation: &str) -> HashMap<String, StationConfig> {
@@ -28,6 +29,7 @@ pub fn extract_atis_station_frequencies(situation: &str) -> HashMap<String, Stat
                     atis: freq,
                     traffic: None,
                     tts: None,
+                    info_ltr_override: None,
                 },
             )
         })
@@ -50,11 +52,12 @@ pub fn extract_atis_station_frequencies(situation: &str) -> HashMap<String, Stat
 
 pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
     let re = RegexBuilder::new(
-        r"^ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?(,[ ]?VOICE ([a-zA-Z-:]+))?$",
+        r"^ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?TRAFFIC ([1-3]\d{2}(\.\d{1,3})?))?(,[ ]?VOICE ([a-zA-Z-:]+))?(,[ ]?INFO ([a-zA-Z]))?$",
     )
     .case_insensitive(true)
     .build()
     .unwrap();
+
     re.captures(config).map(|caps| {
         let name = caps.get(1).unwrap().as_str();
         let atis_freq = caps.get(2).unwrap().as_str();
@@ -65,11 +68,15 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
         let tts = caps
             .get(8)
             .and_then(|s| TextToSpeechProvider::from_str(s.as_str()).ok());
+        let info_ltr = caps
+            .get(10)
+            .map(|ilo| ((ilo.as_str()).chars().next().unwrap().to_ascii_uppercase()) as char);
         StationConfig {
             name: name.to_string(),
             atis: atis_freq,
             traffic: traffic_freq,
             tts,
+            info_ltr_override: info_ltr,
         }
     })
 }
@@ -93,6 +100,7 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
             atis: atis_freq,
             traffic: None,
             tts,
+            info_ltr_override: None
         }
     })
 }
@@ -182,6 +190,7 @@ mod test {
                         atis: 251_000_000,
                         traffic: None,
                         tts: None,
+                        info_ltr_override: None,
                     }
                 ),
                 (
@@ -191,6 +200,7 @@ mod test {
                         atis: 131_500_000,
                         traffic: Some(255_000_000),
                         tts: None,
+                        info_ltr_override: None,
                     }
                 ),
                 (
@@ -200,6 +210,7 @@ mod test {
                         atis: 145_000_000,
                         traffic: None,
                         tts: None,
+                        info_ltr_override: None,
                     }
                 )
             ]
@@ -217,6 +228,7 @@ mod test {
                 atis: 251_000_000,
                 traffic: None,
                 tts: None,
+                info_ltr_override: None,
             })
         );
 
@@ -227,6 +239,7 @@ mod test {
                 atis: 251_000_000,
                 traffic: None,
                 tts: None,
+                info_ltr_override: None,
             })
         );
 
@@ -237,6 +250,7 @@ mod test {
                 atis: 251_000_000,
                 traffic: None,
                 tts: None,
+                info_ltr_override: None,
             })
         );
 
@@ -247,6 +261,20 @@ mod test {
                 atis: 251_000_000,
                 traffic: Some(123_450_000),
                 tts: None,
+                info_ltr_override: None,
+            })
+        );
+
+        assert_eq!(
+            extract_atis_station_config("ATIS Kutaisi 251.000, TRAFFIC 123.45, VOICE en-US-Standard-E, INFO Q"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 251_000_000,
+                traffic: Some(123_450_000),
+                tts: Some(TextToSpeechProvider::GoogleCloud {
+                    voice: gcloud::VoiceKind::StandardE
+                }),
+                info_ltr_override: Some('Q')
             })
         );
 
@@ -261,6 +289,7 @@ mod test {
                 tts: Some(TextToSpeechProvider::GoogleCloud {
                     voice: gcloud::VoiceKind::StandardE
                 }),
+                info_ltr_override: None,
             })
         );
 
@@ -273,6 +302,7 @@ mod test {
                 tts: Some(TextToSpeechProvider::GoogleCloud {
                     voice: gcloud::VoiceKind::StandardE
                 }),
+                info_ltr_override: None,
             })
         );
 
@@ -283,6 +313,7 @@ mod test {
                 atis: 131_400_000,
                 traffic: None,
                 tts: None,
+                info_ltr_override: None,
             })
         );
     }
@@ -296,6 +327,7 @@ mod test {
                 atis: 251_000_000,
                 traffic: None,
                 tts: None,
+                info_ltr_override: None,
             })
         );
 
@@ -306,6 +338,7 @@ mod test {
                 atis: 131_400_000,
                 traffic: None,
                 tts: None,
+                info_ltr_override: None,
             })
         );
 
@@ -318,6 +351,7 @@ mod test {
                 tts: Some(TextToSpeechProvider::GoogleCloud {
                     voice: gcloud::VoiceKind::StandardE
                 }),
+                info_ltr_override: None,
             })
         );
     }
@@ -333,6 +367,7 @@ mod test {
                 tts: Some(TextToSpeechProvider::GoogleCloud {
                     voice: gcloud::VoiceKind::StandardD
                 }),
+                info_ltr_override: None,
             })
         );
 
@@ -345,6 +380,7 @@ mod test {
                 tts: Some(TextToSpeechProvider::AmazonWebServices {
                     voice: aws::VoiceKind::Brian
                 }),
+                info_ltr_override: None,
             })
         );
     }
