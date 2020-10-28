@@ -151,15 +151,23 @@ fn try_next(lua: &Lua, callback: Function<'_>) -> LuaResult<bool> {
                 return Ok(true);
             }
 
-            let res: Value<'_> = result.get("result")?;
-            next.success(&res).map_err(|err| {
-                mlua::Error::ExternalError(Arc::new(Error::DeserializeResult {
-                    err,
+            let res = match result.get::<_, Value<'_>>("result") {
+                Ok(res) => res,
+                Err(_) => {
+                    next.error("received empty RPC response".to_string());
+                    return Ok(true);
+                }
+            };
+
+            if let Err(err) = next.success(&res) {
+                next.error(format!(
+                    "Failed to deserialize result for method {}: {}\n{}",
                     method,
-                    result: pretty_print_value(res, 0)
-                        .unwrap_or_else(|err| format!("failed to pretty print result: {}", err)),
-                }))
-            })?;
+                    err,
+                    pretty_print_value(res, 0)
+                        .unwrap_or_else(|err| format!("failed to pretty print result: {}", err))
+                ));
+            }
 
             return Ok(true);
         }
@@ -183,13 +191,6 @@ pub fn datis(lua: &Lua) -> LuaResult<LuaTable<'_>> {
 pub enum Error {
     #[error("Failed to deserialize params: {0}")]
     DeserializeParams(#[source] serde_mlua::Error),
-    #[error("Failed to deserialize result for method {method}: {err}\n{result}")]
-    DeserializeResult {
-        #[source]
-        err: serde_mlua::Error,
-        method: String,
-        result: String,
-    },
     #[error("Failed to serialize params: {0}")]
     SerializeParams(#[source] serde_mlua::Error),
 }
