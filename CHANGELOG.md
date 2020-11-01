@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Fixed station deadlock on certain RPC errors
+- Fixed RPC methods to not fail when receiving numbers with exponents
 
 ## [2.2.0-beta.4] - 2020-09-27
 

@@ -115,7 +115,7 @@ function datis_handleRequest(method, params)
       }
     end
 
-    local x, y, z = string.match(result, "(%-?[0-9%.-]+):(%-?[0-9%.]+):(%-?[0-9%.]+)")
+    local x, y, z = string.match(result, "(-?[%d.e+-]+):(-?[%d.e+-]+):(-?[%d.e+-]+)")
 
     return {
       result = {
@@ -173,7 +173,7 @@ function datis_handleRequest(method, params)
       return lat .. ":" .. lng .. ":" .. alt
     ]]
     local result = net.dostring_in("server", to_lat_lng)
-    local lat, lng, alt = string.match(result, "(%-?[0-9%.-]+):(%-?[0-9%.]+):(%-?[0-9%.]+)")
+    local lat, lng, alt = string.match(result, "(-?[%d.e+-]+):(-?[%d.e+-]+):(-?[%d.e+-]+)")
     return {
       result = {
         lat = tonumber(lat),
