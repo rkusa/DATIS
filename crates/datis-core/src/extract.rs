@@ -82,16 +82,10 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
         
         match option_key {
             "TRAFFIC" => { 
-                //println!("Processing traffic {}", option_value);
-                /*traffic_freq = 
-                    option_value.map_or(None, 
-                        |freq| Some((f64::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64));*/
-                //traffic_freq = option_value.filter_map(|s| s.parse::<f64>().ok()).collect::<Vec<_>>();
-                let traffic_freq_hz = option_value.parse::<f64>().ok();
-                if traffic_freq_hz.is_none() {
-                    log::warn!("Unable to extract ATIS station traffic frequency from {}", option_value);//option_value.unwrap().as_str());
+                if let Some(traffic_freq_hz) = option_value.parse::<f64>().ok() {
+                    traffic_freq = Some((traffic_freq_hz*1_000_000.0) as u64);
                 }else{
-                    traffic_freq = Some((traffic_freq_hz.unwrap()*1_000_000.0) as u64);
+                    log::warn!("Unable to extract ATIS station traffic frequency from {}", option_value);
                 }
             }
             "VOICE" => {
