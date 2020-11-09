@@ -63,9 +63,11 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
     let atis_freq = caps.get(2).unwrap();
     let atis_freq = (f64::from_str(atis_freq.as_str()).unwrap() * 1_000_000.0) as u64;
 
-    let mut traffic_freq = None;
+    let mut traffic_freq: Option<u64> = None;
     let mut tts = None;
     let mut info_ltr_override = None;
+
+    // Or, this does make a good case for nom: https://stevedonovan.github.io/rust-gentle-intro/nom-intro.html
 
     let rex_option = RegexBuilder::new(
         r"([^ ]*) (.*)",
@@ -76,19 +78,20 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
     for token in config.split(",").skip(1){
         let caps = rex_option.captures(token.trim()).unwrap();
         let option_key = caps.get(1).unwrap().as_str();
-        let option_value = caps.get(2);
-        /* parse traffic value, and log a useful error if the value does not match the expected pattern */
+        let option_value = caps.get(2).map_or("", |m| m.as_str());
+        
         match option_key {
             "TRAFFIC" => { 
                 //println!("Processing traffic {}", option_value);
                 /*traffic_freq = 
                     option_value.map_or(None, 
                         |freq| Some((f64::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64));*/
-                traffic_freq = option_value.parse::<f64>().ok();
-                if traffic_freq.is_none() {
+                //traffic_freq = option_value.filter_map(|s| s.parse::<f64>().ok()).collect::<Vec<_>>();
+                let traffic_freq_hz = option_value.parse::<f64>().ok();
+                if traffic_freq_hz.is_none() {
                     log::warn!("Unable to extract ATIS station traffic frequency from {}", option_value);//option_value.unwrap().as_str());
                 }else{
-                    traffic_freq = (traffic_freq.unwrap()*1_000_000.0) as u64;
+                    traffic_freq = Some((traffic_freq_hz.unwrap()*1_000_000.0) as u64);
                 }
             }
             "VOICE" => {
@@ -365,7 +368,7 @@ mod test {
                 info_ltr_override: None,
             })
         );
-/*
+
         // Test handling invalid key
         assert_eq!(
             extract_atis_station_config("ATIS Kutaisi 131.400, GRAVITY 7"),
@@ -376,7 +379,7 @@ mod test {
                 tts: None,
                 info_ltr_override: None,
             })
-        );*/
+        );
     }
 
     #[test]
