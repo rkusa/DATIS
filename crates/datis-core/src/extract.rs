@@ -67,8 +67,6 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
     let mut tts = None;
     let mut info_ltr_override = None;
 
-    // Or, this does make a good case for nom: https://stevedonovan.github.io/rust-gentle-intro/nom-intro.html
-
     let rex_option = RegexBuilder::new(
         r"([^ ]*) (.*)",
     )
@@ -89,10 +87,12 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                 }
             }
             "VOICE" => {
+                // TODO: Log an error if this failes, same as the TRAFFIC option
                 tts = caps.get(2).map_or(None, 
                          |s| TextToSpeechProvider::from_str(s.as_str()).ok());
             }
             "INFO" => { 
+                // TODO: Log an error if this failes, same as the TRAFFIC option
                 info_ltr_override = caps.get(2).map_or(None, 
                     |param| (Some(param.as_str().chars().next().unwrap().to_ascii_uppercase())));
             }
