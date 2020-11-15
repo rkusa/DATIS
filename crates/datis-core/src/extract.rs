@@ -147,7 +147,7 @@ pub struct BroadcastConfig {
 
 pub fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> {
     let re = RegexBuilder::new(
-        r"^BROADCAST ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?VOICE ([a-zA-Z-:]+))?:[ ]*(.+)$",
+        r"^BROADCAST ([1-3]\d{2}(\.\d{1,3})?)(.*): ([^:]+)$",
     )
     .case_insensitive(true)
     .build()
