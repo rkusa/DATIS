@@ -152,19 +152,52 @@ pub fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> 
     .case_insensitive(true)
     .build()
     .unwrap();
-    re.captures(config).map(|caps| {
-        let freq = caps.get(1).unwrap().as_str();
-        let freq = (f32::from_str(freq).unwrap() * 1_000_000.0) as u64;
-        let tts = caps
-            .get(4)
-            .and_then(|s| TextToSpeechProvider::from_str(s.as_str()).ok());
-        let message = caps.get(5).unwrap().as_str();
-        BroadcastConfig {
-            freq,
-            message: message.to_string(),
-            tts,
+
+    let caps = re.captures(config).unwrap();
+    let freq = caps.get(1).unwrap();
+    let options = caps.get(3);
+    let freq = (f64::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64;
+    let message = caps.get(4).unwrap().as_str().to_string();
+
+    let mut tts: Option<TextToSpeechProvider> = None;
+
+    if options.is_some()
+    {
+        println!("Considering broadcast option {:?} ", options.unwrap().as_str());
+        let rex_option = RegexBuilder::new(
+            r"([^ ]*) (.*)",
+        )
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+
+        for token in options.unwrap().as_str().split(",").skip(1){
+            let caps = rex_option.captures(token.trim()).unwrap();
+            let option_key = caps.get(1).unwrap().as_str();
+            let option_value = caps.get(2).map_or("", |m| m.as_str());
+            
+            match option_key {
+                "VOICE" => {
+                    if let Some(tts_provider) = TextToSpeechProvider::from_str(option_value).ok() {
+                        tts = Some(tts_provider);
+                    }else{
+                        log::warn!("Unable to extract Voice from {}", option_value);
+                    }
+                }
+                _ => { 
+                    log::warn!("Unsupported BROADCAST station option {}", option_key);
+                }
+            }
         }
-    })
+    }
+
+    let result = BroadcastConfig {
+        freq,
+        message,
+        tts,
+    };
+
+    Some(result)
 }
 
 #[derive(Debug, PartialEq)]
@@ -475,9 +508,9 @@ mod test {
         );
 
         assert_eq!(
-            extract_custom_broadcast_config("BROADCAST 251.000, VOICE AWS:Brian: Bla bla"),
+            extract_custom_broadcast_config("BROADCAST 251.500, VOICE AWS:Brian: Bla bla"),
             Some(BroadcastConfig {
-                freq: 251_000_000,
+                freq: 251_500_000,
                 message: "Bla bla".to_string(),
                 tts: Some(TextToSpeechProvider::AmazonWebServices {
                     voice: aws::VoiceKind::Brian
