@@ -64,7 +64,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
     let atis_freq = (f64::from_str(atis_freq.as_str()).unwrap() * 1_000_000.0) as u64;
 
     let mut traffic_freq: Option<u64> = None;
-    let mut tts = None;
+    let mut tts: Option<TextToSpeechProvider> = None;
     let mut info_ltr_override = None;
 
     let rex_option = RegexBuilder::new(
@@ -87,12 +87,13 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                 }
             }
             "VOICE" => {
-                // TODO: Log an error if this failes, same as the TRAFFIC option
-                tts = caps.get(2).map_or(None, 
-                         |s| TextToSpeechProvider::from_str(s.as_str()).ok());
+                if let Some(tts_provider) = TextToSpeechProvider::from_str(option_value).ok() {
+                    tts = Some(tts_provider);
+                }else{
+                    log::warn!("Unable to extract Voice from {}", option_value);
+                }
             }
-            "INFO" => { 
-                // TODO: Log an error if this failes, same as the TRAFFIC option
+            "INFO" => {
                 info_ltr_override = caps.get(2).map_or(None, 
                     |param| (Some(param.as_str().chars().next().unwrap().to_ascii_uppercase())));
             }
