@@ -51,12 +51,10 @@ pub fn extract_atis_station_frequencies(situation: &str) -> HashMap<String, Stat
 }
 
 pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
-    let re = RegexBuilder::new(
-        r"^ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)",
-    )
-    .case_insensitive(true)
-    .build()
-    .unwrap();
+    let re = RegexBuilder::new(r"^ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
 
     let caps = re.captures(config).unwrap();
     let name = caps.get(1).unwrap().as_str().to_string();
@@ -67,40 +65,42 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
     let mut tts: Option<TextToSpeechProvider> = None;
     let mut info_ltr_override = None;
 
-    let rex_option = RegexBuilder::new(
-        r"([^ ]*) (.*)",
-    )
-    .case_insensitive(true)
-    .build()
-    .unwrap();
-    for token in config.split(",").skip(1){
+    let rex_option = RegexBuilder::new(r"([^ ]*) (.*)")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+    for token in config.split(",").skip(1) {
         let caps = rex_option.captures(token.trim()).unwrap();
         let option_key = caps.get(1).unwrap().as_str();
         let option_value = caps.get(2).map_or("", |m| m.as_str());
-        
+
         match option_key {
-            "TRAFFIC" => { 
+            "TRAFFIC" => {
                 if let Some(traffic_freq_hz) = option_value.parse::<f64>().ok() {
-                    traffic_freq = Some((traffic_freq_hz*1_000_000.0) as u64);
-                }else{
-                    log::warn!("Unable to extract ATIS station traffic frequency from {}", option_value);
+                    traffic_freq = Some((traffic_freq_hz * 1_000_000.0) as u64);
+                } else {
+                    log::warn!(
+                        "Unable to extract ATIS station traffic frequency from {}",
+                        option_value
+                    );
                 }
             }
             "VOICE" => {
                 if let Some(tts_provider) = TextToSpeechProvider::from_str(option_value).ok() {
                     tts = Some(tts_provider);
-                }else{
+                } else {
                     log::warn!("Unable to extract Voice from {}", option_value);
                 }
             }
             "INFO" => {
-                info_ltr_override = caps.get(2).map_or(None, 
-                    |param| (Some(param.as_str().chars().next().unwrap().to_ascii_uppercase())));
+                info_ltr_override = caps.get(2).map_or(None, |param| {
+                    (Some(param.as_str().chars().next().unwrap().to_ascii_uppercase()))
+                });
             }
-            _ => { 
+            _ => {
                 log::warn!("Unsupported ATIS station option {}", option_key);
             }
-          }
+        }
     }
 
     let result = StationConfig {
@@ -115,12 +115,10 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
 }
 
 pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
-    let re = RegexBuilder::new(
-        r"^CARRIER ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)",
-    )
-    .case_insensitive(true)
-    .build()
-    .unwrap();
+    let re = RegexBuilder::new(r"^CARRIER ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
 
     let caps = re.captures(config).unwrap();
     let name = caps.get(1).unwrap().as_str().to_string();
@@ -130,33 +128,32 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
     let mut tts: Option<TextToSpeechProvider> = None;
     let mut info_ltr_override = None;
 
-    let rex_option = RegexBuilder::new(
-        r"([^ ]*) (.*)",
-    )
-    .case_insensitive(true)
-    .build()
-    .unwrap();
-    for token in config.split(",").skip(1){
+    let rex_option = RegexBuilder::new(r"([^ ]*) (.*)")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+    for token in config.split(",").skip(1) {
         let caps = rex_option.captures(token.trim()).unwrap();
         let option_key = caps.get(1).unwrap().as_str();
         let option_value = caps.get(2).map_or("", |m| m.as_str());
-        
+
         match option_key {
             "VOICE" => {
                 if let Some(tts_provider) = TextToSpeechProvider::from_str(option_value).ok() {
                     tts = Some(tts_provider);
-                }else{
+                } else {
                     log::warn!("Unable to extract Voice from {}", option_value);
                 }
             }
             "INFO" => {
-                info_ltr_override = caps.get(2).map_or(None, 
-                    |param| (Some(param.as_str().chars().next().unwrap().to_ascii_uppercase())));
+                info_ltr_override = caps.get(2).map_or(None, |param| {
+                    (Some(param.as_str().chars().next().unwrap().to_ascii_uppercase()))
+                });
             }
-            _ => { 
+            _ => {
                 log::warn!("Unsupported CARRIER station option {}", option_key);
             }
-          }
+        }
     }
 
     let result = StationConfig {
@@ -178,12 +175,10 @@ pub struct BroadcastConfig {
 }
 
 pub fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> {
-    let re = RegexBuilder::new(
-        r"^BROADCAST ([1-3]\d{2}(\.\d{1,3})?)(.*): ([^:]+)$",
-    )
-    .case_insensitive(true)
-    .build()
-    .unwrap();
+    let re = RegexBuilder::new(r"^BROADCAST ([1-3]\d{2}(\.\d{1,3})?)(.*): ([^:]+)$")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
 
     let caps = re.captures(config).unwrap();
     let freq = caps.get(1).unwrap();
@@ -192,40 +187,33 @@ pub fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> 
     let message = caps.get(4).unwrap().as_str().to_string();
 
     let mut tts: Option<TextToSpeechProvider> = None;
-    if options.is_some()
-    {
-        let rex_option = RegexBuilder::new(
-            r"([^ ]*) (.*)",
-        )
-        .case_insensitive(true)
-        .build()
-        .unwrap();
+    if options.is_some() {
+        let rex_option = RegexBuilder::new(r"([^ ]*) (.*)")
+            .case_insensitive(true)
+            .build()
+            .unwrap();
 
-        for token in options.unwrap().as_str().split(",").skip(1){
+        for token in options.unwrap().as_str().split(",").skip(1) {
             let caps = rex_option.captures(token.trim()).unwrap();
             let option_key = caps.get(1).unwrap().as_str();
             let option_value = caps.get(2).map_or("", |m| m.as_str());
-            
+
             match option_key {
                 "VOICE" => {
                     if let Some(tts_provider) = TextToSpeechProvider::from_str(option_value).ok() {
                         tts = Some(tts_provider);
-                    }else{
+                    } else {
                         log::warn!("Unable to extract Voice from {}", option_value);
                     }
                 }
-                _ => { 
+                _ => {
                     log::warn!("Unsupported BROADCAST station option {}", option_key);
                 }
             }
         }
     }
 
-    let result = BroadcastConfig {
-        freq,
-        message,
-        tts,
-    };
+    let result = BroadcastConfig { freq, message, tts };
 
     Some(result)
 }
@@ -238,12 +226,10 @@ pub struct WetherStationConfig {
 }
 
 pub fn extract_weather_station_config(config: &str) -> Option<WetherStationConfig> {
-    let re = RegexBuilder::new(
-        r"^WEATHER ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)",
-    )
-    .case_insensitive(true)
-    .build()
-    .unwrap();
+    let re = RegexBuilder::new(r"^WEATHER ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
 
     let caps = re.captures(config).unwrap();
     let name = caps.get(1).unwrap().as_str().to_string();
@@ -251,36 +237,34 @@ pub fn extract_weather_station_config(config: &str) -> Option<WetherStationConfi
     let station_freq = (f64::from_str(station_freq.as_str()).unwrap() * 1_000_000.0) as u64;
 
     let mut tts: Option<TextToSpeechProvider> = None;
-    
-    let rex_option = RegexBuilder::new(
-        r"([^ ]*) (.*)",
-    )
-    .case_insensitive(true)
-    .build()
-    .unwrap();
-    for token in config.split(",").skip(1){
+
+    let rex_option = RegexBuilder::new(r"([^ ]*) (.*)")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+    for token in config.split(",").skip(1) {
         let caps = rex_option.captures(token.trim()).unwrap();
         let option_key = caps.get(1).unwrap().as_str();
         let option_value = caps.get(2).map_or("", |m| m.as_str());
-        
+
         match option_key {
             "VOICE" => {
                 if let Some(tts_provider) = TextToSpeechProvider::from_str(option_value).ok() {
                     tts = Some(tts_provider);
-                }else{
+                } else {
                     log::warn!("Unable to extract Voice from {}", option_value);
                 }
             }
-            _ => { 
+            _ => {
                 log::warn!("Unsupported WEATHER station option {}", option_key);
             }
-          }
+        }
     }
 
     let result = WetherStationConfig {
         name: name,
         freq: station_freq,
-        tts
+        tts,
     };
 
     Some(result)
