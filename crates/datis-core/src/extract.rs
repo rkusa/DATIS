@@ -192,10 +192,8 @@ pub fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> 
     let message = caps.get(4).unwrap().as_str().to_string();
 
     let mut tts: Option<TextToSpeechProvider> = None;
-
     if options.is_some()
     {
-        println!("Considering broadcast option {:?} ", options.unwrap().as_str());
         let rex_option = RegexBuilder::new(
             r"([^ ]*) (.*)",
         )
