@@ -116,26 +116,58 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
 
 pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
     let re = RegexBuilder::new(
-        r"^CARRIER ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,[ ]?VOICE ([a-zA-Z-:]+))?$",
+        r"^CARRIER ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)",
     )
     .case_insensitive(true)
     .build()
     .unwrap();
-    re.captures(config).map(|caps| {
-        let name = caps.get(1).unwrap().as_str();
-        let atis_freq = caps.get(2).unwrap().as_str();
-        let atis_freq = (f64::from_str(atis_freq).unwrap() * 1_000_000.0) as u64;
-        let tts = caps
-            .get(5)
-            .and_then(|s| TextToSpeechProvider::from_str(s.as_str()).ok());
-        StationConfig {
-            name: name.to_string(),
-            atis: atis_freq,
-            traffic: None,
-            tts,
-            info_ltr_override: None,
-        }
-    })
+
+    let caps = re.captures(config).unwrap();
+    let name = caps.get(1).unwrap().as_str().to_string();
+    let atis_freq = caps.get(2).unwrap();
+    let atis_freq = (f64::from_str(atis_freq.as_str()).unwrap() * 1_000_000.0) as u64;
+
+    let mut tts: Option<TextToSpeechProvider> = None;
+    let mut info_ltr_override = None;
+
+    let rex_option = RegexBuilder::new(
+        r"([^ ]*) (.*)",
+    )
+    .case_insensitive(true)
+    .build()
+    .unwrap();
+    for token in config.split(",").skip(1){
+        let caps = rex_option.captures(token.trim()).unwrap();
+        let option_key = caps.get(1).unwrap().as_str();
+        let option_value = caps.get(2).map_or("", |m| m.as_str());
+        
+        match option_key {
+            "VOICE" => {
+                if let Some(tts_provider) = TextToSpeechProvider::from_str(option_value).ok() {
+                    tts = Some(tts_provider);
+                }else{
+                    log::warn!("Unable to extract Voice from {}", option_value);
+                }
+            }
+            "INFO" => {
+                info_ltr_override = caps.get(2).map_or(None, 
+                    |param| (Some(param.as_str().chars().next().unwrap().to_ascii_uppercase())));
+            }
+            _ => { 
+                log::warn!("Unsupported CARRIER station option {}", option_key);
+            }
+          }
+    }
+
+    let result = StationConfig {
+        name: name,
+        atis: atis_freq,
+        traffic: None,
+        tts,
+        info_ltr_override: info_ltr_override,
+    };
+
+    Some(result)
 }
 
 #[derive(Debug, PartialEq)]
