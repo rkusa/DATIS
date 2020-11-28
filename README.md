@@ -105,7 +105,7 @@ For Window's built-in TTS prefix it with `WIN:`, for GCloud with `GC:` and for A
 
 Available voices are:
 
-- Windows: `WIN` or `WIN:voice` (Where voice depends on the installed voices on your system. Tip: if you don't know which voices are installed, set anything, start your mission and look into the DATIS looks to see a list of available voices)
+- Windows: `WIN` or `WIN:voice` (Where voice depends on the installed voices on your system. Tip: if you don't know which voices are installed, set anything, start your mission and look into the DATIS logs to see a list of available voices)
 - GCloud: `en-US-Standard-B`, `en-US-Standard-C`, `en-US-Standard-D`, `en-US-Standard-E`, `en-US-Wavenet-A`, `en-US-Wavenet-B`, `en-US-Wavenet-C`, `en-US-Wavenet-D`, `en-US-Wavenet-E`, `en-US-Wavenet-F`
   - _(a bit down [on this page](https://cloud.google.com/text-to-speech/) is a widget where the different voices can easily be tested)_
   - Keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota (see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing))
@@ -113,7 +113,7 @@ Available voices are:
 
 The default can be changed in the DCS SPECIAL settings for DATIS.
 
-`OVERRIDE INFO LETTER` Allows you to override the dynamic rotating selection of the ATIS information letter in your mission requires a specific and constant value.
+`OVERRIDE INFO LETTER` Allows you to override the dynamic rotating selection of the ATIS information letter if your mission requires a specific and constant value.
 
 Examples:
 
