@@ -56,7 +56,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
         .build()
         .unwrap();
 
-    let caps = re.captures(config).unwrap();
+    let caps = re.captures(config)?;
     let name = caps.get(1).unwrap().as_str().to_string();
     let atis_freq = caps.get(2).unwrap();
     let atis_freq = (f64::from_str(atis_freq.as_str()).unwrap() * 1_000_000.0) as u64;
@@ -120,7 +120,7 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
         .build()
         .unwrap();
 
-    let caps = re.captures(config).unwrap();
+    let caps = re.captures(config)?;
     let name = caps.get(1).unwrap().as_str().to_string();
     let atis_freq = caps.get(2).unwrap();
     let atis_freq = (f64::from_str(atis_freq.as_str()).unwrap() * 1_000_000.0) as u64;
@@ -180,7 +180,7 @@ pub fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> 
         .build()
         .unwrap();
 
-    let caps = re.captures(config).unwrap();
+    let caps = re.captures(config)?;
     let freq = caps.get(1).unwrap();
     let options = caps.get(3);
     let freq = (f64::from_str(freq.as_str()).unwrap() * 1_000_000.0) as u64;
@@ -231,7 +231,7 @@ pub fn extract_weather_station_config(config: &str) -> Option<WetherStationConfi
         .build()
         .unwrap();
 
-    let caps = re.captures(config).unwrap();
+    let caps = re.captures(config)?;
     let name = caps.get(1).unwrap().as_str().to_string();
     let station_freq = caps.get(2).unwrap();
     let station_freq = (f64::from_str(station_freq.as_str()).unwrap() * 1_000_000.0) as u64;
@@ -534,6 +534,29 @@ mod test {
                 }),
                 info_ltr_override: None,
             })
+        );
+    }
+
+    #[test]
+    fn test_complete_garbge() {
+        assert_eq!(
+            extract_atis_station_config("not an atis station at all"),
+            None
+        );
+
+        assert_eq!(
+            extract_carrier_station_config("not a carrer station at all"),
+            None
+        );
+
+        assert_eq!(
+            extract_custom_broadcast_config("not a custom broadcast at all"),
+            None
+        );
+
+        assert_eq!(
+            extract_weather_station_config("not a weather station at all"),
+            None
         );
     }
 
