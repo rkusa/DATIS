@@ -94,7 +94,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
             }
             "INFO" => {
                 info_ltr_override = caps.get(2).map_or(None, |param| {
-                    (Some(param.as_str().chars().next().unwrap().to_ascii_uppercase()))
+                    Some(param.as_str().chars().next().unwrap().to_ascii_uppercase())
                 });
             }
             _ => {
@@ -147,7 +147,7 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
             }
             "INFO" => {
                 info_ltr_override = caps.get(2).map_or(None, |param| {
-                    (Some(param.as_str().chars().next().unwrap().to_ascii_uppercase()))
+                    Some(param.as_str().chars().next().unwrap().to_ascii_uppercase())
                 });
             }
             _ => {
