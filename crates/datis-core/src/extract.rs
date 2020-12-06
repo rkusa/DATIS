@@ -76,7 +76,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
 
         match option_key {
             "TRAFFIC" => {
-                if let Some(traffic_freq_hz) = option_value.parse::<f64>().ok() {
+                if let Ok(traffic_freq_hz) = option_value.parse::<f64>() {
                     traffic_freq = Some((traffic_freq_hz * 1_000_000.0) as u64);
                 } else {
                     log::warn!(
@@ -86,7 +86,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                 }
             }
             "VOICE" => {
-                if let Some(tts_provider) = TextToSpeechProvider::from_str(option_value).ok() {
+                if let Ok(tts_provider) = TextToSpeechProvider::from_str(option_value) {
                     tts = Some(tts_provider);
                 } else {
                     log::warn!("Unable to extract Voice from {}", option_value);
@@ -139,7 +139,7 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
 
         match option_key {
             "VOICE" => {
-                if let Some(tts_provider) = TextToSpeechProvider::from_str(option_value).ok() {
+                if let Ok(tts_provider) = TextToSpeechProvider::from_str(option_value) {
                     tts = Some(tts_provider);
                 } else {
                     log::warn!("Unable to extract Voice from {}", option_value);
@@ -200,7 +200,7 @@ pub fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> 
 
             match option_key {
                 "VOICE" => {
-                    if let Some(tts_provider) = TextToSpeechProvider::from_str(option_value).ok() {
+                    if let Ok(tts_provider) = TextToSpeechProvider::from_str(option_value) {
                         tts = Some(tts_provider);
                     } else {
                         log::warn!("Unable to extract Voice from {}", option_value);
@@ -249,7 +249,7 @@ pub fn extract_weather_station_config(config: &str) -> Option<WetherStationConfi
 
         match option_key {
             "VOICE" => {
-                if let Some(tts_provider) = TextToSpeechProvider::from_str(option_value).ok() {
+                if let Ok(tts_provider) = TextToSpeechProvider::from_str(option_value) {
                     tts = Some(tts_provider);
                 } else {
                     log::warn!("Unable to extract Voice from {}", option_value);
