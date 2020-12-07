@@ -128,14 +128,11 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
     let mut tts: Option<TextToSpeechProvider> = None;
     let mut info_ltr_override = None;
 
-    let rex_option = RegexBuilder::new(r"([^ ]*) (.*)")
-        .case_insensitive(true)
-        .build()
-        .unwrap();
     for token in config.split(",").skip(1) {
-        let caps = rex_option.captures(token.trim()).unwrap();
-        let option_key = caps.get(1).unwrap().as_str();
-        let option_value = caps.get(2).map_or("", |m| m.as_str());
+        let token = token.trim();
+        let (option_key, option_value) = token.split_at(token.find(' ').unwrap_or(token.len()));
+        let option_key = option_key.trim();
+        let option_value = option_value.trim();
 
         match option_key {
             "VOICE" => {
@@ -188,15 +185,11 @@ pub fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> 
 
     let mut tts: Option<TextToSpeechProvider> = None;
     if options.is_some() {
-        let rex_option = RegexBuilder::new(r"([^ ]*) (.*)")
-            .case_insensitive(true)
-            .build()
-            .unwrap();
-
         for token in options.unwrap().as_str().split(",").skip(1) {
-            let caps = rex_option.captures(token.trim()).unwrap();
-            let option_key = caps.get(1).unwrap().as_str();
-            let option_value = caps.get(2).map_or("", |m| m.as_str());
+            let token = token.trim();
+            let (option_key, option_value) = token.split_at(token.find(' ').unwrap_or(token.len()));
+            let option_key = option_key.trim();
+            let option_value = option_value.trim();
 
             match option_key {
                 "VOICE" => {
@@ -238,14 +231,11 @@ pub fn extract_weather_station_config(config: &str) -> Option<WetherStationConfi
 
     let mut tts: Option<TextToSpeechProvider> = None;
 
-    let rex_option = RegexBuilder::new(r"([^ ]*) (.*)")
-        .case_insensitive(true)
-        .build()
-        .unwrap();
     for token in config.split(",").skip(1) {
-        let caps = rex_option.captures(token.trim()).unwrap();
-        let option_key = caps.get(1).unwrap().as_str();
-        let option_value = caps.get(2).map_or("", |m| m.as_str());
+        let token = token.trim();
+        let (option_key, option_value) = token.split_at(token.find(' ').unwrap_or(token.len()));
+        let option_key = option_key.trim();
+        let option_value = option_value.trim();
 
         match option_key {
             "VOICE" => {
