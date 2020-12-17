@@ -87,6 +87,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             traffic_freq: None,
             info_ltr_offset: 0,
             info_ltr_override: None,
+            active_rwy_override: None
         }),
     };
     let mut datis = Datis::new(vec![station])?;

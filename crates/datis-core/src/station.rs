@@ -29,6 +29,7 @@ pub struct Airfield {
     pub traffic_freq: Option<u64>,
     pub info_ltr_offset: usize,
     pub info_ltr_override: Option<char>,
+    pub active_rwy_override: Option<String>
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -258,7 +259,11 @@ impl Airfield {
             self.name, information_letter, _break
         );
 
-        if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
+        if let Some(rwy) = &self.active_rwy_override {
+            let rwy = pronounce_number(rwy, spoken);
+            report += &format!("Runway in use is {}. {}", rwy, _break);
+        }
+        else if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
             let rwy = pronounce_number(rwy, spoken);
             report += &format!("Runway in use is {}. {}", rwy, _break);
         } else {
@@ -594,6 +599,7 @@ mod test {
             traffic_freq: None,
             info_ltr_offset: 0,
             info_ltr_override: None,
+            active_rwy_override: None,
         };
 
         assert_eq!(airfield.get_active_runway(0.0), Some("04"));
@@ -619,6 +625,7 @@ mod test {
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 0,
                 info_ltr_override: None,
+                active_rwy_override: None,
             }),
         };
 
@@ -640,6 +647,7 @@ mod test {
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 15, // Should be "Papa"
                 info_ltr_override: None,
+                active_rwy_override: None,
             }),
         };
 
@@ -661,6 +669,7 @@ mod test {
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 15,
                 info_ltr_override: Some('Q'),
+                active_rwy_override: None,
             }),
         };
 
@@ -768,7 +777,7 @@ mod test {
                 unit_id: 42,
                 unit_name: "Weather Post".to_string(),
                 info_ltr_offset: 15, // Should be "Papa",
-                info_ltr_override: None,
+                info_ltr_override: None
             }),
         };
 
