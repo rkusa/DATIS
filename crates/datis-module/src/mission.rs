@@ -72,6 +72,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                     traffic_freq: None,
                     info_ltr_offset: rng.gen_range(0, 25),
                     info_ltr_override: None,
+                    active_rwy_override: None,
                 },
             );
         }
@@ -237,6 +238,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
             airfields.remove(&config.name).map(|mut airfield| {
                 airfield.traffic_freq = config.traffic;
                 airfield.info_ltr_override = config.info_ltr_override;
+                airfield.active_rwy_override = conbfig.active_rwy_override;
                 airfield.position.x = mission_unit.x;
                 airfield.position.y = mission_unit.y;
                 airfield.position.alt = mission_unit.alt;
@@ -359,6 +361,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                     unit_name: mission_unit.name.clone(),
                     info_ltr_offset: rng.gen_range(0, 25),
                     info_ltr_override: None,
+                    active_rwy_override: None,
                 }),
                 rpc: Some(rpc.clone()),
             })
