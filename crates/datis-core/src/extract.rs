@@ -31,7 +31,7 @@ pub fn extract_atis_station_frequencies(situation: &str) -> HashMap<String, Stat
                     traffic: None,
                     tts: None,
                     info_ltr_override: None,
-                    active_rwy_override: None
+                    active_rwy_override: None,
                 },
             )
         })
@@ -101,9 +101,9 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                 });
             }
             "ACTIVE" => {
-                active_rwy_override = caps.get(2).map_or(None, |param| {
-                    Some(param.as_str().into())
-                });
+                active_rwy_override = caps
+                    .get(2)
+                    .map_or(None, |param| Some(param.as_str().into()));
             }
             _ => {
                 log::warn!("Unsupported ATIS station option {}", option_key);
