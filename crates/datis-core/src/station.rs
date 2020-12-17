@@ -216,6 +216,10 @@ impl Station {
 
 impl Airfield {
     fn get_active_runway(&self, wind_dir: f64) -> Option<&str> {
+        if let Some(rwy_override) = &self.active_rwy_override {
+            return Some(rwy_override);
+        }
+
         let lr: &[_] = &['L', 'R'];
         for rwy in &self.runways {
             let rwy = rwy.trim_matches(lr);
@@ -259,11 +263,7 @@ impl Airfield {
             self.name, information_letter, _break
         );
 
-        if let Some(rwy) = &self.active_rwy_override {
-            let rwy = pronounce_number(rwy, spoken);
-            report += &format!("Runway in use is {}. {}", rwy, _break);
-        }
-        else if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
+        if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
             let rwy = pronounce_number(rwy, spoken);
             report += &format!("Runway in use is {}. {}", rwy, _break);
         } else {
