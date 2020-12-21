@@ -17,7 +17,7 @@ pub struct StationConfig {
 pub fn extract_stationc_config_from_mission_description(situation: &str) -> HashMap<String, StationConfig> {
     // extract ATIS stations from mission description
     let re = Regex::new(r"(ATIS .*)").unwrap();
-    let stations: HashMap<String, StationConfig> = re
+    let mut stations: HashMap<String, StationConfig> = re
         .captures_iter(situation)
         .map(|caps| {
             let atis_line = caps.get(1).unwrap().as_str();
@@ -32,7 +32,18 @@ pub fn extract_stationc_config_from_mission_description(situation: &str) -> Hash
         ))
         .collect();
 
-        // Ok, this "works", but missed that it needs to combine multiple lines. i.e the TRAFFIC Batumi... part into the SAME station.. Hmmmm
+        // Some "legacy" functionality which allowed specifyin TRAFFIC options on separate lines
+        // extract optional traffic frequencies
+        let re = Regex::new(r"TRAFFIC ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
+        for caps in re.captures_iter(situation) {
+            let name = caps.get(1).unwrap().as_str();
+            let freq = caps.get(2).unwrap().as_str();
+            let freq = (f32::from_str(freq).unwrap() * 1_000_000.0) as u64;
+
+            if let Some(freqs) = stations.get_mut(name) {
+                freqs.traffic = Some(freq);
+            }
+        }
 
     stations
 }
