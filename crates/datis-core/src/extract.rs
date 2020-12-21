@@ -14,7 +14,9 @@ pub struct StationConfig {
     pub active_rwy_override: Option<String>,
 }
 
-pub fn extract_stationc_config_from_mission_description(situation: &str) -> HashMap<String, StationConfig> {
+pub fn extract_stationc_config_from_mission_description(
+    situation: &str,
+) -> HashMap<String, StationConfig> {
     // extract ATIS stations from mission description
     let re = Regex::new(r"(ATIS .*)").unwrap();
     let mut stations: HashMap<String, StationConfig> = re
@@ -25,25 +27,21 @@ pub fn extract_stationc_config_from_mission_description(situation: &str) -> Hash
             station
         })
         .flatten()
-        .map(|station|
-        (
-            station.name.clone(),
-            station,
-        ))
+        .map(|station| (station.name.clone(), station))
         .collect();
 
-        // Some "legacy" functionality which allowed specifyin TRAFFIC options on separate lines
-        // extract optional traffic frequencies
-        let re = Regex::new(r"TRAFFIC ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
-        for caps in re.captures_iter(situation) {
-            let name = caps.get(1).unwrap().as_str();
-            let freq = caps.get(2).unwrap().as_str();
-            let freq = (f32::from_str(freq).unwrap() * 1_000_000.0) as u64;
+    // Some "legacy" functionality which allowed specifyin TRAFFIC options on separate lines
+    // extract optional traffic frequencies
+    let re = Regex::new(r"TRAFFIC ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
+    for caps in re.captures_iter(situation) {
+        let name = caps.get(1).unwrap().as_str();
+        let freq = caps.get(2).unwrap().as_str();
+        let freq = (f32::from_str(freq).unwrap() * 1_000_000.0) as u64;
 
-            if let Some(freqs) = stations.get_mut(name) {
-                freqs.traffic = Some(freq);
-            }
+        if let Some(freqs) = stations.get_mut(name) {
+            freqs.traffic = Some(freq);
         }
+    }
 
     stations
 }
