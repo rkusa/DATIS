@@ -324,6 +324,35 @@ mod test {
     }
 
     #[test]
+    fn test_advanced_mission_descriptiopn_extraction() {
+        let freqs = extract_stationc_config_from_mission_description(
+            r#"Welcome to my mission!
+            It's not a real mission, but rather a chance to test the mission extraction
+            logic in datis!
+
+            ATIS Batumi 131.5, INFO T, ACTIVE 12
+        "#,
+        );
+
+        assert_eq!(
+            freqs,
+            vec![(
+                "Batumi".to_string(),
+                StationConfig {
+                    name: "Batumi".to_string(),
+                    atis: 131_500_000,
+                    traffic: None,
+                    tts: None,
+                    info_ltr_override: Some('T'),
+                    active_rwy_override: Some("12".to_string()),
+                }
+            )]
+            .into_iter()
+            .collect()
+        );
+    }
+
+    #[test]
     fn test_atis_config_extraction() {
         assert_eq!(
             extract_atis_station_config("ATIS Kutaisi 251"),
