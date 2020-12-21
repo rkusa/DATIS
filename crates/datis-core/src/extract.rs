@@ -553,7 +553,7 @@ mod test {
     }
 
     #[test]
-    fn test_complete_garbge() {
+    fn test_complete_garbage() {
         assert_eq!(
             extract_atis_station_config("not an atis station at all"),
             None
