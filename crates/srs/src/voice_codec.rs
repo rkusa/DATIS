@@ -162,8 +162,41 @@ impl Encoder<Packet> for VoiceCodec {
             Packet::Voice(packet) => packet,
         };
 
+        // Packet format as specified in
+        // https://github.com/ciribob/DCS-SimpleRadioStandalone/blob/1.9.3.0/DCS-SR-Common/Network/UDPVoicePacket.cs#L9
+        /*
+        * UDP PACKET LAYOUT
+        *
+        * - HEADER SEGMENT
+        * UInt16 Packet Length - 2 bytes
+        * UInt16 AudioPart1 Length - 2 bytes
+        * UInt16 FrequencyPart Length - 2 bytes
+        * - AUDIO SEGMENT
+        * Bytes AudioPart1 - variable bytes
+        * - FREQUENCY SEGMENT (one or multiple)
+        * double Frequency - 8 bytes
+        * byte Modulation - 1 byte
+        * byte Encryption - 1 byte
+        * - FIXED SEGMENT
+        * UInt UnitId - 4 bytes
+        * UInt64 PacketId - 8 bytes
+        * byte Retransmit / node / hop count - 1 byte
+        * Bytes / ASCII String TRANSMISSION GUID - 22 bytes used for transmission relay
+        * Bytes / ASCII String CLIENT GUID - 22 bytes
+        */
+
+        // NOTE: the final packet will start with the total packet length, but this will be added
+        // by the inner fixed codec
+        let header_length = 2 + 2;
+        let frequency_length = 8 + 1 + 1;
+        let audio_length = packet.audio_part.len();
+        let fixed_segment_length = 4 + 8 + 1 + 22 + 22;
+
         let capacity =
-            4 + packet.audio_part.len() + packet.frequencies.len() * 10 + 4 + 8 + 1 + 22 + 22;
+            header_length +
+            audio_length +
+            frequency_length * packet.frequencies.len()
+            + fixed_segment_length;
         let mut wd = Cursor::new(Vec::with_capacity(capacity));
 
         // header segment will be written at the end
