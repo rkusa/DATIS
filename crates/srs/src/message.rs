@@ -232,7 +232,7 @@ pub struct Message {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct GameMessage {
-    pub control: i32,
+    pub control: Option<i32>,
     pub name: String,
     pub lat_lng: LatLngPosition,
     pub ptt: bool,
