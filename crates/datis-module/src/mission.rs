@@ -237,7 +237,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
         })
         .collect();
 
-    // check all units if they represent and ATIS station and if so, combine them with
+    // check all units if they represent an ATIS station and if so, combine them with
     // their corresponding airfield
     stations.extend(mission_units.iter().filter_map(|mission_unit| {
         extract_atis_station_config(&mission_unit.name).and_then(|config| {
