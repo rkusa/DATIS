@@ -220,13 +220,19 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
     // corresponding airfield
     let mut stations: Vec<Station> = station_configs_from_description
         .into_iter()
-        .filter_map(|(name, freq)| {
-            airfields.remove(&name).map(|airfield| Station {
-                name,
-                freq: freq.atis,
-                tts: default_voice.clone(),
-                transmitter: Transmitter::Airfield(airfield),
-                rpc: Some(rpc.clone()),
+        .filter_map(|(name, config)| {
+            airfields.remove(&name).map(|mut airfield| {
+                airfield.traffic_freq = config.traffic;
+                airfield.info_ltr_override = config.info_ltr_override;
+                airfield.active_rwy_override = config.active_rwy_override;
+
+                Station {
+                    name,
+                    freq: config.atis,
+                    tts: default_voice.clone(),
+                    transmitter: Transmitter::Airfield(airfield),
+                    rpc: Some(rpc.clone()),
+                }
             })
         })
         .collect();
