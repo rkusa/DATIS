@@ -25,7 +25,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
 
     // extract frequencies from mission briefing, which is retrieved from
     // `DCS.getMissionDescription()`
-    let stationConfigsFromDescription = {
+    let station_configs_from_description = {
         let dcs: LuaTable<'_> = lua.globals().get("DCS")?;
         let mission_description: String = dcs.call_function("getMissionDescription", ())?;
         extract_stationc_config_from_mission_description(&mission_description)
@@ -218,7 +218,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
 
     // combine the frequencies that have extracted from the mission's situation with their
     // corresponding airfield
-    let mut stations: Vec<Station> = stationConfigsFromDescription
+    let mut stations: Vec<Station> = station_configs_from_description
         .into_iter()
         .filter_map(|(name, freq)| {
             airfields.remove(&name).map(|airfield| Station {
@@ -238,7 +238,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
             airfields.remove(&config.name).map(|mut airfield| {
                 airfield.traffic_freq = config.traffic;
                 airfield.info_ltr_override = config.info_ltr_override;
-                airfield.active_rwy_override = conbfig.active_rwy_override;
+                airfield.active_rwy_override = config.active_rwy_override;
                 airfield.position.x = mission_unit.x;
                 airfield.position.y = mission_unit.y;
                 airfield.position.alt = mission_unit.alt;
@@ -361,7 +361,6 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                     unit_name: mission_unit.name.clone(),
                     info_ltr_offset: rng.gen_range(0, 25),
                     info_ltr_override: None,
-                    active_rwy_override: None,
                 }),
                 rpc: Some(rpc.clone()),
             })
