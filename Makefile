@@ -5,7 +5,7 @@ test:
 	cargo test --workspace --exclude datis
 
 test_debug:
-	cargo test -- --nocapture
+	cargo test --workspace --exclude datis -- --nocapture
 
 release:
 	cargo build --release --package datis
