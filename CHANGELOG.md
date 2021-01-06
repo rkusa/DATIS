@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Added a new option to override the information later that an ATIS station starts with. Thanks a lot [@talbotmcinnis](https://github.com/talbotmcinnis) for the implementation! [#69](https://github.com/rkusa/DATIS/pull/69)
+
+### Changed
+- It is now possible to set station options in any order and you'll now receive a useful error message for most kind of typos in the configuration, instead of that the station does simply not work. Thanks a lot [@talbotmcinnis](https://github.com/talbotmcinnis) for the implementation! [#73](https://github.com/rkusa/DATIS/pull/73)
+
 ## [2.2.0-beta.5] - 2020-11-01
 
 ### Added
