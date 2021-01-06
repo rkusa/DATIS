@@ -30,7 +30,7 @@ use futures::future::FutureExt;
 use futures::select;
 use futures::sink::SinkExt;
 use futures::stream::{SplitSink, StreamExt};
-use srs::{Client, VoiceStream};
+use srs::{Client, VoiceStream, message::Coalition};
 use tokio::runtime::{self, Runtime};
 use tokio::sync::{oneshot, RwLock};
 use tokio::time::delay_for;
@@ -247,7 +247,7 @@ async fn run(
     shutdown_signal: oneshot::Receiver<()>,
 ) -> Result<(), anyhow::Error> {
     let name = format!("ATIS {}", station.name);
-    let mut client = Client::new(&name, station.freq);
+    let mut client = Client::new(&name, station.freq, Coalition::Blue);
     match &station.transmitter {
         #[cfg(feature = "rpc")]
         Transmitter::Airfield(airfield) => {

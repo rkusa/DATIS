@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use crate::client::Client;
 use crate::message::{
-    Client as MsgClient, Coalition, GameMessage, Message, MsgType, Radio, RadioInfo,
+    Client as MsgClient, GameMessage, Message, MsgType, Radio, RadioInfo,
     RadioSwitchControls,
 };
 use crate::messages_codec::{self, MessagesCodec};
@@ -26,6 +26,7 @@ use tokio::time;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio_util::udp::UdpFramed;
 
+use std::default::Default;
 const SRS_VERSION: &str = "1.9.0.0";
 
 pub struct VoiceStream {
@@ -297,13 +298,42 @@ impl Sink<Vec<u8>> for VoiceStream {
     }
 }
 
+impl Sink<VoicePacket> for VoiceStream {
+    type Error = mpsc::SendError;
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_sink).poll_ready(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, mut packet: VoicePacket) -> Result<(), Self::Error> {
+        let mut sguid = [0; 22];
+        sguid.clone_from_slice(self.client.sguid().as_bytes());
+        packet.client_sguid = sguid;
+
+        let s = self.get_mut();
+        s.packet_id = s.packet_id.wrapping_add(1);
+
+        Pin::new(&mut s.voice_sink).start_send(packet.into())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_sink).poll_flush(cx)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_sink).poll_close(cx)
+    }
+}
+
 async fn create_radio_update_message(client: &Client) -> Message {
     let pos = client.position().await;
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(client.name().to_string()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: Some(RadioInfo {
                 name: "DATIS Radios".to_string(),
                 ptt: false,
@@ -332,7 +362,7 @@ async fn create_update_message(client: &Client) -> Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(client.name().to_string()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: None,
             lat_lng_position: Some(pos.clone()),
         }),
@@ -348,7 +378,7 @@ async fn create_sync_message(client: &Client) -> Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(client.name().to_string()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: None,
             lat_lng_position: Some(pos.clone()),
         }),
@@ -359,13 +389,13 @@ async fn create_sync_message(client: &Client) -> Message {
 }
 
 fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Message {
-    let pos = game_message.lat_lng_position.clone();
+    let pos = game_message.lat_lng.clone();
 
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(game_message.name.clone()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: Some(RadioInfo {
                 name: game_message.name.clone(),
                 ptt: game_message.ptt,

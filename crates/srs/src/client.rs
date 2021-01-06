@@ -1,8 +1,9 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crate::message::{create_sguid, GameMessage, LatLngPosition};
+use crate::message::{create_sguid, GameMessage, LatLngPosition, Coalition};
 use crate::voice_stream::{VoiceStream, VoiceStreamError};
+
 use futures::channel::mpsc;
 use tokio::sync::oneshot::Receiver;
 use tokio::sync::RwLock;
@@ -20,16 +21,18 @@ pub struct Client {
     freq: u64,
     pos: Arc<RwLock<LatLngPosition>>,
     unit: Option<UnitInfo>,
+    pub coalition: Coalition
 }
 
 impl Client {
-    pub fn new(name: &str, freq: u64) -> Self {
+    pub fn new(name: &str, freq: u64, coalition: Coalition) -> Self {
         Client {
             sguid: create_sguid(),
             name: name.to_string(),
             freq,
             pos: Arc::new(RwLock::new(LatLngPosition::default())),
             unit: None,
+            coalition
         }
     }
 

@@ -11,7 +11,7 @@ use futures::sink::SinkExt;
 use futures::stream::{SplitSink, SplitStream, StreamExt as FutStreamExt};
 use ogg::reading::PacketReader;
 use ogg_metadata::{AudioMetadata, OggFormat};
-use srs::message::LatLngPosition;
+use srs::message::{Coalition, LatLngPosition};
 use srs::{Client, VoiceStream};
 use tokio::sync::oneshot;
 use tokio::time::delay_for;
@@ -50,7 +50,7 @@ impl RadioStation {
         path: P,
         should_loop: bool,
     ) -> Result<(), anyhow::Error> {
-        let mut client = Client::new(&self.name, self.freq);
+        let mut client = Client::new(&self.name, self.freq, Coalition::Blue);
         client.set_position(self.position).await;
 
         let (_tx, rx) = oneshot::channel();
