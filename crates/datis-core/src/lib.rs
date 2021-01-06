@@ -30,7 +30,7 @@ use futures::future::FutureExt;
 use futures::select;
 use futures::sink::SinkExt;
 use futures::stream::{SplitSink, StreamExt};
-use srs::{Client, VoiceStream, message::Coalition};
+use srs::{message::Coalition, Client, VoiceStream};
 use tokio::runtime::{self, Runtime};
 use tokio::sync::{oneshot, RwLock};
 use tokio::time::delay_for;

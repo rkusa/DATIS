@@ -9,8 +9,7 @@ use std::time::Duration;
 
 use crate::client::Client;
 use crate::message::{
-    Client as MsgClient, GameMessage, Message, MsgType, Radio, RadioInfo,
-    RadioSwitchControls,
+    Client as MsgClient, GameMessage, Message, MsgType, Radio, RadioInfo, RadioSwitchControls,
 };
 use crate::messages_codec::{self, MessagesCodec};
 use crate::voice_codec::*;
@@ -26,7 +25,6 @@ use tokio::time;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio_util::udp::UdpFramed;
 
-use std::default::Default;
 const SRS_VERSION: &str = "1.9.0.0";
 
 pub struct VoiceStream {
@@ -300,6 +298,7 @@ impl Sink<Vec<u8>> for VoiceStream {
 
 impl Sink<VoicePacket> for VoiceStream {
     type Error = mpsc::SendError;
+
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         let s = self.get_mut();
         Pin::new(&mut s.voice_sink).poll_ready(cx)

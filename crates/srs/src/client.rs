@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crate::message::{create_sguid, GameMessage, LatLngPosition, Coalition};
+use crate::message::{create_sguid, Coalition, GameMessage, LatLngPosition};
 use crate::voice_stream::{VoiceStream, VoiceStreamError};
 
 use futures::channel::mpsc;
@@ -21,7 +21,7 @@ pub struct Client {
     freq: u64,
     pos: Arc<RwLock<LatLngPosition>>,
     unit: Option<UnitInfo>,
-    pub coalition: Coalition
+    pub coalition: Coalition,
 }
 
 impl Client {
@@ -32,7 +32,7 @@ impl Client {
             freq,
             pos: Arc::new(RwLock::new(LatLngPosition::default())),
             unit: None,
-            coalition
+            coalition,
         }
     }
 
