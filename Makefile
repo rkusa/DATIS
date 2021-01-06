@@ -14,6 +14,12 @@ release:
 fmt:
 	cargo fmt
 
+clippy: export LUA_LIB_NAME=lua
+clippy: export LUA_LIB=$(CURDIR)/lua5.1/
+clippy: export LUA_INC=$(CURDIR)/lua5.1/include
+clippy:
+	cargo clippy
+
 # to link mods folder into DCS
 # New-Item -ItemType SymbolicLink -Name DATIS -Value M:\Development\DATIS\mod\Mods\services\DATIS
 # New-Item -ItemType SymbolicLink -Name datis-hook.lua -Value M:\Development\DATIS\mod\Scripts\Hooks\datis-hook.lua
