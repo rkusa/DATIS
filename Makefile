@@ -1,17 +1,12 @@
-env: export LUA_LIB_NAME=lua
-env: export LUA_LIB=$(CURDIR)/lua5.1/
-env: export LUA_INC=$(CURDIR)/lua5.1/include
-env:
-
-build: env
-	cargo build
-
-test: env
+test:
 	cargo test --workspace --exclude datis
 
-test_debug: env
+test_debug:
 	cargo test --workspace --exclude datis -- --nocapture
 
+release: export LUA_LIB_NAME=lua
+release: export LUA_LIB=$(CURDIR)/lua5.1/
+release: export LUA_INC=$(CURDIR)/lua5.1/include
 release:
 	cargo build --release --package datis
 	powershell copy target/release/datis.dll mod/Mods/services/DATIS/bin/
