@@ -1,6 +1,7 @@
 .*
 !.gitignore
 !.gitkeep
+!.github
 target
 **/*.rs.bk
 /mod/Mods/services/DATIS/bin/datis.dll

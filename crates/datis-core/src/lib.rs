@@ -349,7 +349,7 @@ async fn audio_broadcast(
             }
         };
         if let Some(exporter) = exporter {
-            if let Err(err) = exporter.export(&station.name, report.textual) {
+            if let Err(err) = exporter.export(&station.name, report.textual).await {
                 log::error!("Error exporting report: {}", err);
             }
         }
