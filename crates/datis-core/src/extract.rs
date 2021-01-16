@@ -116,8 +116,8 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
         atis: atis_freq,
         traffic: traffic_freq,
         tts,
-        info_ltr_override: info_ltr_override,
-        active_rwy_override: active_rwy_override,
+        info_ltr_override,
+        active_rwy_override,
     };
 
     Some(result)
@@ -167,7 +167,7 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
         atis: atis_freq,
         traffic: None,
         tts,
-        info_ltr_override: info_ltr_override,
+        info_ltr_override,
         active_rwy_override: None,
     };
 
