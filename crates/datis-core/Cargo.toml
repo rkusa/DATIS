@@ -9,7 +9,7 @@ anyhow = "1.0"
 audiopus = "0.2"
 base64 = "0.12"
 bytes = "0.5"
-dcs-module-rpc = { git = "https://github.com/rkusa/dcs-module-rpc.git", tag = "0.1.1", optional = true }
+dcs-module-ipc = { version = "0.3", optional = true }
 futures = "0.3"
 log = "0.4"
 ogg = "0.7"
@@ -29,4 +29,4 @@ win-tts = { path = "../win-tts" }
 
 [features]
 default = []
-rpc = ["dcs-module-rpc"]
+ipc = ["dcs-module-ipc"]

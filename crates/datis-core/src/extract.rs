@@ -23,8 +23,7 @@ pub fn extract_station_config_from_mission_description(
         .captures_iter(situation)
         .map(|caps| {
             let atis_line = caps.get(1).unwrap().as_str();
-            let station = extract_atis_station_config(atis_line);
-            station
+            extract_atis_station_config(atis_line)
         })
         .flatten()
         .map(|station| (station.name.clone(), station))
@@ -95,9 +94,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                     .map(|param| param.as_str().chars().next().unwrap().to_ascii_uppercase());
             }
             "ACTIVE" => {
-                active_rwy_override = caps
-                    .get(2)
-                    .map_or(None, |param| Some(param.as_str().into()));
+                active_rwy_override = caps.get(2).map(|param| param.as_str().into());
             }
             _ => {
                 log::warn!("Unsupported ATIS station option {}", option_key);

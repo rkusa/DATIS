@@ -135,17 +135,11 @@ impl VoiceStream {
                             }
 
                             // handle message
-                            match msg.msg_type {
-                                MsgType::VersionMismatch => {
-                                    return Err(VoiceStreamError::VersionMismatch {
-                                        expected:                                         SRS_VERSION.to_string(),
-                                        encountered: msg.version,
-                                    }
-                                        );
-                                }
-                                _ => {
-                                    // discard other messages for now
-                                }
+                            if msg.msg_type == MsgType::VersionMismatch {
+                                return Err(VoiceStreamError::VersionMismatch {
+                                    expected: SRS_VERSION.to_string(),
+                                    encountered: msg.version,
+                                })
                             }
                         } else {
                             log::debug!("Messages stream was closed, closing voice stream");
@@ -189,7 +183,7 @@ impl VoiceStream {
 
                     _ = voice_ping_interval.next() => {
                         if recv_voice {
-                            tx.send(Packet::Ping(sguid.clone())).await?;
+                            tx.send(Packet::Ping(sguid)).await?;
                         }
                     }
 
@@ -239,7 +233,7 @@ impl Stream for VoiceStream {
 
         match s.heartbeat.poll_unpin(cx) {
             Poll::Pending => {}
-            Poll::Ready(Err(err)) => return Poll::Ready(Some(Err(err.into()))),
+            Poll::Ready(Err(err)) => return Poll::Ready(Some(Err(err))),
             Poll::Ready(Ok(_)) => {
                 return Poll::Ready(Some(Err(VoiceStreamError::ConnectionClosed)));
             }
@@ -347,7 +341,7 @@ async fn create_radio_update_message(client: &Client) -> Message {
                 unit_id: client.unit().as_ref().map(|u| u.id).unwrap_or(0),
                 simultaneous_transmission: true,
             }),
-            lat_lng_position: Some(pos.clone()),
+            lat_lng_position: Some(pos),
         }),
         msg_type: MsgType::RadioUpdate,
         server_settings: None,
@@ -363,7 +357,7 @@ async fn create_update_message(client: &Client) -> Message {
             name: Some(client.name().to_string()),
             coalition: client.coalition,
             radio_info: None,
-            lat_lng_position: Some(pos.clone()),
+            lat_lng_position: Some(pos),
         }),
         msg_type: MsgType::Update,
         server_settings: None,
@@ -379,7 +373,7 @@ async fn create_sync_message(client: &Client) -> Message {
             name: Some(client.name().to_string()),
             coalition: client.coalition,
             radio_info: None,
-            lat_lng_position: Some(pos.clone()),
+            lat_lng_position: Some(pos),
         }),
         msg_type: MsgType::Sync,
         server_settings: None,
@@ -405,7 +399,7 @@ fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Messa
                 unit_id: game_message.unit_id,
                 simultaneous_transmission: true,
             }),
-            lat_lng_position: Some(pos.clone()),
+            lat_lng_position: Some(pos),
         }),
         msg_type: MsgType::RadioUpdate,
         server_settings: None,

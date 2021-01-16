@@ -1,12 +1,10 @@
-#![warn(rust_2018_idioms)]
-
 #[macro_use]
 extern crate anyhow;
 
 pub mod export;
 pub mod extract;
-#[cfg(feature = "rpc")]
-pub mod rpc;
+#[cfg(feature = "ipc")]
+pub mod ipc;
 pub mod station;
 pub mod tts;
 mod utils;
@@ -249,17 +247,17 @@ async fn run(
     let name = format!("ATIS {}", station.name);
     let mut client = Client::new(&name, station.freq, Coalition::Blue);
     match &station.transmitter {
-        #[cfg(feature = "rpc")]
+        #[cfg(feature = "ipc")]
         Transmitter::Airfield(airfield) => {
-            let pos = if let Some(rpc) = &station.rpc {
-                rpc.to_lat_lng(&airfield.position).await?
+            let pos = if let Some(ipc) = &station.ipc {
+                ipc.to_lat_lng(&airfield.position).await?
             } else {
                 LatLngPosition::default()
             };
             client.set_position(pos).await;
             // TODO: set unit?
         }
-        #[cfg(not(feature = "rpc"))]
+        #[cfg(not(feature = "ipc"))]
         Transmitter::Airfield(_) => {
             let pos = LatLngPosition::default();
             client.set_position(pos).await;

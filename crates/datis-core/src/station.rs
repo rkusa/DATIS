@@ -9,8 +9,8 @@ pub struct Station {
     pub freq: u64,
     pub tts: TextToSpeechProvider,
     pub transmitter: Transmitter,
-    #[cfg(feature = "rpc")]
-    pub rpc: Option<crate::rpc::MissionRpc>,
+    #[cfg(feature = "ipc")]
+    pub ipc: Option<crate::ipc::MissionRpc>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -66,17 +66,17 @@ pub struct Report {
 const SPEAK_START_TAG: &str = "<speak version=\"1.0\" xml:lang=\"en-US\">\n";
 
 impl Station {
-    #[cfg(feature = "rpc")]
+    #[cfg(feature = "ipc")]
     pub async fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
         use anyhow::Context;
 
-        match (self.rpc.as_ref(), &self.transmitter) {
-            (Some(rpc), Transmitter::Airfield(airfield)) => {
-                let weather = rpc
+        match (self.ipc.as_ref(), &self.transmitter) {
+            (Some(ipc), Transmitter::Airfield(airfield)) => {
+                let weather = ipc
                     .get_weather_at(&airfield.position)
                     .await
                     .context("failed to retrieve weather")?;
-                let position = rpc
+                let position = ipc
                     .to_lat_lng(&airfield.position)
                     .await
                     .context("failed to retrieve unit position")?;
@@ -87,23 +87,23 @@ impl Station {
                     position,
                 }))
             }
-            (Some(rpc), Transmitter::Carrier(unit)) => {
-                let pos = rpc
+            (Some(ipc), Transmitter::Carrier(unit)) => {
+                let pos = ipc
                     .get_unit_position(&unit.unit_name)
                     .await
                     .context("failed to retrieve unit position")?;
-                let heading = rpc
+                let heading = ipc
                     .get_unit_heading(&unit.unit_name)
                     .await
                     .context("failed to retrieve unit heading")?;
 
                 if let (pos, Some(heading)) = (pos, heading) {
-                    let weather = rpc
+                    let weather = ipc
                         .get_weather_at(&pos)
                         .await
                         .context("failed to retrieve weather")?;
-                    let mission_hour = rpc.get_mission_hour().await?;
-                    let position = rpc
+                    let mission_hour = ipc.get_mission_hour().await?;
+                    let position = ipc
                         .to_lat_lng(&pos)
                         .await
                         .context("failed to retrieve unit position")?;
@@ -117,16 +117,16 @@ impl Station {
                     Ok(None)
                 }
             }
-            (Some(rpc), Transmitter::Custom(custom)) => {
+            (Some(ipc), Transmitter::Custom(custom)) => {
                 let pos = match &custom.position {
                     Some(pos) => pos.clone(),
-                    None => rpc
+                    None => ipc
                         .get_unit_position(&custom.unit_name)
                         .await
                         .context("failed to retrieve unit position")?,
                 };
 
-                let position = rpc
+                let position = ipc
                     .to_lat_lng(&pos)
                     .await
                     .context("failed to retrieve unit position")?;
@@ -140,23 +140,23 @@ impl Station {
                     position,
                 }))
             }
-            (Some(rpc), Transmitter::Weather(weather)) => {
+            (Some(ipc), Transmitter::Weather(weather)) => {
                 let pos = match &weather.position {
                     Some(pos) => pos.clone(),
-                    None => rpc
+                    None => ipc
                         .get_unit_position(&weather.unit_name)
                         .await
                         .context("failed to retrieve unit position")?,
                 };
 
-                let weather_info = rpc
+                let weather_info = ipc
                     .get_weather_at(&pos)
                     .await
                     .context("failed to retrieve weather")?;
-                let position = rpc
+                let position = ipc
                     .to_lat_lng(&pos)
                     .await
-                    .context("failed to retrieve unit position")?;
+                    .context("failed to convert unit position to lat lng")?;
 
                 Ok(Some(Report {
                     textual: weather.generate_report(report_nr, &weather_info, false)?,
@@ -168,7 +168,7 @@ impl Station {
         }
     }
 
-    #[cfg(not(feature = "rpc"))]
+    #[cfg(not(feature = "ipc"))]
     pub async fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
         let weather_info = WeatherInfo {
             clouds: None,

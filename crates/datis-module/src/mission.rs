@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use datis_core::extract::*;
-use datis_core::rpc::*;
+use datis_core::ipc::*;
 use datis_core::station::*;
 use datis_core::tts::TextToSpeechProvider;
 use datis_core::weather::Clouds;
@@ -16,7 +16,7 @@ pub struct Info {
     pub aws_secret: String,
     pub aws_region: String,
     pub srs_port: u16,
-    pub rpc: MissionRpc,
+    pub ipc: MissionRpc,
 }
 
 pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
@@ -206,7 +206,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
     }
 
     // initialize the dynamic weather component
-    let rpc = MissionRpc::new(clouds, fog_thickness, fog_visibility);
+    let ipc = MissionRpc::new(clouds, fog_thickness, fog_visibility);
 
     let default_voice = match TextToSpeechProvider::from_str(&options.default_voice) {
         Ok(default_voice) => default_voice,
@@ -231,7 +231,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                     freq: config.atis,
                     tts: default_voice.clone(),
                     transmitter: Transmitter::Airfield(airfield),
-                    rpc: Some(rpc.clone()),
+                    ipc: Some(ipc.clone()),
                 }
             })
         })
@@ -254,7 +254,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                     freq: config.atis,
                     tts: config.tts.unwrap_or_else(|| default_voice.clone()),
                     transmitter: Transmitter::Airfield(airfield),
-                    rpc: Some(rpc.clone()),
+                    ipc: Some(ipc.clone()),
                 }
             })
         })
@@ -286,7 +286,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                     unit_id: mission_unit.id,
                     unit_name: mission_unit.name.clone(),
                 }),
-                rpc: Some(rpc.clone()),
+                ipc: Some(ipc.clone()),
             })
         })
         .collect::<Vec<_>>();
@@ -326,7 +326,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                     unit_name: mission_unit.name.clone(),
                     message: config.message,
                 }),
-                rpc: Some(rpc.clone()),
+                ipc: Some(ipc.clone()),
             })
         })
         .collect::<Vec<_>>();
@@ -368,7 +368,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                     info_ltr_offset: rng.gen_range(0, 25),
                     info_ltr_override: None,
                 }),
-                rpc: Some(rpc.clone()),
+                ipc: Some(ipc.clone()),
             })
         })
         .collect::<Vec<_>>();
@@ -398,7 +398,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
         aws_secret: options.aws_secret,
         aws_region: options.aws_region,
         srs_port: options.srs_port,
-        rpc,
+        ipc,
     })
 }
 

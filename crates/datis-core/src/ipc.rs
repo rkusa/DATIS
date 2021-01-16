@@ -3,12 +3,12 @@ use std::sync::Arc;
 
 use crate::station::{LatLngPosition, Position};
 use crate::weather::{Clouds, WeatherInfo};
-use dcs_module_rpc::Error;
+use dcs_module_ipc::Error;
 use serde::Deserialize;
 use serde_json::json;
 
 pub struct MissionRpcInner {
-    rpc: dcs_module_rpc::RPC<()>,
+    ipc: dcs_module_ipc::IPC<()>,
     clouds: Option<Clouds>,
     fog_thickness: u32,  // in m
     fog_visibility: u32, // in m
@@ -20,7 +20,7 @@ pub struct MissionRpc(Arc<MissionRpcInner>);
 impl MissionRpc {
     pub fn new(clouds: Option<Clouds>, fog_thickness: u32, fog_visibility: u32) -> Self {
         MissionRpc(Arc::new(MissionRpcInner {
-            rpc: dcs_module_rpc::RPC::new(),
+            ipc: dcs_module_ipc::IPC::new(),
             clouds,
             fog_thickness,
             fog_visibility,
@@ -47,7 +47,7 @@ impl MissionRpc {
 
         let data: Data = self
             .0
-            .rpc
+            .ipc
             .request(
                 "get_weather",
                 Some(json!({ "x": pos.x, "y": pos.y, "alt": 0})),
@@ -57,7 +57,7 @@ impl MissionRpc {
 
         let data: Data = self
             .0
-            .rpc
+            .ipc
             .request(
                 "get_weather",
                 Some(json!({ "x": pos.x, "y": pos.y, "alt": pos.alt})),
@@ -86,20 +86,20 @@ impl MissionRpc {
 
     pub async fn get_unit_position(&self, name: &str) -> Result<Position, Error> {
         self.0
-            .rpc
+            .ipc
             .request("get_unit_position", Some(json!({ "name": name })))
             .await
     }
 
     pub async fn get_unit_heading(&self, name: &str) -> Result<Option<f64>, Error> {
         self.0
-            .rpc
+            .ipc
             .request("get_unit_heading", Some(json!({ "name": name })))
             .await
     }
 
     async fn get_abs_time(&self) -> Result<f64, Error> {
-        self.0.rpc.request::<(), _>("get_abs_time", None).await
+        self.0.ipc.request::<(), _>("get_abs_time", None).await
     }
 
     pub async fn get_mission_hour(&self) -> Result<u16, Error> {
@@ -121,7 +121,7 @@ impl MissionRpc {
 
     pub async fn to_lat_lng(&self, pos: &Position) -> Result<LatLngPosition, Error> {
         self.0
-            .rpc
+            .ipc
             .request(
                 "to_lat_lng",
                 Some(json!({ "x": pos.x, "y": pos.y, "alt": pos.alt})),
@@ -131,9 +131,9 @@ impl MissionRpc {
 }
 
 impl Deref for MissionRpc {
-    type Target = dcs_module_rpc::RPC<()>;
+    type Target = dcs_module_ipc::IPC<()>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0.rpc
+        &self.0.ipc
     }
 }

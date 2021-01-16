@@ -61,8 +61,8 @@ impl RadioStation {
         let tx = Box::pin(radio_broadcast(sink, path, should_loop));
 
         match future::try_select(rx, tx).await {
-            Err(Either::Left((err, _))) => Err(err.into()),
-            Err(Either::Right((err, _))) => Err(err.into()),
+            Err(Either::Left((err, _))) => Err(err),
+            Err(Either::Right((err, _))) => Err(err),
             _ => Ok(()),
         }
     }
@@ -133,7 +133,7 @@ async fn radio_broadcast<P: AsRef<Path>>(
             let mut frame_count = 0;
 
             while let Some(pck) = audio.read_packet()? {
-                if pck.data.len() == 0 {
+                if pck.data.is_empty() {
                     continue;
                 }
 
