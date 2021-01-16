@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - It is now possible to set station options in any order and you'll now receive a useful error message for most kind of typos in the configuration, instead of that the station does simply not work. Thanks a lot [@talbotmcinnis](https://github.com/talbotmcinnis) for the implementation! [#73](https://github.com/rkusa/DATIS/pull/73)
+- ATIS stations setup via the misison situation can now use all additional settings that were previously only available to the static unit setup method. Thanks a lot [@talbotmcinnis](https://github.com/talbotmcinnis) for the implementation! [#78](https://github.com/rkusa/DATIS/pull/78)
 
 ## [2.2.0-beta.5] - 2020-11-01
 

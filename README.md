@@ -70,15 +70,24 @@ options = {
 
 ### Setup ATIS stations
 
-There are two methods for adding ATIS stations to your mission. The first method is easier to setup, but the second one supports more configuration options.
+ATIS stations can be added to your mission by either
+- adding the following pattern to your mission situation, or
+- by adding a static unit to your mission, e.g. a communication tower (the kind of static unit doesn't matter though), and name the static unit using the following pattern.
 
-#### Mission Situation
-
-Add the following text pattern as often to the mission situation as you like.
 
 ```
-ATIS {Airfield} {ATIS Frequency}
+ATIS {Airfield} {ATIS Frequency}[, OPTION {VALUE}]*
 ```
+
+Available settings:
+
+- `VOICE {VOICE NAME}`: Set the TTS provider and voice to be used for this station. If not provided, the TTS provider and voice defaults to the one set up in the DCS special settings. Available voices are:
+  - Windows: `WIN` or `WIN:voice` (Where voice depends on the installed voices on your system. Tip: if you don't know which voices are installed, set anything, start your mission and look into the DATIS logs to see a list of available voices)
+  - Google Gloud: `GC:en-US-Standard-B`, `GC:en-US-Standard-C`, `GC:en-US-Standard-D`, `GC:en-US-Standard-E`, `GC:en-US-Wavenet-A`, `GC:en-US-Wavenet-B`, `GC:en-US-Wavenet-C`, `GC:en-US-Wavenet-D`, `GC:en-US-Wavenet-E`, `GC:en-US-Wavenet-F` (keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota, see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing))
+  - AWS: `AWS:Nicole`, `AWS:Russell`, `AWS:Amy`, `AWS:Emma`, `AWS:Brian`, `AWS:Aditi`, `AWS:Raveena`, `AWS:Ivy`, `AWS:Joanna`, `AWS:Kendra`, `AWS:Kimberly`, `AWS:Salli`, `AWS:Joey`, `AWS:Justin`, `AWS:Matthew`, `AWS:Geraint`
+- `TRAFFIC {FREQUENCY}`: An optional traffic frequency that, if provided, is mentioned as part of the ATIS report.
+- `OVERRIDE {INFO LETTER}`: Allows you to override the dynamic rotating selection of the ATIS information letter if your mission requires a specific and constant value.
+- `ACTIVE {RUNWAY OVERRIDE}`: Can be used if the SPINS for the airfield differ from the prevailing winds and you want to override the calculated active runway.
 
 Examples:
 
@@ -86,41 +95,6 @@ Examples:
 ATIS Kutaisi 251.000
 ATIS Batumi 131.5
 ATIS Senaki-Kolkhi 145
-```
-
-This method uses the default voice, which can be changed in the mod options.
-
-#### Using Static Units
-
-Add a static unit per ATIS station to the mission, e.g. a communication tower (the kind of static unit doesn't matter though). The key to get ATIS working, is to name the static unit using the following pattern:
-
-(`{}` denotes a part that has to be replaced with a proper value and `[]` denotes an optional part)
-
-```
-ATIS {Airfield} {ATIS Frequency}[, TRAFFIC {TRAFFIC Frequency}][, VOICE {VOICE NAME}][, INFO {OVERRIDE INFO LETTER}][, ACTIVE {ACTIVE RUNWAY OVERRIDE}]
-```
-
-Your choice for `{VOICE NAME}` depicts which cloud provider is used for a particular ATIS station.
-For Window's built-in TTS prefix it with `WIN:`, for GCloud with `GC:` and for AWS with `AWS:`.
-
-Available voices are:
-
-- Windows: `WIN` or `WIN:voice` (Where voice depends on the installed voices on your system. Tip: if you don't know which voices are installed, set anything, start your mission and look into the DATIS logs to see a list of available voices)
-- GCloud: `en-US-Standard-B`, `en-US-Standard-C`, `en-US-Standard-D`, `en-US-Standard-E`, `en-US-Wavenet-A`, `en-US-Wavenet-B`, `en-US-Wavenet-C`, `en-US-Wavenet-D`, `en-US-Wavenet-E`, `en-US-Wavenet-F`
-  - _(a bit down [on this page](https://cloud.google.com/text-to-speech/) is a widget where the different voices can easily be tested)_
-  - Keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota (see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing))
-- AWS: `Nicole`, `Russell`, `Amy`, `Emma`, `Brian`, `Aditi`, `Raveena`, `Ivy`, `Joanna`, `Kendra`, `Kimberly`, `Salli`, `Joey`, `Justin`, `Matthew`, `Geraint`
-
-The default can be changed in the DCS SPECIAL settings for DATIS.
-
-`OVERRIDE INFO LETTER` Allows you to override the dynamic rotating selection of the ATIS information letter if your mission requires a specific and constant value.
-
-`ACTIVE RUNWAY OVERRIDE` can be used if the SPINS for the airfield differ from the prevailing winds and you want to override the calculated active runway.
-
-Examples:
-
-```
-ATIS Batumi 131.5
 ATIS Kutaisi 251.000, TRAFFIC 252.000
 ATIS Kutaisi 251.000, VOICE en-US-Standard-E
 ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE en-US-Standard-E
@@ -136,8 +110,6 @@ ATIS Kutaisi 251.000, TRAFFIC 252.000, INFO Q, ACTIVE 21L
 
 Name your carrier unit (unit not group!) using the following pattern:
 
-(`{}` denotes a part that has to be replaced with a proper value and `[]` denotes an optional part)
-
 ```
 CARRIER {Name} {Frequency}[, VOICE {VOICE NAME}]
 ```
@@ -147,8 +119,6 @@ CARRIER {Name} {Frequency}[, VOICE {VOICE NAME}]
 ### Setup Broadcast of Custom Messages
 
 Place a unit (doesn't matter if it is a static unit, a plane, a vehicle, ...) and name it (the unit not the group!) using the following pattern:
-
-(`{}` denotes a part that has to be replaced with a proper value and `[]` denotes an optional part)
 
 ```
 BROADCAST {Frequency}[, VOICE {VOICE NAME}]: {Message}
@@ -163,8 +133,6 @@ BROADCAST 251.000, VOICE AWS:Brian: Help help!
 ### Setup Broadcast of Weather Stations
 
 Place a unit (doesn't matter if it is a static unit, a plane, a vehicle, ...) and name it (the unit not the group!) using the following pattern:
-
-(`{}` denotes a part that has to be replaced with a proper value and `[]` denotes an optional part)
 
 ```
 WEATHER {Station Name} {Frequency}[, VOICE {VOICE NAME}]
