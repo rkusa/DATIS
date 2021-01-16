@@ -25,10 +25,10 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
 
     // extract frequencies from mission briefing, which is retrieved from
     // `DCS.getMissionDescription()`
-    let frequencies = {
+    let station_configs_from_description = {
         let dcs: LuaTable<'_> = lua.globals().get("DCS")?;
-        let mission_situation: String = dcs.call_function("getMissionDescription", ())?;
-        extract_atis_station_frequencies(&mission_situation)
+        let mission_description: String = dcs.call_function("getMissionDescription", ())?;
+        extract_station_config_from_mission_description(&mission_description)
     };
 
     // Create a random generator for creating the information letter offset.
@@ -218,20 +218,26 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
 
     // combine the frequencies that have extracted from the mission's situation with their
     // corresponding airfield
-    let mut stations: Vec<Station> = frequencies
+    let mut stations: Vec<Station> = station_configs_from_description
         .into_iter()
-        .filter_map(|(name, freq)| {
-            airfields.remove(&name).map(|airfield| Station {
-                name,
-                freq: freq.atis,
-                tts: default_voice.clone(),
-                transmitter: Transmitter::Airfield(airfield),
-                rpc: Some(rpc.clone()),
+        .filter_map(|(name, config)| {
+            airfields.remove(&name).map(|mut airfield| {
+                airfield.traffic_freq = config.traffic;
+                airfield.info_ltr_override = config.info_ltr_override;
+                airfield.active_rwy_override = config.active_rwy_override;
+
+                Station {
+                    name,
+                    freq: config.atis,
+                    tts: default_voice.clone(),
+                    transmitter: Transmitter::Airfield(airfield),
+                    rpc: Some(rpc.clone()),
+                }
             })
         })
         .collect();
 
-    // check all units if they represent and ATIS station and if so, combine them with
+    // check all units if they represent an ATIS station and if so, combine them with
     // their corresponding airfield
     stations.extend(mission_units.iter().filter_map(|mission_unit| {
         extract_atis_station_config(&mission_unit.name).and_then(|config| {

@@ -14,29 +14,23 @@ pub struct StationConfig {
     pub active_rwy_override: Option<String>,
 }
 
-pub fn extract_atis_station_frequencies(situation: &str) -> HashMap<String, StationConfig> {
-    // extract ATIS stations and frequencies
-    let re = Regex::new(r"ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
+pub fn extract_station_config_from_mission_description(
+    situation: &str,
+) -> HashMap<String, StationConfig> {
+    // extract ATIS stations from mission description
+    let re = Regex::new(r"(ATIS .*)").unwrap();
     let mut stations: HashMap<String, StationConfig> = re
         .captures_iter(situation)
         .map(|caps| {
-            let name = caps.get(1).unwrap().as_str().to_string();
-            let freq = caps.get(2).unwrap().as_str();
-            let freq = (f32::from_str(freq).unwrap() * 1_000_000.0) as u64;
-            (
-                name.clone(),
-                StationConfig {
-                    name,
-                    atis: freq,
-                    traffic: None,
-                    tts: None,
-                    info_ltr_override: None,
-                    active_rwy_override: None,
-                },
-            )
+            let atis_line = caps.get(1).unwrap().as_str();
+            let station = extract_atis_station_config(atis_line);
+            station
         })
+        .flatten()
+        .map(|station| (station.name.clone(), station))
         .collect();
 
+    // Some "legacy" functionality which allowed specifyin TRAFFIC options on separate lines
     // extract optional traffic frequencies
     let re = Regex::new(r"TRAFFIC ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
     for caps in re.captures_iter(situation) {
@@ -279,8 +273,8 @@ mod test {
     use crate::tts::{aws, gcloud, TextToSpeechProvider};
 
     #[test]
-    fn test_mission_situation_extraction() {
-        let freqs = extract_atis_station_frequencies(
+    fn test_mission_descriptiopn_extraction() {
+        let freqs = extract_station_config_from_mission_description(
             r#"
             ATIS Mineralnye Vody 251.000
             ATIS Batumi 131.5
@@ -327,6 +321,35 @@ mod test {
                     }
                 )
             ]
+            .into_iter()
+            .collect()
+        );
+    }
+
+    #[test]
+    fn test_advanced_mission_descriptiopn_extraction() {
+        let freqs = extract_station_config_from_mission_description(
+            r#"Welcome to my mission!
+            It's not a real mission, but rather a chance to test the mission extraction
+            logic in datis!
+
+            ATIS Batumi 131.5, INFO T, ACTIVE 12
+        "#,
+        );
+
+        assert_eq!(
+            freqs,
+            vec![(
+                "Batumi".to_string(),
+                StationConfig {
+                    name: "Batumi".to_string(),
+                    atis: 131_500_000,
+                    traffic: None,
+                    tts: None,
+                    info_ltr_override: Some('T'),
+                    active_rwy_override: Some("12".to_string()),
+                }
+            )]
             .into_iter()
             .collect()
         );
