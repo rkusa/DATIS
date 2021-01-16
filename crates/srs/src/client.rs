@@ -1,10 +1,12 @@
 use std::net::SocketAddr;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
-use crate::message::{create_sguid, GameMessage, LatLngPosition};
+use crate::message::{create_sguid, Coalition, GameMessage, LatLngPosition};
 use crate::voice_stream::{VoiceStream, VoiceStreamError};
+
 use futures::channel::mpsc;
 use tokio::sync::oneshot::Receiver;
+use tokio::sync::RwLock;
 
 #[derive(Debug, Clone)]
 pub struct UnitInfo {
@@ -19,16 +21,18 @@ pub struct Client {
     freq: u64,
     pos: Arc<RwLock<LatLngPosition>>,
     unit: Option<UnitInfo>,
+    pub coalition: Coalition,
 }
 
 impl Client {
-    pub fn new(name: &str, freq: u64) -> Self {
+    pub fn new(name: &str, freq: u64, coalition: Coalition) -> Self {
         Client {
             sguid: create_sguid(),
             name: name.to_string(),
             freq,
             pos: Arc::new(RwLock::new(LatLngPosition::default())),
             unit: None,
+            coalition,
         }
     }
 
@@ -44,8 +48,8 @@ impl Client {
         self.freq
     }
 
-    pub fn position(&self) -> LatLngPosition {
-        let p = self.pos.read().unwrap();
+    pub async fn position(&self) -> LatLngPosition {
+        let p = self.pos.read().await;
         p.clone()
     }
 
@@ -57,8 +61,8 @@ impl Client {
         self.unit.as_ref()
     }
 
-    pub fn set_position(&mut self, pos: LatLngPosition) {
-        let mut p = self.pos.write().unwrap();
+    pub async fn set_position(&mut self, pos: LatLngPosition) {
+        let mut p = self.pos.write().await;
         *p = pos;
     }
 

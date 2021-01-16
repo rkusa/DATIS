@@ -14,7 +14,7 @@ pub struct StationConfig {
     pub active_rwy_override: Option<String>,
 }
 
-pub fn extract_stationc_config_from_mission_description(
+pub fn extract_station_config_from_mission_description(
     situation: &str,
 ) -> HashMap<String, StationConfig> {
     // extract ATIS stations from mission description
@@ -23,8 +23,7 @@ pub fn extract_stationc_config_from_mission_description(
         .captures_iter(situation)
         .map(|caps| {
             let atis_line = caps.get(1).unwrap().as_str();
-            let station = extract_atis_station_config(atis_line);
-            station
+            extract_atis_station_config(atis_line)
         })
         .flatten()
         .map(|station| (station.name.clone(), station))
@@ -66,7 +65,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
         .case_insensitive(true)
         .build()
         .unwrap();
-    for token in config.split(",").skip(1) {
+    for token in config.split(',').skip(1) {
         let caps = rex_option.captures(token.trim()).unwrap();
         let option_key = caps.get(1).unwrap().as_str();
         let option_value = caps.get(2).map_or("", |m| m.as_str());
@@ -90,9 +89,12 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                 }
             }
             "INFO" => {
-                info_ltr_override = caps.get(2).map_or(None, |param| {
-                    Some(param.as_str().chars().next().unwrap().to_ascii_uppercase())
-                });
+                info_ltr_override = caps
+                    .get(2)
+                    .map(|param| param.as_str().chars().next().unwrap().to_ascii_uppercase());
+            }
+            "ACTIVE" => {
+                active_rwy_override = caps.get(2).map(|param| param.as_str().into());
             }
             "ACTIVE" => {
                 active_rwy_override = caps
@@ -106,12 +108,12 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
     }
 
     let result = StationConfig {
-        name: name,
+        name,
         atis: atis_freq,
         traffic: traffic_freq,
         tts,
-        info_ltr_override: info_ltr_override,
-        active_rwy_override: active_rwy_override,
+        info_ltr_override,
+        active_rwy_override,
     };
 
     Some(result)
@@ -131,9 +133,10 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
     let mut tts: Option<TextToSpeechProvider> = None;
     let mut info_ltr_override = None;
 
-    for token in config.split(",").skip(1) {
+    for token in config.split(',').skip(1) {
         let token = token.trim();
-        let (option_key, option_value) = token.split_at(token.find(' ').unwrap_or(token.len()));
+        let (option_key, option_value) =
+            token.split_at(token.find(' ').unwrap_or_else(|| token.len()));
         let option_key = option_key.trim();
         let option_value = option_value.trim();
 
@@ -146,9 +149,9 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
                 }
             }
             "INFO" => {
-                info_ltr_override = caps.get(2).map_or(None, |param| {
-                    Some(param.as_str().chars().next().unwrap().to_ascii_uppercase())
-                });
+                info_ltr_override = caps
+                    .get(2)
+                    .map(|param| param.as_str().chars().next().unwrap().to_ascii_uppercase());
             }
             _ => {
                 log::warn!("Unsupported CARRIER station option {}", option_key);
@@ -157,11 +160,11 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
     }
 
     let result = StationConfig {
-        name: name,
+        name,
         atis: atis_freq,
         traffic: None,
         tts,
-        info_ltr_override: info_ltr_override,
+        info_ltr_override,
         active_rwy_override: None,
     };
 
@@ -188,10 +191,11 @@ pub fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> 
     let message = caps.get(4).unwrap().as_str().to_string();
 
     let mut tts: Option<TextToSpeechProvider> = None;
-    if options.is_some() {
-        for token in options.unwrap().as_str().split(",").skip(1) {
+    if let Some(options) = options {
+        for token in options.as_str().split(',').skip(1) {
             let token = token.trim();
-            let (option_key, option_value) = token.split_at(token.find(' ').unwrap_or(token.len()));
+            let (option_key, option_value) =
+                token.split_at(token.find(' ').unwrap_or_else(|| token.len()));
             let option_key = option_key.trim();
             let option_value = option_value.trim();
 
@@ -235,9 +239,10 @@ pub fn extract_weather_station_config(config: &str) -> Option<WetherStationConfi
 
     let mut tts: Option<TextToSpeechProvider> = None;
 
-    for token in config.split(",").skip(1) {
+    for token in config.split(',').skip(1) {
         let token = token.trim();
-        let (option_key, option_value) = token.split_at(token.find(' ').unwrap_or(token.len()));
+        let (option_key, option_value) =
+            token.split_at(token.find(' ').unwrap_or_else(|| token.len()));
         let option_key = option_key.trim();
         let option_value = option_value.trim();
 
@@ -256,7 +261,7 @@ pub fn extract_weather_station_config(config: &str) -> Option<WetherStationConfi
     }
 
     let result = WetherStationConfig {
-        name: name,
+        name,
         freq: station_freq,
         tts,
     };
@@ -271,7 +276,7 @@ mod test {
 
     #[test]
     fn test_mission_descriptiopn_extraction() {
-        let freqs = extract_stationc_config_from_mission_description(
+        let freqs = extract_station_config_from_mission_description(
             r#"
             ATIS Mineralnye Vody 251.000
             ATIS Batumi 131.5
@@ -325,7 +330,7 @@ mod test {
 
     #[test]
     fn test_advanced_mission_descriptiopn_extraction() {
-        let freqs = extract_stationc_config_from_mission_description(
+        let freqs = extract_station_config_from_mission_description(
             r#"Welcome to my mission!
             It's not a real mission, but rather a chance to test the mission extraction
             logic in datis!

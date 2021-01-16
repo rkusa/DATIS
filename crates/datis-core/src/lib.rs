@@ -1,12 +1,10 @@
-#![warn(rust_2018_idioms)]
-
 #[macro_use]
 extern crate anyhow;
 
 pub mod export;
 pub mod extract;
-#[cfg(feature = "rpc")]
-pub mod rpc;
+#[cfg(feature = "ipc")]
+pub mod ipc;
 pub mod station;
 pub mod tts;
 mod utils;
@@ -15,7 +13,7 @@ pub mod weather;
 use std::mem;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::export::ReportExporter;
@@ -30,10 +28,10 @@ use futures::future::FutureExt;
 use futures::select;
 use futures::sink::SinkExt;
 use futures::stream::{SplitSink, StreamExt};
-use srs::{Client, VoiceStream};
+use srs::{message::Coalition, Client, VoiceStream};
 use tokio::runtime::{self, Runtime};
-use tokio::sync::oneshot;
-use tokio::time::delay_for;
+use tokio::sync::{oneshot, RwLock};
+use tokio::time::sleep;
 
 pub struct Datis {
     stations: Vec<Station>,
@@ -60,10 +58,7 @@ impl Datis {
             gcloud_key: None,
             aws_config: None,
             port: 5002,
-            runtime: runtime::Builder::new()
-                .threaded_scheduler()
-                .enable_all()
-                .build()?,
+            runtime: runtime::Builder::new_multi_thread().enable_all().build()?,
             started: false,
             shutdown_signals: Vec::new(),
         })
@@ -228,7 +223,7 @@ async fn spawn(
 
                 log::info!("Restarting ATIS {} in 60 seconds ...", station.name);
                 // TODO: handle shutdown signal during the delay
-                delay_for(Duration::from_secs(60)).await;
+                sleep(Duration::from_secs(60)).await;
             }
             _ = shutdown_signal => {
                 let _ = tx.send(());
@@ -247,22 +242,22 @@ async fn run(
     shutdown_signal: oneshot::Receiver<()>,
 ) -> Result<(), anyhow::Error> {
     let name = format!("ATIS {}", station.name);
-    let mut client = Client::new(&name, station.freq);
+    let mut client = Client::new(&name, station.freq, Coalition::Blue);
     match &station.transmitter {
-        #[cfg(feature = "rpc")]
+        #[cfg(feature = "ipc")]
         Transmitter::Airfield(airfield) => {
-            let pos = if let Some(rpc) = &station.rpc {
-                rpc.to_lat_lng(&airfield.position).await?
+            let pos = if let Some(ipc) = &station.ipc {
+                ipc.to_lat_lng(&airfield.position).await?
             } else {
                 LatLngPosition::default()
             };
-            client.set_position(pos);
+            client.set_position(pos).await;
             // TODO: set unit?
         }
-        #[cfg(not(feature = "rpc"))]
+        #[cfg(not(feature = "ipc"))]
         Transmitter::Airfield(_) => {
             let pos = LatLngPosition::default();
-            client.set_position(pos);
+            client.set_position(pos).await;
             // TODO: set unit?
         }
         Transmitter::Carrier(unit) => {
@@ -344,7 +339,7 @@ async fn audio_broadcast(
                     station.name
                 );
                 // postpone the next playback of the report by some seconds ...
-                delay_for(Duration::from_secs(30)).await;
+                sleep(Duration::from_secs(30)).await;
                 continue;
             }
         };
@@ -357,7 +352,7 @@ async fn audio_broadcast(
         log::debug!("{} Position: {:?}", station.name, report.position);
 
         {
-            let mut pos = position.write().unwrap();
+            let mut pos = position.write().await;
             *pos = report.position;
         }
 
@@ -397,23 +392,23 @@ async fn audio_broadcast(
                 let playtime = Duration::from_millis((i as u64 + 1) * 20); // 20m per frame count
                 let elapsed = start.elapsed();
                 if playtime > elapsed {
-                    delay_for(playtime - elapsed).await;
+                    sleep(playtime - elapsed).await;
                 }
             }
 
             // postpone the next playback of the report by some seconds ...
             match &station.transmitter {
                 Transmitter::Airfield(_) | Transmitter::Weather(_) => {
-                    delay_for(Duration::from_secs(3)).await;
+                    sleep(Duration::from_secs(3)).await;
                 }
                 Transmitter::Carrier(_) => {
-                    delay_for(Duration::from_secs(10)).await;
+                    sleep(Duration::from_secs(10)).await;
                     // always create a new report for carriers, since they are usually
                     // constantly moving
                     break;
                 }
                 Transmitter::Custom(_) => {
-                    delay_for(Duration::from_secs(1)).await;
+                    sleep(Duration::from_secs(1)).await;
                     // always create a new report to get an update on the position of the
                     // broadcasting unit
                     break;

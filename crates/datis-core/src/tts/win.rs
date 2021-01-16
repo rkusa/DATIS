@@ -16,7 +16,7 @@ pub async fn text_to_speech(
     let frames = task::spawn_blocking(move || {
         let audio_stream = vector_i16(wav.into());
 
-        const MONO_20MS: usize = 16000 * 1 * 20 / 1000;
+        const MONO_20MS: usize = 16000 /* 1 channel */ * 20 / 1000;
         let enc = Encoder::new(SampleRate::Hz16000, Channels::Mono, Application::Voip)?;
         let mut pos = 0;
         let mut output = [0; 256];
@@ -57,5 +57,5 @@ fn vector_i16(byte_stream: bytes::Bytes) -> Vec<i16> {
         res.push(these_converted);
         index_pos += 2;
     }
-    return res;
+    res
 }

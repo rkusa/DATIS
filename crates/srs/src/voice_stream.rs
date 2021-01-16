@@ -9,8 +9,7 @@ use std::time::Duration;
 
 use crate::client::Client;
 use crate::message::{
-    Client as MsgClient, Coalition, GameMessage, Message, MsgType, Radio, RadioInfo,
-    RadioSwitchControls,
+    Client as MsgClient, GameMessage, Message, MsgType, Radio, RadioInfo, RadioSwitchControls,
 };
 use crate::messages_codec::{self, MessagesCodec};
 use crate::voice_codec::*;
@@ -94,17 +93,19 @@ impl VoiceStream {
             let mut messages_stream = messages_stream.fuse();
 
             // send sync message to receive server settings
-            messages_sink.send(create_sync_message(&client)).await?;
+            messages_sink
+                .send(create_sync_message(&client).await)
+                .await?;
 
             // send initial Update message
             messages_sink
-                .send(create_radio_update_message(&client))
+                .send(create_radio_update_message(&client).await)
                 .await?;
 
-            let mut old_pos = client.position();
-            let mut position_update_interval = time::interval(Duration::from_secs(60)).fuse();
-            let mut voice_ping_interval = time::interval(Duration::from_secs(5)).fuse();
-            let mut game_source_interval = time::interval(Duration::from_secs(5)).fuse();
+            let mut old_pos = client.position().await;
+            let mut position_update_interval = time::interval(Duration::from_secs(60));
+            let mut voice_ping_interval = time::interval(Duration::from_secs(5));
+            let mut game_source_interval = time::interval(Duration::from_secs(5));
             let mut shutdown_signal = shutdown_signal.fuse();
             let mut last_game_msg = None;
             let (_tx, noop_game_source) = mpsc::unbounded();
@@ -134,17 +135,11 @@ impl VoiceStream {
                             }
 
                             // handle message
-                            match msg.msg_type {
-                                MsgType::VersionMismatch => {
-                                    return Err(VoiceStreamError::VersionMismatch {
-                                        expected:                                         SRS_VERSION.to_string(),
-                                        encountered: msg.version,
-                                    }
-                                        );
-                                }
-                                _ => {
-                                    // discard other messages for now
-                                }
+                            if msg.msg_type == MsgType::VersionMismatch {
+                                return Err(VoiceStreamError::VersionMismatch {
+                                    expected: SRS_VERSION.to_string(),
+                                    encountered: msg.version,
+                                })
                             }
                         } else {
                             log::debug!("Messages stream was closed, closing voice stream");
@@ -155,13 +150,13 @@ impl VoiceStream {
                     // Sends updates about the client to the server. If `game_source` is set,
                     // the position and frequency from the latest received `GameMessage` is used.
                     // Otherwise, the parameters set in the `client` struct are used.
-                    _ = position_update_interval.next() => {
+                    _ = position_update_interval.tick().fuse() => {
                         if !send_client_position_updates {
                             continue;
                         }
 
                         // keep the position of the station updated
-                        let new_pos = client.position();
+                        let new_pos = client.position().await;
                         let los_enabled = server_settings.0.los_enabled.load(Ordering::Relaxed);
                         let distance_enabled = server_settings.0.distance_enabled.load(Ordering::Relaxed);
                         if (los_enabled || distance_enabled) && new_pos != old_pos {
@@ -169,7 +164,7 @@ impl VoiceStream {
                                 "Position of {} changed, sending a new update message",
                                 client.name()
                             );
-                            messages_sink.send(create_update_message(&client)).await?;
+                            messages_sink.send(create_update_message(&client).await).await?;
                             old_pos = new_pos;
                         }
                     }
@@ -180,15 +175,15 @@ impl VoiceStream {
                         }
                     }
 
-                    _ = game_source_interval.next() => {
+                    _ = game_source_interval.tick().fuse() => {
                         if let Some(msg) = &last_game_msg {
                             messages_sink.send(radio_message_from_game(&client, msg)).await?;
                         }
                     }
 
-                    _ = voice_ping_interval.next() => {
+                    _ = voice_ping_interval.tick().fuse() => {
                         if recv_voice {
-                            tx.send(Packet::Ping(sguid.clone())).await?;
+                            tx.send(Packet::Ping(sguid)).await?;
                         }
                     }
 
@@ -199,7 +194,7 @@ impl VoiceStream {
                     }
 
                     _ = shutdown_signal => {
-                        messages_sink.into_inner().shutdown();
+                        messages_sink.into_inner().shutdown().await?;
                         break;
                     }
                 }
@@ -238,7 +233,7 @@ impl Stream for VoiceStream {
 
         match s.heartbeat.poll_unpin(cx) {
             Poll::Pending => {}
-            Poll::Ready(Err(err)) => return Poll::Ready(Some(Err(err.into()))),
+            Poll::Ready(Err(err)) => return Poll::Ready(Some(Err(err))),
             Poll::Ready(Ok(_)) => {
                 return Poll::Ready(Some(Err(VoiceStreamError::ConnectionClosed)));
             }
@@ -295,13 +290,43 @@ impl Sink<Vec<u8>> for VoiceStream {
     }
 }
 
-fn create_radio_update_message(client: &Client) -> Message {
-    let pos = client.position();
+impl Sink<VoicePacket> for VoiceStream {
+    type Error = mpsc::SendError;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_sink).poll_ready(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, mut packet: VoicePacket) -> Result<(), Self::Error> {
+        let mut sguid = [0; 22];
+        sguid.clone_from_slice(self.client.sguid().as_bytes());
+        packet.client_sguid = sguid;
+
+        let s = self.get_mut();
+        s.packet_id = s.packet_id.wrapping_add(1);
+
+        Pin::new(&mut s.voice_sink).start_send(packet.into())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_sink).poll_flush(cx)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let s = self.get_mut();
+        Pin::new(&mut s.voice_sink).poll_close(cx)
+    }
+}
+
+async fn create_radio_update_message(client: &Client) -> Message {
+    let pos = client.position().await;
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(client.name().to_string()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: Some(RadioInfo {
                 name: "DATIS Radios".to_string(),
                 ptt: false,
@@ -316,7 +341,7 @@ fn create_radio_update_message(client: &Client) -> Message {
                 unit_id: client.unit().as_ref().map(|u| u.id).unwrap_or(0),
                 simultaneous_transmission: true,
             }),
-            lat_lng_position: Some(pos.clone()),
+            lat_lng_position: Some(pos),
         }),
         msg_type: MsgType::RadioUpdate,
         server_settings: None,
@@ -324,15 +349,15 @@ fn create_radio_update_message(client: &Client) -> Message {
     }
 }
 
-fn create_update_message(client: &Client) -> Message {
-    let pos = client.position();
+async fn create_update_message(client: &Client) -> Message {
+    let pos = client.position().await;
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(client.name().to_string()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: None,
-            lat_lng_position: Some(pos.clone()),
+            lat_lng_position: Some(pos),
         }),
         msg_type: MsgType::Update,
         server_settings: None,
@@ -340,15 +365,15 @@ fn create_update_message(client: &Client) -> Message {
     }
 }
 
-fn create_sync_message(client: &Client) -> Message {
-    let pos = client.position();
+async fn create_sync_message(client: &Client) -> Message {
+    let pos = client.position().await;
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(client.name().to_string()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: None,
-            lat_lng_position: Some(pos.clone()),
+            lat_lng_position: Some(pos),
         }),
         msg_type: MsgType::Sync,
         server_settings: None,
@@ -357,13 +382,13 @@ fn create_sync_message(client: &Client) -> Message {
 }
 
 fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Message {
-    let pos = game_message.lat_lng_position.clone();
+    let pos = game_message.lat_lng.clone();
 
     Message {
         client: Some(MsgClient {
             client_guid: client.sguid().to_string(),
             name: Some(game_message.name.clone()),
-            coalition: Coalition::Blue,
+            coalition: client.coalition,
             radio_info: Some(RadioInfo {
                 name: game_message.name.clone(),
                 ptt: game_message.ptt,
@@ -374,7 +399,7 @@ fn radio_message_from_game(client: &Client, game_message: &GameMessage) -> Messa
                 unit_id: game_message.unit_id,
                 simultaneous_transmission: true,
             }),
-            lat_lng_position: Some(pos.clone()),
+            lat_lng_position: Some(pos),
         }),
         msg_type: MsgType::RadioUpdate,
         server_settings: None,

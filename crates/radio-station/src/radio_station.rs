@@ -11,10 +11,10 @@ use futures::sink::SinkExt;
 use futures::stream::{SplitSink, SplitStream, StreamExt as FutStreamExt};
 use ogg::reading::PacketReader;
 use ogg_metadata::{AudioMetadata, OggFormat};
-use srs::message::LatLngPosition;
+use srs::message::{Coalition, LatLngPosition};
 use srs::{Client, VoiceStream};
 use tokio::sync::oneshot;
-use tokio::time::delay_for;
+use tokio::time::sleep;
 
 pub struct RadioStation {
     name: String,
@@ -50,8 +50,8 @@ impl RadioStation {
         path: P,
         should_loop: bool,
     ) -> Result<(), anyhow::Error> {
-        let mut client = Client::new(&self.name, self.freq);
-        client.set_position(self.position);
+        let mut client = Client::new(&self.name, self.freq, Coalition::Blue);
+        client.set_position(self.position).await;
 
         let (_tx, rx) = oneshot::channel();
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), self.port);
@@ -61,8 +61,8 @@ impl RadioStation {
         let tx = Box::pin(radio_broadcast(sink, path, should_loop));
 
         match future::try_select(rx, tx).await {
-            Err(Either::Left((err, _))) => Err(err.into()),
-            Err(Either::Right((err, _))) => Err(err.into()),
+            Err(Either::Left((err, _))) => Err(err),
+            Err(Either::Right((err, _))) => Err(err),
             _ => Ok(()),
         }
     }
@@ -133,7 +133,7 @@ async fn radio_broadcast<P: AsRef<Path>>(
             let mut frame_count = 0;
 
             while let Some(pck) = audio.read_packet()? {
-                if pck.data.len() == 0 {
+                if pck.data.is_empty() {
                     continue;
                 }
 
@@ -144,7 +144,7 @@ async fn radio_broadcast<P: AsRef<Path>>(
                 let playtime = Duration::from_millis((frame_count as u64 + 1) * 20); // 20m per frame count
                 let elapsed = start.elapsed();
                 if playtime > elapsed {
-                    delay_for(playtime - elapsed).await;
+                    sleep(playtime - elapsed).await;
                 }
             }
         }

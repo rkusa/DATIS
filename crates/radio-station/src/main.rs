@@ -1,5 +1,3 @@
-#![warn(rust_2018_idioms)]
-
 mod radio_station;
 
 use std::str::FromStr;

@@ -1,11 +1,9 @@
-#![warn(rust_2018_idioms)]
-
 mod mission;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
-use datis_core::rpc::MissionRpc;
+use datis_core::ipc::MissionRpc;
 use datis_core::Datis;
 use mlua::prelude::*;
 use mlua::{Function, Value};
@@ -54,7 +52,7 @@ pub fn init(lua: &Lua) -> Result<String, mlua::Error> {
         .logger(Logger::builder().build("datis_core", log_level))
         .logger(Logger::builder().build("srs", log_level))
         .logger(Logger::builder().build("win_tts", log_level))
-        .logger(Logger::builder().build("dcs_module_rpc", log_level))
+        .logger(Logger::builder().build("dcs_module_ipc", log_level))
         .build(Root::builder().appender("file").build(LevelFilter::Off))
         .map_err(to_lua_err)?;
 
@@ -83,7 +81,7 @@ fn start(lua: &Lua, (): ()) -> LuaResult<()> {
             datis.set_aws_keys(info.aws_key, info.aws_secret, info.aws_region);
         }
         datis.set_log_dir(log_dir);
-        Ok((datis, info.rpc))
+        Ok((datis, info.ipc))
     });
     match start {
         Ok((datis, mission_info)) => {
@@ -136,8 +134,8 @@ fn resume(_: &Lua, _: ()) -> LuaResult<()> {
 }
 
 fn try_next(lua: &Lua, callback: Function<'_>) -> LuaResult<bool> {
-    if let Some((_, ref rpc)) = *DATIS.read().unwrap() {
-        if let Some(mut next) = rpc.try_next() {
+    if let Some((_, ref ipc)) = *DATIS.read().unwrap() {
+        if let Some(mut next) = ipc.try_next() {
             let method = next.method().to_string();
             let params = next
                 .params(lua)
@@ -151,15 +149,23 @@ fn try_next(lua: &Lua, callback: Function<'_>) -> LuaResult<bool> {
                 return Ok(true);
             }
 
-            let res: Value<'_> = result.get("result")?;
-            next.success(&res).map_err(|err| {
-                mlua::Error::ExternalError(Arc::new(Error::DeserializeResult {
-                    err,
+            let res = match result.get::<_, Value<'_>>("result") {
+                Ok(res) => res,
+                Err(_) => {
+                    next.error("received empty IPC response".to_string());
+                    return Ok(true);
+                }
+            };
+
+            if let Err(err) = next.success(lua, &res) {
+                next.error(format!(
+                    "Failed to deserialize result for method {}: {}\n{}",
                     method,
-                    result: pretty_print_value(res, 0)
-                        .unwrap_or_else(|err| format!("failed to pretty print result: {}", err)),
-                }))
-            })?;
+                    err,
+                    pretty_print_value(res, 0)
+                        .unwrap_or_else(|err| format!("failed to pretty print result: {}", err))
+                ));
+            }
 
             return Ok(true);
         }
@@ -168,7 +174,7 @@ fn try_next(lua: &Lua, callback: Function<'_>) -> LuaResult<bool> {
     Ok(false)
 }
 
-#[mlua_derive::lua_module]
+#[mlua::lua_module]
 pub fn datis(lua: &Lua) -> LuaResult<LuaTable<'_>> {
     let exports = lua.create_table()?;
     exports.set("start", lua.create_function(start)?)?;
@@ -182,19 +188,12 @@ pub fn datis(lua: &Lua) -> LuaResult<LuaTable<'_>> {
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Failed to deserialize params: {0}")]
-    DeserializeParams(#[source] serde_mlua::Error),
-    #[error("Failed to deserialize result for method {method}: {err}\n{result}")]
-    DeserializeResult {
-        #[source]
-        err: serde_mlua::Error,
-        method: String,
-        result: String,
-    },
+    DeserializeParams(#[source] mlua::Error),
     #[error("Failed to serialize params: {0}")]
-    SerializeParams(#[source] serde_mlua::Error),
+    SerializeParams(#[source] mlua::Error),
 }
 
-fn to_lua_err(err: impl std::error::Error + 'static) -> mlua::Error {
+fn to_lua_err(err: impl std::error::Error + Send + Sync + 'static) -> mlua::Error {
     mlua::Error::ExternalError(Arc::new(err))
 }
 
