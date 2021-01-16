@@ -29,7 +29,7 @@ pub struct Airfield {
     pub traffic_freq: Option<u64>,
     pub info_ltr_offset: usize,
     pub info_ltr_override: Option<char>,
-    pub active_rwy_override: Option<String>
+    pub active_rwy_override: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -777,7 +777,7 @@ mod test {
                 unit_id: 42,
                 unit_name: "Weather Post".to_string(),
                 info_ltr_offset: 15, // Should be "Papa",
-                info_ltr_override: None
+                info_ltr_override: None,
             }),
         };
 
