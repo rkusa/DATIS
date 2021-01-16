@@ -28,7 +28,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
     let station_configs_from_description = {
         let dcs: LuaTable<'_> = lua.globals().get("DCS")?;
         let mission_description: String = dcs.call_function("getMissionDescription", ())?;
-        extract_stationc_config_from_mission_description(&mission_description)
+        extract_station_config_from_mission_description(&mission_description)
     };
 
     // Create a random generator for creating the information letter offset.
