@@ -11,30 +11,26 @@ pub struct StationConfig {
     pub traffic: Option<u64>,
     pub tts: Option<TextToSpeechProvider>,
     pub info_ltr_override: Option<char>,
+    pub active_rwy_override: Option<String>,
 }
 
-pub fn extract_atis_station_frequencies(situation: &str) -> HashMap<String, StationConfig> {
-    // extract ATIS stations and frequencies
-    let re = Regex::new(r"ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
+pub fn extract_stationc_config_from_mission_description(
+    situation: &str,
+) -> HashMap<String, StationConfig> {
+    // extract ATIS stations from mission description
+    let re = Regex::new(r"(ATIS .*)").unwrap();
     let mut stations: HashMap<String, StationConfig> = re
         .captures_iter(situation)
         .map(|caps| {
-            let name = caps.get(1).unwrap().as_str().to_string();
-            let freq = caps.get(2).unwrap().as_str();
-            let freq = (f32::from_str(freq).unwrap() * 1_000_000.0) as u64;
-            (
-                name.clone(),
-                StationConfig {
-                    name,
-                    atis: freq,
-                    traffic: None,
-                    tts: None,
-                    info_ltr_override: None,
-                },
-            )
+            let atis_line = caps.get(1).unwrap().as_str();
+            let station = extract_atis_station_config(atis_line);
+            station
         })
+        .flatten()
+        .map(|station| (station.name.clone(), station))
         .collect();
 
+    // Some "legacy" functionality which allowed specifyin TRAFFIC options on separate lines
     // extract optional traffic frequencies
     let re = Regex::new(r"TRAFFIC ([a-zA-Z-]+) ([1-3]\d{2}(\.\d{1,3})?)").unwrap();
     for caps in re.captures_iter(situation) {
@@ -64,6 +60,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
     let mut traffic_freq: Option<u64> = None;
     let mut tts: Option<TextToSpeechProvider> = None;
     let mut info_ltr_override = None;
+    let mut active_rwy_override = None;
 
     let rex_option = RegexBuilder::new(r"([^ ]*) (.*)")
         .case_insensitive(true)
@@ -97,6 +94,11 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                     Some(param.as_str().chars().next().unwrap().to_ascii_uppercase())
                 });
             }
+            "ACTIVE" => {
+                active_rwy_override = caps
+                    .get(2)
+                    .map_or(None, |param| Some(param.as_str().into()));
+            }
             _ => {
                 log::warn!("Unsupported ATIS station option {}", option_key);
             }
@@ -109,6 +111,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
         traffic: traffic_freq,
         tts,
         info_ltr_override: info_ltr_override,
+        active_rwy_override: active_rwy_override,
     };
 
     Some(result)
@@ -159,6 +162,7 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
         traffic: None,
         tts,
         info_ltr_override: info_ltr_override,
+        active_rwy_override: None,
     };
 
     Some(result)
@@ -266,8 +270,8 @@ mod test {
     use crate::tts::{aws, gcloud, TextToSpeechProvider};
 
     #[test]
-    fn test_mission_situation_extraction() {
-        let freqs = extract_atis_station_frequencies(
+    fn test_mission_descriptiopn_extraction() {
+        let freqs = extract_stationc_config_from_mission_description(
             r#"
             ATIS Mineralnye Vody 251.000
             ATIS Batumi 131.5
@@ -288,6 +292,7 @@ mod test {
                         traffic: None,
                         tts: None,
                         info_ltr_override: None,
+                        active_rwy_override: None,
                     }
                 ),
                 (
@@ -298,6 +303,7 @@ mod test {
                         traffic: Some(255_000_000),
                         tts: None,
                         info_ltr_override: None,
+                        active_rwy_override: None,
                     }
                 ),
                 (
@@ -308,9 +314,39 @@ mod test {
                         traffic: None,
                         tts: None,
                         info_ltr_override: None,
+                        active_rwy_override: None,
                     }
                 )
             ]
+            .into_iter()
+            .collect()
+        );
+    }
+
+    #[test]
+    fn test_advanced_mission_descriptiopn_extraction() {
+        let freqs = extract_stationc_config_from_mission_description(
+            r#"Welcome to my mission!
+            It's not a real mission, but rather a chance to test the mission extraction
+            logic in datis!
+
+            ATIS Batumi 131.5, INFO T, ACTIVE 12
+        "#,
+        );
+
+        assert_eq!(
+            freqs,
+            vec![(
+                "Batumi".to_string(),
+                StationConfig {
+                    name: "Batumi".to_string(),
+                    atis: 131_500_000,
+                    traffic: None,
+                    tts: None,
+                    info_ltr_override: Some('T'),
+                    active_rwy_override: Some("12".to_string()),
+                }
+            )]
             .into_iter()
             .collect()
         );
@@ -326,6 +362,7 @@ mod test {
                 traffic: None,
                 tts: None,
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
 
@@ -337,6 +374,7 @@ mod test {
                 traffic: None,
                 tts: None,
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
 
@@ -348,6 +386,7 @@ mod test {
                 traffic: None,
                 tts: None,
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
 
@@ -359,6 +398,7 @@ mod test {
                 traffic: Some(123_450_000),
                 tts: None,
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
 
@@ -373,7 +413,8 @@ mod test {
                 tts: Some(TextToSpeechProvider::GoogleCloud {
                     voice: gcloud::VoiceKind::StandardE
                 }),
-                info_ltr_override: Some('Q')
+                info_ltr_override: Some('Q'),
+                active_rwy_override: None,
             })
         );
 
@@ -389,6 +430,7 @@ mod test {
                     voice: gcloud::VoiceKind::StandardE
                 }),
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
 
@@ -402,6 +444,7 @@ mod test {
                     voice: gcloud::VoiceKind::StandardE
                 }),
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
 
@@ -413,6 +456,7 @@ mod test {
                 traffic: None,
                 tts: None,
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
 
@@ -425,6 +469,7 @@ mod test {
                 traffic: None,
                 tts: None,
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
 
@@ -437,6 +482,7 @@ mod test {
                 traffic: None,
                 tts: None,
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
     }
@@ -451,6 +497,7 @@ mod test {
                 traffic: None,
                 tts: None,
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
 
@@ -462,6 +509,7 @@ mod test {
                 traffic: None,
                 tts: None,
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
 
@@ -475,6 +523,7 @@ mod test {
                     voice: gcloud::VoiceKind::StandardE
                 }),
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
     }
@@ -491,6 +540,7 @@ mod test {
                     voice: gcloud::VoiceKind::StandardD
                 }),
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
 
@@ -504,6 +554,7 @@ mod test {
                     voice: aws::VoiceKind::Brian
                 }),
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
     }
@@ -523,6 +574,7 @@ mod test {
                     voice: gcloud::VoiceKind::StandardE
                 }),
                 info_ltr_override: None,
+                active_rwy_override: None,
             })
         );
     }
@@ -547,6 +599,21 @@ mod test {
         assert_eq!(
             extract_weather_station_config("not a weather station at all"),
             None
+        );
+    }
+
+    #[test]
+    fn test_active_rwy_override() {
+        assert_eq!(
+            extract_atis_station_config("ATIS Kutaisi 131.400, ACTIVE 21L"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 131_400_000,
+                traffic: None,
+                tts: None,
+                info_ltr_override: None,
+                active_rwy_override: Some("21L".to_string()),
+            })
         );
     }
 

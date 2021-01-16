@@ -29,6 +29,7 @@ pub struct Airfield {
     pub traffic_freq: Option<u64>,
     pub info_ltr_offset: usize,
     pub info_ltr_override: Option<char>,
+    pub active_rwy_override: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -215,6 +216,10 @@ impl Station {
 
 impl Airfield {
     fn get_active_runway(&self, wind_dir: f64) -> Option<&str> {
+        if let Some(rwy_override) = &self.active_rwy_override {
+            return Some(rwy_override);
+        }
+
         let lr: &[_] = &['L', 'R'];
         for rwy in &self.runways {
             let rwy = rwy.trim_matches(lr);
@@ -594,6 +599,7 @@ mod test {
             traffic_freq: None,
             info_ltr_offset: 0,
             info_ltr_override: None,
+            active_rwy_override: None,
         };
 
         assert_eq!(airfield.get_active_runway(0.0), Some("04"));
@@ -619,6 +625,7 @@ mod test {
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 0,
                 info_ltr_override: None,
+                active_rwy_override: None,
             }),
         };
 
@@ -640,6 +647,7 @@ mod test {
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 15, // Should be "Papa"
                 info_ltr_override: None,
+                active_rwy_override: None,
             }),
         };
 
@@ -661,6 +669,7 @@ mod test {
                 traffic_freq: Some(249_500_000),
                 info_ltr_offset: 15,
                 info_ltr_override: Some('Q'),
+                active_rwy_override: None,
             }),
         };
 

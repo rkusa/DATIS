@@ -97,7 +97,7 @@ Add a static unit per ATIS station to the mission, e.g. a communication tower (t
 (`{}` denotes a part that has to be replaced with a proper value and `[]` denotes an optional part)
 
 ```
-ATIS {Airfield} {ATIS Frequency}[, TRAFFIC {TRAFFIC Frequency}][, VOICE {VOICE NAME}, INFO {OVERRIDE INFO LETTER}]
+ATIS {Airfield} {ATIS Frequency}[, TRAFFIC {TRAFFIC Frequency}][, VOICE {VOICE NAME}][, INFO {OVERRIDE INFO LETTER}][, ACTIVE {ACTIVE RUNWAY OVERRIDE}]
 ```
 
 Your choice for `{VOICE NAME}` depicts which cloud provider is used for a particular ATIS station.
@@ -115,6 +115,8 @@ The default can be changed in the DCS SPECIAL settings for DATIS.
 
 `OVERRIDE INFO LETTER` Allows you to override the dynamic rotating selection of the ATIS information letter in your mission requires a specific and constant value.
 
+`ACTIVE RUNWAY OVERRIDE` can be used if the SPINS for the airfield differ from the prevailing winds and you want to override the calculated active runway.
+
 Examples:
 
 ```
@@ -125,7 +127,7 @@ ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE en-US-Standard-E
 ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE GC:en-US-Wavenet-B
 ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE AWS:Nicole
 ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE WIN
-ATIS Kutaisi 251.000, TRAFFIC 252.000, INFO Q
+ATIS Kutaisi 251.000, TRAFFIC 252.000, INFO Q, ACTIVE 21L
 ```
 
 ![Example](./docs/static.jpg)
