@@ -14,7 +14,7 @@ use ogg_metadata::{AudioMetadata, OggFormat};
 use srs::message::{Coalition, LatLngPosition};
 use srs::{Client, VoiceStream};
 use tokio::sync::oneshot;
-use tokio::time::delay_for;
+use tokio::time::sleep;
 
 pub struct RadioStation {
     name: String,
@@ -144,7 +144,7 @@ async fn radio_broadcast<P: AsRef<Path>>(
                 let playtime = Duration::from_millis((frame_count as u64 + 1) * 20); // 20m per frame count
                 let elapsed = start.elapsed();
                 if playtime > elapsed {
-                    delay_for(playtime - elapsed).await;
+                    sleep(playtime - elapsed).await;
                 }
             }
         }

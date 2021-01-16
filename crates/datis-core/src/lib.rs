@@ -31,7 +31,7 @@ use futures::stream::{SplitSink, StreamExt};
 use srs::{message::Coalition, Client, VoiceStream};
 use tokio::runtime::{self, Runtime};
 use tokio::sync::{oneshot, RwLock};
-use tokio::time::delay_for;
+use tokio::time::sleep;
 
 pub struct Datis {
     stations: Vec<Station>,
@@ -58,10 +58,7 @@ impl Datis {
             gcloud_key: None,
             aws_config: None,
             port: 5002,
-            runtime: runtime::Builder::new()
-                .threaded_scheduler()
-                .enable_all()
-                .build()?,
+            runtime: runtime::Builder::new_multi_thread().enable_all().build()?,
             started: false,
             shutdown_signals: Vec::new(),
         })
@@ -226,7 +223,7 @@ async fn spawn(
 
                 log::info!("Restarting ATIS {} in 60 seconds ...", station.name);
                 // TODO: handle shutdown signal during the delay
-                delay_for(Duration::from_secs(60)).await;
+                sleep(Duration::from_secs(60)).await;
             }
             _ = shutdown_signal => {
                 let _ = tx.send(());
@@ -342,7 +339,7 @@ async fn audio_broadcast(
                     station.name
                 );
                 // postpone the next playback of the report by some seconds ...
-                delay_for(Duration::from_secs(30)).await;
+                sleep(Duration::from_secs(30)).await;
                 continue;
             }
         };
@@ -395,23 +392,23 @@ async fn audio_broadcast(
                 let playtime = Duration::from_millis((i as u64 + 1) * 20); // 20m per frame count
                 let elapsed = start.elapsed();
                 if playtime > elapsed {
-                    delay_for(playtime - elapsed).await;
+                    sleep(playtime - elapsed).await;
                 }
             }
 
             // postpone the next playback of the report by some seconds ...
             match &station.transmitter {
                 Transmitter::Airfield(_) | Transmitter::Weather(_) => {
-                    delay_for(Duration::from_secs(3)).await;
+                    sleep(Duration::from_secs(3)).await;
                 }
                 Transmitter::Carrier(_) => {
-                    delay_for(Duration::from_secs(10)).await;
+                    sleep(Duration::from_secs(10)).await;
                     // always create a new report for carriers, since they are usually
                     // constantly moving
                     break;
                 }
                 Transmitter::Custom(_) => {
-                    delay_for(Duration::from_secs(1)).await;
+                    sleep(Duration::from_secs(1)).await;
                     // always create a new report to get an update on the position of the
                     // broadcasting unit
                     break;

@@ -68,7 +68,7 @@ pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>
 
     // This big block is necessary to setup a local set to be able to run !Send futures.
     let buf = tokio::task::spawn_blocking(move || {
-        let rt = tokio::runtime::Handle::current();
+        let rt = tokio::runtime::Runtime::new()?;
         rt.block_on(async {
             let local = tokio::task::LocalSet::new();
 
@@ -107,6 +107,8 @@ pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>
 pub enum Error {
     #[error("Calling WinRT API failed with error code {0}: {1}")]
     WinRT(u32, String),
+    #[error("Runtime error")]
+    Io(#[from] std::io::Error),
 }
 
 impl From<win_media::Error> for Error {

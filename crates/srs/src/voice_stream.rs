@@ -103,9 +103,9 @@ impl VoiceStream {
                 .await?;
 
             let mut old_pos = client.position().await;
-            let mut position_update_interval = time::interval(Duration::from_secs(60)).fuse();
-            let mut voice_ping_interval = time::interval(Duration::from_secs(5)).fuse();
-            let mut game_source_interval = time::interval(Duration::from_secs(5)).fuse();
+            let mut position_update_interval = time::interval(Duration::from_secs(60));
+            let mut voice_ping_interval = time::interval(Duration::from_secs(5));
+            let mut game_source_interval = time::interval(Duration::from_secs(5));
             let mut shutdown_signal = shutdown_signal.fuse();
             let mut last_game_msg = None;
             let (_tx, noop_game_source) = mpsc::unbounded();
@@ -150,7 +150,7 @@ impl VoiceStream {
                     // Sends updates about the client to the server. If `game_source` is set,
                     // the position and frequency from the latest received `GameMessage` is used.
                     // Otherwise, the parameters set in the `client` struct are used.
-                    _ = position_update_interval.next() => {
+                    _ = position_update_interval.tick().fuse() => {
                         if !send_client_position_updates {
                             continue;
                         }
@@ -175,13 +175,13 @@ impl VoiceStream {
                         }
                     }
 
-                    _ = game_source_interval.next() => {
+                    _ = game_source_interval.tick().fuse() => {
                         if let Some(msg) = &last_game_msg {
                             messages_sink.send(radio_message_from_game(&client, msg)).await?;
                         }
                     }
 
-                    _ = voice_ping_interval.next() => {
+                    _ = voice_ping_interval.tick().fuse() => {
                         if recv_voice {
                             tx.send(Packet::Ping(sguid)).await?;
                         }
@@ -194,7 +194,7 @@ impl VoiceStream {
                     }
 
                     _ = shutdown_signal => {
-                        messages_sink.into_inner().shutdown();
+                        messages_sink.into_inner().shutdown().await?;
                         break;
                     }
                 }
