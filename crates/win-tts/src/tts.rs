@@ -6,7 +6,32 @@ use win_media::windows::storage::streams::DataReader;
 pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>, Error> {
     let ssml = ssml.into();
     let voice = voice.map(String::from);
-    // let buf = task::spawn_blocking(move || -> Result<Vec<u8>, Error> {
+
+    // This big block is necessary to setup a local set to be able to run !Send futures.
+    let buf = tokio::task::spawn_blocking(move || {
+        let rt = tokio::runtime::Runtime::new()?;
+        rt.block_on(async {
+            let local = tokio::task::LocalSet::new();
+
+            // Run the local task set.
+            let buf = local
+                .run_until(async move {
+                    task::spawn_local(async move { tts_local(ssml, voice).await })
+                        .await
+                        .unwrap()
+                })
+                .await?;
+
+            Ok::<Vec<u8>, Error>(buf)
+        })
+    })
+    .await
+    .unwrap()?;
+
+    Ok(buf)
+}
+
+async fn tts_local(ssml: String, voice: Option<String>) -> Result<Vec<u8>, Error> {
     let synth = SpeechSynthesizer::new()?;
 
     // Note, there does not seem to be a way to explicitly set 16000kHz, 16 audio bits per
@@ -66,39 +91,15 @@ pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>
         }
     }
 
-    // This big block is necessary to setup a local set to be able to run !Send futures.
-    let buf = tokio::task::spawn_blocking(move || {
-        let rt = tokio::runtime::Runtime::new()?;
-        rt.block_on(async {
-            let local = tokio::task::LocalSet::new();
+    // the DataReader is !Send, which is why we have to process it in a local set
+    let stream = synth.synthesize_ssml_to_stream_async(ssml)?.await?;
+    let size = stream.size()?;
 
-            // Run the local task set.
-            let buf = local
-                .run_until(async move {
-                    task::spawn_local(async move {
-                        log::debug!("SAML: {}", ssml);
-                        // the DataReader is !Send, which is why we have to process it in a local set
-                        let stream = synth.synthesize_ssml_to_stream_async(ssml)?.await?;
-                        let size = stream.size()?;
+    let rd = DataReader::create_data_reader(stream.get_input_stream_at(0)?)?;
+    rd.load_async(size as u32)?.await?;
 
-                        let rd = DataReader::create_data_reader(stream.get_input_stream_at(0)?)?;
-                        rd.load_async(size as u32)?.await?;
-
-                        let mut buf = vec![0u8; size as usize];
-                        rd.read_bytes(buf.as_mut_slice())?;
-
-                        Ok::<Vec<u8>, Error>(buf)
-                    })
-                    .await
-                    .unwrap()
-                })
-                .await?;
-
-            Ok::<Vec<u8>, Error>(buf)
-        })
-    })
-    .await
-    .unwrap()?;
+    let mut buf = vec![0u8; size as usize];
+    rd.read_bytes(buf.as_mut_slice())?;
 
     Ok(buf)
 }
