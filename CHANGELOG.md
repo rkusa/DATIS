@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.2.0-beta.7] - 2021-01-19
+
 ### Fixed
 - Fixed actually using the voice setting of ATIS stations defined in the mission situation
 - Fixed Windows TTS-based ATIS stations to support non US voices (e.g. en_GB)
