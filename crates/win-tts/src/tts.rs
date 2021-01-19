@@ -84,7 +84,7 @@ async fn tts_local(mut ssml: String, voice: Option<String>) -> Result<Vec<u8>, E
             }
 
             let name = v.display_name()?.to_string();
-            log::info!("- {}", name);
+            log::info!("- {} ({})", name, lang);
         }
     }
 

@@ -82,9 +82,9 @@ ATIS {Airfield} {ATIS Frequency}[, OPTION {VALUE}]*
 Available settings:
 
 - `VOICE {VOICE NAME}`: Set the TTS provider and voice to be used for this station. If not provided, the TTS provider and voice defaults to the one set up in the DCS special settings. Available voices are:
-  - Windows: `WIN` or `WIN:voice` (Where voice depends on the installed voices on your system. Tip: if you don't know which voices are installed, set anything, start your mission and look into the DATIS logs to see a list of available voices)
-  - Google Gloud: For available voices see https://cloud.google.com/text-to-speech/docs/voices. Use the name from the `Voice name` column. All voices starting with `en-` are supported. Keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota, see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing).
-  - AWS: For available voices see https://docs.aws.amazon.com/polly/latest/dg/voicelist.html. Use the name from the `Name/ID` column (without `*` prefixes). All English voices are supported.
+  - Windows: `WIN` or `WIN:voice`: Available voice names are: `Catherine` (en-AU), `James` (en-AU), `Linda` (en-CA), `Richard` (en-CA), `George` (en-GB), `Hazel` (en-GB), `Susan` (en-GB), `Sean` (en-IE), `Heera` (en-IN), `Ravi` (en-IN), `David` (en-US), `Zira` (en-US), `Mark` (en-US). Make sure  to install the corresponding voice package (for the language of the voice) for the voices to be available.
+  - Google Gloud (`GC:{VOICE NAME}`): For available voices see https://cloud.google.com/text-to-speech/docs/voices. Use the name from the `Voice name` column. All voices starting with `en-` are supported. Keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota, see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing).
+  - AWS (`AWS:{VOICE NAME}`): For available voices see https://docs.aws.amazon.com/polly/latest/dg/voicelist.html. Use the name from the `Name/ID` column (without `*` prefixes). All English voices are supported.
 - `TRAFFIC {FREQUENCY}`: An optional traffic frequency that, if provided, is mentioned as part of the ATIS report.
 - `OVERRIDE {INFO LETTER}`: Allows you to override the dynamic rotating selection of the ATIS information letter if your mission requires a specific and constant value.
 - `ACTIVE {RUNWAY OVERRIDE}`: Can be used if the SPINS for the airfield differ from the prevailing winds and you want to override the calculated active runway.

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Added support for all non-US (en_GB, en_AU, ...) English Google Cloud voices
 - Added support for new English AWS (Polly) voices
+- Added all possible Windows TTS English voices to DATIS default voice setting dropdown
 
 ## [2.2.0-beta.6] - 2021-01-16
 

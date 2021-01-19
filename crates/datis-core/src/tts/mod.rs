@@ -9,7 +9,7 @@ use std::str::FromStr;
 pub enum TextToSpeechProvider {
     GoogleCloud { voice: gcloud::VoiceKind },
     AmazonWebServices { voice: aws::VoiceKind },
-    Windows { voice: Option<String> },
+    Windows { voice: Option<win::VoiceKind> },
 }
 
 #[derive(Clone)]
@@ -62,7 +62,7 @@ impl FromStr for TextToSpeechProvider {
                 }
                 "WIN" | "win" => {
                     return Ok(TextToSpeechProvider::Windows {
-                        voice: Some(voice.to_string()),
+                        voice: Some(win::VoiceKind::from_str(voice)?),
                     })
                 }
                 _ => {}

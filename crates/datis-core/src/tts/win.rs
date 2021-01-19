@@ -1,6 +1,35 @@
+use std::ops::Deref;
+use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
+pub enum VoiceKind {
+    // en-AU
+    Catherine,
+    James,
+    // en-CA
+    Linda,
+    Richard,
+    // en-GB
+    George,
+    Hazel,
+    Susan,
+    // en-IE
+    Sean,
+    // en-IN
+    Heera,
+    Ravi,
+    // en-US
+    David,
+    Zira,
+    Mark,
+}
+
 #[derive(Clone)]
 pub struct WindowsConfig {
-    pub voice: Option<String>,
+    pub voice: Option<VoiceKind>,
 }
 
 #[cfg(target_os = "windows")]
@@ -58,4 +87,34 @@ fn vector_i16(byte_stream: bytes::Bytes) -> Vec<i16> {
         index_pos += 2;
     }
     res
+}
+
+impl FromStr for VoiceKind {
+    type Err = serde_json::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_value(json!(s))
+    }
+}
+
+impl Deref for VoiceKind {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            VoiceKind::Catherine => "Catherine",
+            VoiceKind::James => "James",
+            VoiceKind::Linda => "Linda",
+            VoiceKind::Richard => "Richard",
+            VoiceKind::George => "George",
+            VoiceKind::Hazel => "Hazel",
+            VoiceKind::Susan => "Susan",
+            VoiceKind::Sean => "Sean",
+            VoiceKind::Heera => "Heera",
+            VoiceKind::Ravi => "Ravi",
+            VoiceKind::David => "David",
+            VoiceKind::Zira => "Zira",
+            VoiceKind::Mark => "Mark",
+        }
+    }
 }

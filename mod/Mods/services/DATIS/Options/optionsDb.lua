@@ -2,7 +2,21 @@ local DbOption = require("Options.DbOption")
 
 return {
   defaultVoice = DbOption.new():setValue("WIN"):combo({
-    DbOption.Item(_("Windows integrated TTS")):Value("WIN"),
+    DbOption.Item(_("Windows TTS: System default voice")):Value("WIN"),
+
+    DbOption.Item(_("Windows TTS: Catherine (en-AU)")):Value("WIN:Catherine"),
+    DbOption.Item(_("Windows TTS: James (en-AU)")):Value("WIN:James"),
+    DbOption.Item(_("Windows TTS: Linda (en-CA)")):Value("WIN:Linda"),
+    DbOption.Item(_("Windows TTS: Richard (en-CA)")):Value("WIN:Richard"),
+    DbOption.Item(_("Windows TTS: George (en-GB)")):Value("WIN:George"),
+    DbOption.Item(_("Windows TTS: Hazel (en-GB)")):Value("WIN:Hazel"),
+    DbOption.Item(_("Windows TTS: Susan (en-GB)")):Value("WIN:Susan"),
+    DbOption.Item(_("Windows TTS: Sean (en-IE)")):Value("WIN:Sean"),
+    DbOption.Item(_("Windows TTS: Heera (en-IN)")):Value("WIN:Heera"),
+    DbOption.Item(_("Windows TTS: Ravi (en-IN)")):Value("WIN:Ravi"),
+    DbOption.Item(_("Windows TTS: David (en-US)")):Value("WIN:David"),
+    DbOption.Item(_("Windows TTS: Zira (en-US)")):Value("WIN:Zira"),
+    DbOption.Item(_("Windows TTS: Mark (en-US)")):Value("WIN:Mark"),
 
     DbOption.Item(_("GCloud: en-AU-Standard-A")):Value("GC:en-AU-Standard-A"),
     DbOption.Item(_("GCloud: en-AU-Standard-B")):Value("GC:en-AU-Standard-B"),
