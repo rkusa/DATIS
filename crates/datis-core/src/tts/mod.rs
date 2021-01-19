@@ -112,7 +112,7 @@ mod test {
             assert_eq!(
                 TextToSpeechProvider::from_str("en-US-Wavenet-A").unwrap(),
                 TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::WavenetA
+                    voice: gcloud::VoiceKind::EnUsWavenetA
                 }
             )
         }
@@ -122,7 +122,17 @@ mod test {
             assert_eq!(
                 TextToSpeechProvider::from_str("GC:en-US-Wavenet-B").unwrap(),
                 TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::WavenetB
+                    voice: gcloud::VoiceKind::EnUsWavenetB
+                }
+            )
+        }
+
+        #[test]
+        fn gc_en_gp() {
+            assert_eq!(
+                TextToSpeechProvider::from_str("GC:en-GB-Standard-A").unwrap(),
+                TextToSpeechProvider::GoogleCloud {
+                    voice: gcloud::VoiceKind::EnGbStandardA
                 }
             )
         }

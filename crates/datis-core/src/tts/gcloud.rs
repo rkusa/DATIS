@@ -49,26 +49,94 @@ struct TextToSpeechResponse {
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum VoiceKind {
+    #[serde(rename = "en-AU-Standard-A")]
+    EnAuStandardA,
+    #[serde(rename = "en-AU-Standard-B")]
+    EnAuStandardB,
+    #[serde(rename = "en-AU-Standard-C")]
+    EnAuStandardC,
+    #[serde(rename = "en-AU-Standard-D")]
+    EnAuStandardD,
+    #[serde(rename = "en-AU-Wavenet-A")]
+    EnAuWavenetA,
+    #[serde(rename = "en-AU-Wavenet-B")]
+    EnAuWavenetB,
+    #[serde(rename = "en-AU-Wavenet-C")]
+    EnAuWavenetC,
+    #[serde(rename = "en-AU-Wavenet-D")]
+    EnAuWavenetD,
+    #[serde(rename = "en-IN-Standard-A")]
+    EnInStandardA,
+    #[serde(rename = "en-IN-Standard-B")]
+    EnInStandardB,
+    #[serde(rename = "en-IN-Standard-C")]
+    EnInStandardC,
+    #[serde(rename = "en-IN-Standard-D")]
+    EnInStandardD,
+    #[serde(rename = "en-IN-Wavenet-A")]
+    EnInWavenetA,
+    #[serde(rename = "en-IN-Wavenet-B")]
+    EnInWavenetB,
+    #[serde(rename = "en-IN-Wavenet-C")]
+    EnInWavenetC,
+    #[serde(rename = "en-IN-Wavenet-D")]
+    EnInWavenetD,
+    #[serde(rename = "en-GB-Standard-A")]
+    EnGbStandardA,
+    #[serde(rename = "en-GB-Standard-B")]
+    EnGbStandardB,
+    #[serde(rename = "en-GB-Standard-C")]
+    EnGbStandardC,
+    #[serde(rename = "en-GB-Standard-D")]
+    EnGbStandardD,
+    #[serde(rename = "en-GB-Standard-F")]
+    EnGbStandardF,
+    #[serde(rename = "en-GB-Wavenet-A")]
+    EnGbWavenetA,
+    #[serde(rename = "en-GB-Wavenet-B")]
+    EnGbWavenetB,
+    #[serde(rename = "en-GB-Wavenet-C")]
+    EnGbWavenetC,
+    #[serde(rename = "en-GB-Wavenet-D")]
+    EnGbWavenetD,
+    #[serde(rename = "en-GB-Wavenet-F")]
+    EnGbWavenetF,
     #[serde(rename = "en-US-Standard-B")]
-    StandardB,
+    EnUsStandardB,
     #[serde(rename = "en-US-Standard-C")]
-    StandardC,
+    EnUsStandardC,
     #[serde(rename = "en-US-Standard-D")]
-    StandardD,
+    EnUsStandardD,
     #[serde(rename = "en-US-Standard-E")]
-    StandardE,
+    EnUsStandardE,
+    #[serde(rename = "en-US-Standard-G")]
+    EnUsStandardG,
+    #[serde(rename = "en-US-Standard-H")]
+    EnUsStandardH,
+    #[serde(rename = "en-US-Standard-I")]
+    EnUsStandardI,
+    #[serde(rename = "en-US-Standard-J")]
+    EnUsStandardJ,
     #[serde(rename = "en-US-Wavenet-A")]
-    WavenetA,
+    EnUsWavenetA,
     #[serde(rename = "en-US-Wavenet-B")]
-    WavenetB,
+    EnUsWavenetB,
     #[serde(rename = "en-US-Wavenet-C")]
-    WavenetC,
+    EnUsWavenetC,
     #[serde(rename = "en-US-Wavenet-D")]
-    WavenetD,
+    EnUsWavenetD,
     #[serde(rename = "en-US-Wavenet-E")]
-    WavenetE,
+    EnUsWavenetE,
     #[serde(rename = "en-US-Wavenet-F")]
-    WavenetF,
+    EnUsWavenetF,
+    #[serde(rename = "en-US-Wavenet-G")]
+    EnUsWavenetG,
+    #[serde(rename = "en-US-Wavenet-H")]
+    EnUsWavenetH,
+    #[serde(rename = "en-US-Wavenet-I")]
+    EnUsWavenetI,
+    #[serde(rename = "en-US-Wavenet-J")]
+    EnUsWavenetJ,
 }
 
 pub async fn text_to_speech(

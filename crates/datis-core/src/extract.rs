@@ -405,7 +405,7 @@ mod test {
                 atis: 251_000_000,
                 traffic: Some(123_450_000),
                 tts: Some(TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::StandardE
+                    voice: gcloud::VoiceKind::EnUsStandardE
                 }),
                 info_ltr_override: Some('Q'),
                 active_rwy_override: None,
@@ -421,7 +421,7 @@ mod test {
                 atis: 251_000_000,
                 traffic: Some(123_450_000),
                 tts: Some(TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::StandardE
+                    voice: gcloud::VoiceKind::EnUsStandardE
                 }),
                 info_ltr_override: None,
                 active_rwy_override: None,
@@ -435,7 +435,7 @@ mod test {
                 atis: 251_000_000,
                 traffic: None,
                 tts: Some(TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::StandardE
+                    voice: gcloud::VoiceKind::EnUsStandardE
                 }),
                 info_ltr_override: None,
                 active_rwy_override: None,
@@ -514,7 +514,7 @@ mod test {
                 atis: 251_000_000,
                 traffic: None,
                 tts: Some(TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::StandardE
+                    voice: gcloud::VoiceKind::EnUsStandardE
                 }),
                 info_ltr_override: None,
                 active_rwy_override: None,
@@ -531,7 +531,7 @@ mod test {
                 atis: 131_400_000,
                 traffic: None,
                 tts: Some(TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::StandardD
+                    voice: gcloud::VoiceKind::EnUsStandardD
                 }),
                 info_ltr_override: None,
                 active_rwy_override: None,
@@ -565,7 +565,7 @@ mod test {
                 atis: 251_000_000,
                 traffic: Some(123_450_000),
                 tts: Some(TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::StandardE
+                    voice: gcloud::VoiceKind::EnUsStandardE
                 }),
                 info_ltr_override: None,
                 active_rwy_override: None,
@@ -662,7 +662,7 @@ mod test {
                 name: "Mountain Range".to_string(),
                 freq: 251_000_000,
                 tts: Some(TextToSpeechProvider::GoogleCloud {
-                    voice: gcloud::VoiceKind::StandardE
+                    voice: gcloud::VoiceKind::EnUsStandardE
                 }),
             })
         );

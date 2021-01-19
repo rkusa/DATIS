@@ -83,7 +83,7 @@ Available settings:
 
 - `VOICE {VOICE NAME}`: Set the TTS provider and voice to be used for this station. If not provided, the TTS provider and voice defaults to the one set up in the DCS special settings. Available voices are:
   - Windows: `WIN` or `WIN:voice` (Where voice depends on the installed voices on your system. Tip: if you don't know which voices are installed, set anything, start your mission and look into the DATIS logs to see a list of available voices)
-  - Google Gloud: `GC:en-US-Standard-B`, `GC:en-US-Standard-C`, `GC:en-US-Standard-D`, `GC:en-US-Standard-E`, `GC:en-US-Wavenet-A`, `GC:en-US-Wavenet-B`, `GC:en-US-Wavenet-C`, `GC:en-US-Wavenet-D`, `GC:en-US-Wavenet-E`, `GC:en-US-Wavenet-F` (keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota, see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing))
+  - Google Gloud: For available voices see https://cloud.google.com/text-to-speech/docs/voices. Use the name from the `Voice name` column. All voices starting with `en-` are supported. Keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota, see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing).
   - AWS: `AWS:Nicole`, `AWS:Russell`, `AWS:Amy`, `AWS:Emma`, `AWS:Brian`, `AWS:Aditi`, `AWS:Raveena`, `AWS:Ivy`, `AWS:Joanna`, `AWS:Kendra`, `AWS:Kimberly`, `AWS:Salli`, `AWS:Joey`, `AWS:Justin`, `AWS:Matthew`, `AWS:Geraint`
 - `TRAFFIC {FREQUENCY}`: An optional traffic frequency that, if provided, is mentioned as part of the ATIS report.
 - `OVERRIDE {INFO LETTER}`: Allows you to override the dynamic rotating selection of the ATIS information letter if your mission requires a specific and constant value.

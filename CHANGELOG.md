@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fixed actually using the voice setting of ATIS stations defined in the mission situation
 - Fixed Windows TTS-based ATIS stations to support non US voices (e.g. en_GB)
 
+### Added
+- Support for all non-US (en_GB, en_AU, ...) English Google Cloud voices
+
 ## [2.2.0-beta.6] - 2021-01-16
 
 ### Added
