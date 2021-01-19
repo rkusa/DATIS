@@ -31,12 +31,11 @@ pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>
     Ok(buf)
 }
 
-async fn tts_local(ssml: String, voice: Option<String>) -> Result<Vec<u8>, Error> {
-    let synth = SpeechSynthesizer::new()?;
-
+async fn tts_local(mut ssml: String, voice: Option<String>) -> Result<Vec<u8>, Error> {
     // Note, there does not seem to be a way to explicitly set 16000kHz, 16 audio bits per
     // sample and mono channel.
-    let mut voice_found = false;
+
+    let mut voice_info = None;
     if let Some(ref voice) = voice {
         let all_voices = SpeechSynthesizer::all_voices()?;
         let len = all_voices.size()? as usize;
@@ -49,8 +48,7 @@ async fn tts_local(ssml: String, voice: Option<String>) -> Result<Vec<u8>, Error
 
             let name = v.display_name()?.to_string();
             if name.ends_with(voice) {
-                synth.set_voice(v)?;
-                voice_found = true;
+                voice_info = Some(v);
                 break;
             }
         }
@@ -64,18 +62,17 @@ async fn tts_local(ssml: String, voice: Option<String>) -> Result<Vec<u8>, Error
             if lang.starts_with("en-") {
                 let name = v.display_name()?.to_string();
                 log::debug!("Using WIN voice: {}", name);
-                synth.set_voice(v)?;
-                voice_found = true;
+                voice_info = Some(v);
                 break;
             }
         }
 
-        if !voice_found {
+        if voice_info.is_none() {
             log::warn!("Could not find any english Windows TTS voice");
         }
     }
 
-    if !voice_found {
+    if voice_info.is_none() {
         let all_voices = SpeechSynthesizer::all_voices()?;
         let len = all_voices.size()? as usize;
         log::info!("Available WIN voices are (you don't have to include the `Microsoft` prefix in the name):");
@@ -89,6 +86,13 @@ async fn tts_local(ssml: String, voice: Option<String>) -> Result<Vec<u8>, Error
             let name = v.display_name()?.to_string();
             log::info!("- {}", name);
         }
+    }
+
+    let synth = SpeechSynthesizer::new()?;
+    if let Some(info) = voice_info {
+        let lang = info.language()?.to_string();
+        ssml = ssml.replacen("xml:lang=\"en\"", &format!("xml:lang=\"{}\"", lang), 1);
+        synth.set_voice(info)?;
     }
 
     // the DataReader is !Send, which is why we have to process it in a local set
