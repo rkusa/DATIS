@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fixed Windows TTS-based ATIS stations to support non US voices (e.g. en_GB)
 
 ### Added
-- Support for all non-US (en_GB, en_AU, ...) English Google Cloud voices
+- Added support for all non-US (en_GB, en_AU, ...) English Google Cloud voices
+- Added support for new English AWS (Polly) voices
 
 ## [2.2.0-beta.6] - 2021-01-16
 

@@ -84,7 +84,7 @@ Available settings:
 - `VOICE {VOICE NAME}`: Set the TTS provider and voice to be used for this station. If not provided, the TTS provider and voice defaults to the one set up in the DCS special settings. Available voices are:
   - Windows: `WIN` or `WIN:voice` (Where voice depends on the installed voices on your system. Tip: if you don't know which voices are installed, set anything, start your mission and look into the DATIS logs to see a list of available voices)
   - Google Gloud: For available voices see https://cloud.google.com/text-to-speech/docs/voices. Use the name from the `Voice name` column. All voices starting with `en-` are supported. Keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota, see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing).
-  - AWS: `AWS:Nicole`, `AWS:Russell`, `AWS:Amy`, `AWS:Emma`, `AWS:Brian`, `AWS:Aditi`, `AWS:Raveena`, `AWS:Ivy`, `AWS:Joanna`, `AWS:Kendra`, `AWS:Kimberly`, `AWS:Salli`, `AWS:Joey`, `AWS:Justin`, `AWS:Matthew`, `AWS:Geraint`
+  - AWS: For available voices see https://docs.aws.amazon.com/polly/latest/dg/voicelist.html. Use the name from the `Name/ID` column (without `*` prefixes). All English voices are supported.
 - `TRAFFIC {FREQUENCY}`: An optional traffic frequency that, if provided, is mentioned as part of the ATIS report.
 - `OVERRIDE {INFO LETTER}`: Allows you to override the dynamic rotating selection of the ATIS information letter if your mission requires a specific and constant value.
 - `ACTIVE {RUNWAY OVERRIDE}`: Can be used if the SPINS for the airfield differ from the prevailing winds and you want to override the calculated active runway.
