@@ -229,7 +229,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
                 Station {
                     name,
                     freq: config.atis,
-                    tts: default_voice.clone(),
+                    tts: config.tts.unwrap_or_else(|| default_voice.clone()),
                     transmitter: Transmitter::Airfield(airfield),
                     ipc: Some(ipc.clone()),
                 }
