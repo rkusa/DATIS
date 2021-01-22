@@ -640,7 +640,7 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Alpha.\n</speak>");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Alpha.\n</speak>");
         assert_eq!(report.textual, "This is Kutaisi information Alpha. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Alpha.");
     }
 
@@ -662,7 +662,7 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Papa. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Papa.\n</speak>");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Papa. | Runway in use is ZERO 4. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Papa.\n</speak>");
         assert_eq!(report.textual, "This is Kutaisi information Papa. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Papa.");
     }
 
@@ -684,7 +684,7 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Quebec. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Quebec.\n</speak>");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Quebec. | Runway in use is ZERO 4. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Quebec.\n</speak>");
         assert_eq!(report.textual, "This is Kutaisi information Quebec. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Quebec.");
     }
 
@@ -749,7 +749,7 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\n99, | Stennis\'s wind ZERO ZERO 6 at 3 knots, | altimeter 2 NINER NINER 7, | CASE 1, | BRC 1 ZERO 3 1 3, | expected final heading 1 ZERO 3 ZERO 4, | report initial.\n</speak>");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\n99, | Stennis\'s <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">wind</phoneme> ZERO ZERO 6 at 3 knots, | altimeter 2 NINER NINER 7, | CASE 1, | BRC 1 ZERO 3 1 3, | expected final heading 1 ZERO 3 ZERO 4, | report initial.\n</speak>");
         assert_eq!(report.textual, "99, Stennis\'s wind 006 at 3 knots, altimeter 2997, CASE 1, BRC 10313, expected final heading 10304, report initial.");
     }
 
