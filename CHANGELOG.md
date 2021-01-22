@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed pronunciation pronunciation of noun "wind" (from `waɪnd` to `wɪnd`) for Windows' TTS. #80
+
 ## [2.2.0] - 2021-01-22
 
 The following list is a summary of changes of all previous beta releases, there were no changes since the previous beta `2.2.0-beta.7`,

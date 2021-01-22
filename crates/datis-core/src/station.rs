@@ -272,7 +272,12 @@ impl Airfield {
 
         let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
         report += &format!(
-            "Wind {} at {} knots. {}",
+            "{} {} at {} knots. {}",
+            if spoken {
+                r#"<phoneme alphabet="ipa" ph="w&#618;nd">Wind</phoneme>"#
+            } else {
+                "Wind"
+            },
             pronounce_number(wind_dir, spoken),
             pronounce_number((weather.wind_speed * 1.94384).round(), spoken), // to knots
             _break,
@@ -368,8 +373,13 @@ impl Carrier {
 
         let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
         report += &format!(
-            "{}'s wind {} at {} knots, {}",
+            r#"{}'s {} {} at {} knots, {}"#,
             self.name,
+            if spoken {
+                r#"<phoneme alphabet="ipa" ph="w&#618;nd">wind</phoneme>"#
+            } else {
+                "wind"
+            },
             pronounce_number(wind_dir, spoken),
             pronounce_number(weather.wind_speed.round(), spoken),
             _break,
