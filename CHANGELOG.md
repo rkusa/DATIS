@@ -6,6 +6,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.2.0] - 2021-01-22
+
+The following list is a summary of changes of all previous beta releases, there were no changes since the previous beta `2.2.0-beta.7`,
+
+### Added
+- Added a new option to override the information later that an ATIS station starts with. Thanks a lot [@talbotmcinnis](https://github.com/talbotmcinnis) for the implementation! [#69](https://github.com/rkusa/DATIS/pull/69)
+- Added support for all non-US (en_GB, en_AU, ...) English Google Cloud voices
+- Added support for new English AWS (Polly) voices
+- Added all possible Windows TTS English voices to DATIS default voice setting dropdown
+
+### Changed
+- It is now possible to set station options in any order and you'll now receive a useful error message for most kind of typos in the configuration, instead of that the station does simply not work. Thanks a lot [@talbotmcinnis](https://github.com/talbotmcinnis) for the implementation! [#73](https://github.com/rkusa/DATIS/pull/73)
+- ATIS stations setup via the misison situation can now use all additional settings that were previously only available to the static unit setup method. Thanks a lot [@talbotmcinnis](https://github.com/talbotmcinnis) for the implementation! [#78](https://github.com/rkusa/DATIS/pull/78)
+- Major version upgrades of internal libraries
+- Rewrote the Lua module based on the excelent [mlua](https://github.com/khvzak/mlua) library. This removes all `unsafe` code from DATIS and allows to dynamically link against DCS' Lua dll instead of statically linking against Lua (which is discouraged for Lua modules).
+- Rewrote the RPC between DATIS and DCS to directly serialize/deserialize Lua data structures instead of going through JSON.
+
+### Fixed
+- Fixed Windows TTS-based ATIS stations to support non US voices (e.g. en_GB)
+- Fixed station deadlock on certain RPC errors
+- Fixed RPC methods to not fail when receiving numbers with exponents
+- Fixed carrier boradcast to say "ninety-nine" instead of "niner niner" when addressing all personnel dialed to the frequency #66
+- Allow using neutral statics and units as ATIS/Weather/Broadcast stations #65
+- Fixed BROADCAST stations for WIN and AWS TTS
+
 ## [2.2.0-beta.7] - 2021-01-19
 
 ### Fixed
