@@ -102,11 +102,33 @@ impl Station {
                         .get_weather_at(&pos)
                         .await
                         .context("failed to retrieve weather")?;
-                    let mission_hour = ipc.get_mission_hour().await?;
                     let position = ipc
                         .to_lat_lng(&pos)
                         .await
                         .context("failed to retrieve unit position")?;
+                    let mission_hour = ipc.get_mission_hour().await?;
+                    let date = ipc
+                        .get_mission_start_date()
+                        .await
+                        .context("failed to retrieve mission start date")?;
+                    let declination =
+                        igrf::declination(position.lat, position.lng, position.alt as u32, date)
+                            .map(|f| f.d)
+                            .unwrap_or_else(|err| match err {
+                                igrf::Error::DateOutOfRange(f) => f.d,
+                                err => {
+                                    log::error!("Failed to estimate magnetic declination: {}", err);
+                                    0.0
+                                }
+                            });
+
+                    log::debug!(
+                        "Declination is {:.2} for heading {:.2} ",
+                        declination,
+                        heading.to_degrees()
+                    );
+
+                    let heading = (heading.to_degrees() - declination).floor() as u16;
 
                     Ok(Some(Report {
                         textual: unit.generate_report(&weather, heading, mission_hour, false)?,
@@ -358,7 +380,7 @@ impl Carrier {
     pub fn generate_report(
         &self,
         weather: &WeatherInfo,
-        heading: f64,
+        heading: u16,
         mission_hour: u16,
         spoken: bool,
     ) -> Result<String, anyhow::Error> {
@@ -421,10 +443,10 @@ impl Carrier {
 
         report += &format!("CASE {}, {}", case, _break,);
 
-        let brc = heading.to_degrees().round();
-        let mut fh = brc - 9.0; // 9 -> 9deg angled deck
-        if fh < 0.0 {
-            fh += 360.0;
+        let brc = heading;
+        let mut fh = heading - 9; // 9 -> 9deg angled deck
+        if fh > 360 {
+            fh -= 360;
         }
 
         let brc = format!("{:0>3}", brc);

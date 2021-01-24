@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 - Fixed pronunciation pronunciation of noun "wind" (from `/waɪnd/` to `/wɪnd/`) for Windows' TTS. #80
+- Fixed carrier report to report correct magnetic BRC (by estimating the magnetic declination using the IGRF model). #68
 
 ## [2.2.0] - 2021-01-22
 
