@@ -210,7 +210,7 @@ impl Station {
                 position: LatLngPosition::default(),
             })),
             Transmitter::Carrier(unit) => {
-                let heading = 180.0;
+                let heading = 180;
                 let mission_hour = 7;
 
                 Ok(Some(Report {
@@ -450,7 +450,7 @@ impl Carrier {
         }
 
         let brc = format!("{:0>3}", brc);
-        report += &format!("BRC {}, {}", pronounce_number(brc, spoken), _break,);
+        report += &format!("BRC {}, {}", pronounce_number(brc, spoken), _break);
 
         let fh = format!("{:0>3}", fh);
         report += &format!(
@@ -771,8 +771,8 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\n99, | Stennis\'s <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">wind</phoneme> ZERO ZERO 6 at 3 knots, | altimeter 2 NINER NINER 7, | CASE 1, | BRC 1 ZERO 3 1 3, | expected final heading 1 ZERO 3 ZERO 4, | report initial.\n</speak>");
-        assert_eq!(report.textual, "99, Stennis\'s wind 006 at 3 knots, altimeter 2997, CASE 1, BRC 10313, expected final heading 10304, report initial.");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\n99, | Stennis\'s <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">wind</phoneme> ZERO ZERO 6 at 3 knots, | altimeter 2 NINER NINER 7, | CASE 1, | BRC 1 8 ZERO, | expected final heading 1 7 1, | report initial.\n</speak>");
+        assert_eq!(report.textual, "99, Stennis\'s wind 006 at 3 knots, altimeter 2997, CASE 1, BRC 180, expected final heading 171, report initial.");
     }
 
     #[tokio::test]
