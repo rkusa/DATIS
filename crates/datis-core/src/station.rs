@@ -72,7 +72,7 @@ impl Station {
 
         match (self.ipc.as_ref(), &self.transmitter) {
             (Some(ipc), Transmitter::Airfield(airfield)) => {
-                let weather = ipc
+                let mut weather = ipc
                     .get_weather_at(&airfield.position)
                     .await
                     .context("failed to retrieve weather")?;
@@ -80,6 +80,22 @@ impl Station {
                     .to_lat_lng(&airfield.position)
                     .await
                     .context("failed to retrieve unit position")?;
+                let date = ipc
+                    .get_mission_start_date()
+                    .await
+                    .context("failed to retrieve mission start date")?;
+                let declination =
+                    igrf::declination(position.lat, position.lng, position.alt as u32, date)
+                        .map(|f| f.d)
+                        .unwrap_or_else(|err| match err {
+                            igrf::Error::DateOutOfRange(f) => f.d,
+                            err => {
+                                log::error!("Failed to estimate magnetic declination: {}", err);
+                                0.0
+                            }
+                        });
+
+                weather.wind_dir = (weather.wind_dir - declination).floor();
 
                 Ok(Some(Report {
                     textual: airfield.generate_report(report_nr, &weather, false)?,

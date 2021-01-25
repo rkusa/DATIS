@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- Changed the wind direction of ATIS reports from true to magnetic north
+
 ## [2.2.0] - 2021-01-24
 
 ### Fixed
