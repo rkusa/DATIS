@@ -6,12 +6,36 @@ use win_media::windows::storage::streams::DataReader;
 pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>, Error> {
     let ssml = ssml.into();
     let voice = voice.map(String::from);
-    // let buf = task::spawn_blocking(move || -> Result<Vec<u8>, Error> {
-    let synth = SpeechSynthesizer::new()?;
 
+    // This big block is necessary to setup a local set to be able to run !Send futures.
+    let buf = tokio::task::spawn_blocking(move || {
+        let rt = tokio::runtime::Runtime::new()?;
+        rt.block_on(async {
+            let local = tokio::task::LocalSet::new();
+
+            // Run the local task set.
+            let buf = local
+                .run_until(async move {
+                    task::spawn_local(async move { tts_local(ssml, voice).await })
+                        .await
+                        .unwrap()
+                })
+                .await?;
+
+            Ok::<Vec<u8>, Error>(buf)
+        })
+    })
+    .await
+    .unwrap()?;
+
+    Ok(buf)
+}
+
+async fn tts_local(mut ssml: String, voice: Option<String>) -> Result<Vec<u8>, Error> {
     // Note, there does not seem to be a way to explicitly set 16000kHz, 16 audio bits per
     // sample and mono channel.
-    let mut voice_found = false;
+
+    let mut voice_info = None;
     if let Some(ref voice) = voice {
         let all_voices = SpeechSynthesizer::all_voices()?;
         let len = all_voices.size()? as usize;
@@ -24,8 +48,7 @@ pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>
 
             let name = v.display_name()?.to_string();
             if name.ends_with(voice) {
-                synth.set_voice(v)?;
-                voice_found = true;
+                voice_info = Some(v);
                 break;
             }
         }
@@ -39,18 +62,17 @@ pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>
             if lang.starts_with("en-") {
                 let name = v.display_name()?.to_string();
                 log::debug!("Using WIN voice: {}", name);
-                synth.set_voice(v)?;
-                voice_found = true;
+                voice_info = Some(v);
                 break;
             }
         }
 
-        if !voice_found {
+        if voice_info.is_none() {
             log::warn!("Could not find any english Windows TTS voice");
         }
     }
 
-    if !voice_found {
+    if voice_info.is_none() {
         let all_voices = SpeechSynthesizer::all_voices()?;
         let len = all_voices.size()? as usize;
         log::info!("Available WIN voices are (you don't have to include the `Microsoft` prefix in the name):");
@@ -62,43 +84,26 @@ pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>
             }
 
             let name = v.display_name()?.to_string();
-            log::info!("- {}", name);
+            log::info!("- {} ({})", name, lang);
         }
     }
 
-    // This big block is necessary to setup a local set to be able to run !Send futures.
-    let buf = tokio::task::spawn_blocking(move || {
-        let rt = tokio::runtime::Runtime::new()?;
-        rt.block_on(async {
-            let local = tokio::task::LocalSet::new();
+    let synth = SpeechSynthesizer::new()?;
+    if let Some(info) = voice_info {
+        let lang = info.language()?.to_string();
+        ssml = ssml.replacen("xml:lang=\"en\"", &format!("xml:lang=\"{}\"", lang), 1);
+        synth.set_voice(info)?;
+    }
 
-            // Run the local task set.
-            let buf = local
-                .run_until(async move {
-                    task::spawn_local(async move {
-                        log::debug!("SAML: {}", ssml);
-                        // the DataReader is !Send, which is why we have to process it in a local set
-                        let stream = synth.synthesize_ssml_to_stream_async(ssml)?.await?;
-                        let size = stream.size()?;
+    // the DataReader is !Send, which is why we have to process it in a local set
+    let stream = synth.synthesize_ssml_to_stream_async(ssml)?.await?;
+    let size = stream.size()?;
 
-                        let rd = DataReader::create_data_reader(stream.get_input_stream_at(0)?)?;
-                        rd.load_async(size as u32)?.await?;
+    let rd = DataReader::create_data_reader(stream.get_input_stream_at(0)?)?;
+    rd.load_async(size as u32)?.await?;
 
-                        let mut buf = vec![0u8; size as usize];
-                        rd.read_bytes(buf.as_mut_slice())?;
-
-                        Ok::<Vec<u8>, Error>(buf)
-                    })
-                    .await
-                    .unwrap()
-                })
-                .await?;
-
-            Ok::<Vec<u8>, Error>(buf)
-        })
-    })
-    .await
-    .unwrap()?;
+    let mut buf = vec![0u8; size as usize];
+    rd.read_bytes(buf.as_mut_slice())?;
 
     Ok(buf)
 }

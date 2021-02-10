@@ -133,11 +133,8 @@ function datis_handleRequest(method, params)
         return ""
       else
         local unit_pos = unit:getPosition()
-        local lat, lon = coord.LOtoLL(unit_pos.p)
-        local north_pos = coord.LLtoLO(lat + 1, lon)
-        local northCorrection = math.atan2(north_pos.z - unit_pos.p.z, north_pos.x - unit_pos.p.x)
 
-        local heading = math.atan2(unit_pos.x.z, unit_pos.x.x) + northCorrection
+        local heading = math.atan2(unit_pos.x.z, unit_pos.x.x)
         if heading < 0 then
           heading = heading + 2*math.pi
         end
@@ -165,6 +162,17 @@ function datis_handleRequest(method, params)
 
     return {
       result = tonumber(result)
+    }
+
+  elseif method == "get_mission_start_date" then
+    local get_mission_start_date = [[
+      return tostring(env.mission.date.Year) .. "-" .. tostring(env.mission.date.Month) .. "-" .. tostring(env.mission.date.Day)
+    ]]
+
+    local result = net.dostring_in("server", get_mission_start_date)
+
+    return {
+      result = result
     }
 
   elseif method == "to_lat_lng" then

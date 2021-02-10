@@ -63,7 +63,7 @@ pub struct Report {
     pub position: LatLngPosition,
 }
 
-const SPEAK_START_TAG: &str = "<speak version=\"1.0\" xml:lang=\"en-US\">\n";
+const SPEAK_START_TAG: &str = "<speak version=\"1.0\" xml:lang=\"en\">\n";
 
 impl Station {
     #[cfg(feature = "ipc")]
@@ -72,7 +72,7 @@ impl Station {
 
         match (self.ipc.as_ref(), &self.transmitter) {
             (Some(ipc), Transmitter::Airfield(airfield)) => {
-                let weather = ipc
+                let mut weather = ipc
                     .get_weather_at(&airfield.position)
                     .await
                     .context("failed to retrieve weather")?;
@@ -80,6 +80,22 @@ impl Station {
                     .to_lat_lng(&airfield.position)
                     .await
                     .context("failed to retrieve unit position")?;
+                let date = ipc
+                    .get_mission_start_date()
+                    .await
+                    .context("failed to retrieve mission start date")?;
+                let declination =
+                    igrf::declination(position.lat, position.lng, position.alt as u32, date)
+                        .map(|f| f.d)
+                        .unwrap_or_else(|err| match err {
+                            igrf::Error::DateOutOfRange(f) => f.d,
+                            err => {
+                                log::error!("Failed to estimate magnetic declination: {}", err);
+                                0.0
+                            }
+                        });
+
+                weather.wind_dir = (weather.wind_dir - declination).floor();
 
                 Ok(Some(Report {
                     textual: airfield.generate_report(report_nr, &weather, false)?,
@@ -102,11 +118,33 @@ impl Station {
                         .get_weather_at(&pos)
                         .await
                         .context("failed to retrieve weather")?;
-                    let mission_hour = ipc.get_mission_hour().await?;
                     let position = ipc
                         .to_lat_lng(&pos)
                         .await
                         .context("failed to retrieve unit position")?;
+                    let mission_hour = ipc.get_mission_hour().await?;
+                    let date = ipc
+                        .get_mission_start_date()
+                        .await
+                        .context("failed to retrieve mission start date")?;
+                    let declination =
+                        igrf::declination(position.lat, position.lng, position.alt as u32, date)
+                            .map(|f| f.d)
+                            .unwrap_or_else(|err| match err {
+                                igrf::Error::DateOutOfRange(f) => f.d,
+                                err => {
+                                    log::error!("Failed to estimate magnetic declination: {}", err);
+                                    0.0
+                                }
+                            });
+
+                    log::debug!(
+                        "Declination is {:.2} for heading {:.2} ",
+                        declination,
+                        heading.to_degrees()
+                    );
+
+                    let heading = (heading.to_degrees() - declination).floor() as u16;
 
                     Ok(Some(Report {
                         textual: unit.generate_report(&weather, heading, mission_hour, false)?,
@@ -134,7 +172,7 @@ impl Station {
                 Ok(Some(Report {
                     textual: custom.message.clone(),
                     spoken: format!(
-                        "<speak version=\"1.0\" xml:lang=\"en-US\">{}</speak>",
+                        "<speak version=\"1.0\" xml:lang=\"en\">{}</speak>",
                         escape_xml(&custom.message)
                     ),
                     position,
@@ -188,7 +226,7 @@ impl Station {
                 position: LatLngPosition::default(),
             })),
             Transmitter::Carrier(unit) => {
-                let heading = 180.0;
+                let heading = 180;
                 let mission_hour = 7;
 
                 Ok(Some(Report {
@@ -200,7 +238,7 @@ impl Station {
             Transmitter::Custom(custom) => Ok(Some(Report {
                 textual: custom.message.clone(),
                 spoken: format!(
-                    "<speak version=\"1.0\" xml:lang=\"en-US\">{}</speak>",
+                    "<speak version=\"1.0\" xml:lang=\"en\">{}</speak>",
                     escape_xml(&custom.message)
                 ),
                 position: LatLngPosition::default(),
@@ -272,7 +310,12 @@ impl Airfield {
 
         let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
         report += &format!(
-            "Wind {} at {} knots. {}",
+            "{} {} at {} knots. {}",
+            if spoken {
+                r#"<phoneme alphabet="ipa" ph="w&#618;nd">Wind</phoneme>"#
+            } else {
+                "Wind"
+            },
             pronounce_number(wind_dir, spoken),
             pronounce_number((weather.wind_speed * 1.94384).round(), spoken), // to knots
             _break,
@@ -353,7 +396,7 @@ impl Carrier {
     pub fn generate_report(
         &self,
         weather: &WeatherInfo,
-        heading: f64,
+        heading: u16,
         mission_hour: u16,
         spoken: bool,
     ) -> Result<String, anyhow::Error> {
@@ -368,8 +411,13 @@ impl Carrier {
 
         let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
         report += &format!(
-            "{}'s wind {} at {} knots, {}",
+            r#"{}'s {} {} at {} knots, {}"#,
             self.name,
+            if spoken {
+                r#"<phoneme alphabet="ipa" ph="w&#618;nd">wind</phoneme>"#
+            } else {
+                "wind"
+            },
             pronounce_number(wind_dir, spoken),
             pronounce_number(weather.wind_speed.round(), spoken),
             _break,
@@ -411,14 +459,14 @@ impl Carrier {
 
         report += &format!("CASE {}, {}", case, _break,);
 
-        let brc = heading.to_degrees().round();
-        let mut fh = brc - 9.0; // 9 -> 9deg angled deck
-        if fh < 0.0 {
-            fh += 360.0;
+        let brc = heading;
+        let mut fh = heading - 9; // 9 -> 9deg angled deck
+        if fh > 360 {
+            fh -= 360;
         }
 
         let brc = format!("{:0>3}", brc);
-        report += &format!("BRC {}, {}", pronounce_number(brc, spoken), _break,);
+        report += &format!("BRC {}, {}", pronounce_number(brc, spoken), _break);
 
         let fh = format!("{:0>3}", fh);
         report += &format!(
@@ -630,7 +678,7 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Alpha.\n</speak>");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Alpha.\n</speak>");
         assert_eq!(report.textual, "This is Kutaisi information Alpha. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Alpha.");
     }
 
@@ -652,7 +700,7 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nThis is Kutaisi information Papa. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Papa.\n</speak>");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Papa. | Runway in use is ZERO 4. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Papa.\n</speak>");
         assert_eq!(report.textual, "This is Kutaisi information Papa. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Papa.");
     }
 
@@ -674,7 +722,7 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nThis is Kutaisi information Quebec. | Runway in use is ZERO 4. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Quebec.\n</speak>");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Quebec. | Runway in use is ZERO 4. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | Traffic frequency 2 4 NINER DECIMAL 5. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Quebec.\n</speak>");
         assert_eq!(report.textual, "This is Kutaisi information Quebec. Runway in use is 04. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. Traffic frequency 249.5. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Quebec.");
     }
 
@@ -739,8 +787,8 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\n99, | Stennis\'s wind ZERO ZERO 6 at 3 knots, | altimeter 2 NINER NINER 7, | CASE 1, | BRC 1 ZERO 3 1 3, | expected final heading 1 ZERO 3 ZERO 4, | report initial.\n</speak>");
-        assert_eq!(report.textual, "99, Stennis\'s wind 006 at 3 knots, altimeter 2997, CASE 1, BRC 10313, expected final heading 10304, report initial.");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\n99, | Stennis\'s <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">wind</phoneme> ZERO ZERO 6 at 3 knots, | altimeter 2 NINER NINER 7, | CASE 1, | BRC 1 8 ZERO, | expected final heading 1 7 1, | report initial.\n</speak>");
+        assert_eq!(report.textual, "99, Stennis\'s wind 006 at 3 knots, altimeter 2997, CASE 1, BRC 180, expected final heading 171, report initial.");
     }
 
     #[tokio::test]
@@ -760,7 +808,7 @@ mod test {
         let report = station.generate_report(26).await.unwrap().unwrap();
         assert_eq!(
             report.spoken,
-            "<speak version=\"1.0\" xml:lang=\"en-US\">Hello world</speak>"
+            "<speak version=\"1.0\" xml:lang=\"en\">Hello world</speak>"
         );
         assert_eq!(report.textual, "Hello world");
     }
@@ -782,7 +830,7 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en-US\">\nThis is weather station Mountain Range information Papa. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Papa.\n</speak>");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is weather station Mountain Range information Papa. | Wind ZERO ZERO 6 at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 or 1 ZERO 1 5. | End information Papa.\n</speak>");
         assert_eq!(report.textual, "This is weather station Mountain Range information Papa. Wind 006 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Papa.");
     }
 }

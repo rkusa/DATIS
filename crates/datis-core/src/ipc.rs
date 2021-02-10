@@ -102,6 +102,15 @@ impl MissionRpc {
         self.0.ipc.request::<(), _>("get_abs_time", None).await
     }
 
+    pub async fn get_mission_start_date(&self) -> Result<time::Date, Error> {
+        let date: String = self
+            .0
+            .ipc
+            .request::<(), _>("get_mission_start_date", None)
+            .await?;
+        time::Date::parse(&date, "%Y-%-m-%-d").map_err(|err| Error::Script(err.to_string()))
+    }
+
     pub async fn get_mission_hour(&self) -> Result<u16, Error> {
         let mut time = self.get_abs_time().await?;
         let mut h = 0;

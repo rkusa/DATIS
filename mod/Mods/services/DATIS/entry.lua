@@ -5,7 +5,7 @@ declare_plugin("DATIS", {
     "datis.dll",
   },
 
-  version       = "2.2.0-beta.6",
+  version       = "2.2.1",
   state         = "installed",
   developerName = "github.com/rkusa",
   info          = _("DATIS enables a DCS server with an SRS server running on the same machine (TCP=127.0.0.1) to get weather from the mission for stations and frequencies set in the mission editor, and then to report same in a standardized format over SRS using either the Amazon or Google text to speech engines."),

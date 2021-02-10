@@ -10,13 +10,18 @@ use serde_json::json;
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum VoiceKind {
+    // en-AU
     Nicole,
+    Olivia,
     Russell,
+    // en-GB
     Amy,
     Emma,
     Brian,
+    // en-IN
     Aditi,
     Raveena,
+    // en-US
     Ivy,
     Joanna,
     Kendra,
@@ -24,6 +29,7 @@ pub enum VoiceKind {
     Salli,
     Joey,
     Justin,
+    Kevin,
     Matthew,
     Geraint,
 }
