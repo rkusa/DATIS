@@ -6,6 +6,5 @@ members = [
     "crates/datis-module",
     "crates/radio-station",
     "crates/srs",
-    "crates/win-media",
     "crates/win-tts",
 ]

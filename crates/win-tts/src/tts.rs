@@ -1,7 +1,7 @@
+use crate::bindings::windows::media::speech_synthesis::SpeechSynthesizer;
+use crate::bindings::windows::storage::streams::DataReader;
 use thiserror::Error;
 use tokio::task;
-use win_media::media::speech_synthesis::SpeechSynthesizer;
-use win_media::windows::storage::streams::DataReader;
 
 pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>, Error> {
     let ssml = ssml.into();
@@ -116,8 +116,8 @@ pub enum Error {
     Io(#[from] std::io::Error),
 }
 
-impl From<win_media::Error> for Error {
-    fn from(err: win_media::Error) -> Self {
+impl From<windows::Error> for Error {
+    fn from(err: windows::Error) -> Self {
         Error::WinRT(err.code().0, err.message())
     }
 }
