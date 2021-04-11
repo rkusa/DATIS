@@ -6,16 +6,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.2.2]
+
 ### Changed
 
 - Changed the wind direction of ATIS reports from true to magnetic north
 
-## [2.2.0] - 2021-01-24
+### Fixed
+
+- Correctly report wind speed at carrier in feet (instead of in m/s) [#99](https://github.com/rkusa/DATIS/issues/88)
+
+## [2.2.1] - 2021-01-24
 
 ### Fixed
 
-- Fixed pronunciation pronunciation of noun "wind" (from `/waɪnd/` to `/wɪnd/`) for Windows' TTS. #80
-- Fixed carrier report to report correct magnetic BRC (by estimating the magnetic declination using the IGRF model). #68
+- Fixed pronunciation pronunciation of noun "wind" (from `/waɪnd/` to `/wɪnd/`) for Windows' TTS. [#80](https://github.com/rkusa/DATIS/issues/80)
+- Fixed carrier report to report correct magnetic BRC (by estimating the magnetic declination using the IGRF model). [#68](https://github.com/rkusa/DATIS/issues/68)
 
 ## [2.2.0] - 2021-01-22
 

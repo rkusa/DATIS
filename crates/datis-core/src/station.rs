@@ -138,12 +138,6 @@ impl Station {
                                 }
                             });
 
-                    log::debug!(
-                        "Declination is {:.2} for heading {:.2} ",
-                        declination,
-                        heading.to_degrees()
-                    );
-
                     let heading = (heading.to_degrees() - declination).floor() as u16;
 
                     Ok(Some(Report {
@@ -419,7 +413,7 @@ impl Carrier {
                 "wind"
             },
             pronounce_number(wind_dir, spoken),
-            pronounce_number(weather.wind_speed.round(), spoken),
+            pronounce_number((weather.wind_speed * 1.94384).round(), spoken),
             _break,
         );
 
@@ -787,8 +781,8 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\n99, | Stennis\'s <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">wind</phoneme> ZERO ZERO 6 at 3 knots, | altimeter 2 NINER NINER 7, | CASE 1, | BRC 1 8 ZERO, | expected final heading 1 7 1, | report initial.\n</speak>");
-        assert_eq!(report.textual, "99, Stennis\'s wind 006 at 3 knots, altimeter 2997, CASE 1, BRC 180, expected final heading 171, report initial.");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\n99, | Stennis\'s <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">wind</phoneme> ZERO ZERO 6 at 5 knots, | altimeter 2 NINER NINER 7, | CASE 1, | BRC 1 8 ZERO, | expected final heading 1 7 1, | report initial.\n</speak>");
+        assert_eq!(report.textual, "99, Stennis\'s wind 006 at 5 knots, altimeter 2997, CASE 1, BRC 180, expected final heading 171, report initial.");
     }
 
     #[tokio::test]
