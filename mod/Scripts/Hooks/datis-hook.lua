@@ -84,12 +84,58 @@ function datis_handleRequest(method, params)
       position = position
     })
 
+    local weather = _current_mission.mission.weather
+
     return {
       result = {
         windSpeed = wind.v,
         windDir = wind.a,
         temp = temp,
         pressure = pressure,
+        fogThickness = weather.fog.thickness,
+        fogVisibility = weather.fog.visibility,
+        dustDensity = weather.dust_density,
+      }
+    }
+
+  elseif method == "get_clouds" then
+    local clouds = _current_mission.mission.weather.clouds
+
+    if clouds.preset ~= nil then
+      local presets = nil
+      local func, err = loadfile(lfs.currentdir() .. '/Config/Effects/clouds.lua')
+      if err then
+        return {
+          error = "Error loading clouds.lua: " .. err
+        }
+      end
+
+      local env = {
+        type = _G.type,
+        next = _G.next,
+        setmetatable = _G.setmetatable,
+        getmetatable = _G.getmetatable,
+        _ = _,
+      }
+      setfenv(func, env)
+      func()
+      local preset = env.clouds and env.clouds.presets and env.clouds.presets[clouds.preset]
+      if preset ~= nil then
+        return {
+          result = {
+            new = {
+              base = clouds.base,
+              preset = preset,
+            },
+          }
+        }
+      end
+    end
+
+    -- fallback to old clouds
+    return {
+      result = {
+        old = clouds,
       }
     }
 

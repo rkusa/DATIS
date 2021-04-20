@@ -5,7 +5,6 @@ use datis_core::extract::*;
 use datis_core::ipc::*;
 use datis_core::station::*;
 use datis_core::tts::TextToSpeechProvider;
-use datis_core::weather::Clouds;
 use mlua::prelude::{Lua, LuaTable, LuaTableExt};
 use rand::Rng;
 
@@ -158,41 +157,6 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
         }
     }
 
-    // extract the current mission's weather kind and static weather configuration
-    let (clouds, fog_thickness, fog_visibility) = {
-        // read `_current_mission.mission.weather`
-        let current_mission: LuaTable<'_> = lua.globals().get("_current_mission")?;
-        let mission: LuaTable<'_> = current_mission.get("mission")?;
-        let weather: LuaTable<'_> = mission.get("weather")?;
-
-        // read `_current_mission.mission.weather.atmosphere_type`
-        let atmosphere_type: f64 = weather.get("atmosphere_type")?;
-        let is_dynamic = atmosphere_type != 0.0;
-
-        let clouds = {
-            if is_dynamic {
-                None
-            } else {
-                let clouds: LuaTable<'_> = weather.get("clouds")?;
-                Some(Clouds {
-                    base: clouds.get("base")?,
-                    density: clouds.get("density")?,
-                    thickness: clouds.get("thickness")?,
-                    iprecptns: clouds.get("iprecptns")?,
-                })
-            }
-        };
-
-        // Note: `weather.visibility` is always the same, which is why we cannot use it here
-        // and use the fog instead to derive some kind of visibility
-
-        let fog: LuaTable<'_> = weather.get("fog")?;
-        let fog_thickness: u32 = fog.get("thickness")?;
-        let fog_visibility: u32 = fog.get("visibility")?;
-
-        (clouds, fog_thickness, fog_visibility)
-    };
-
     // YOLO initialize the atmosphere, because DCS initializes it only after hitting the
     // "Briefing" button, which is something most of the time not done for "dedicated" servers
     {
@@ -206,7 +170,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
     }
 
     // initialize the dynamic weather component
-    let ipc = MissionRpc::new(clouds, fog_thickness, fog_visibility);
+    let ipc = MissionRpc::new();
 
     let default_voice = match TextToSpeechProvider::from_str(&options.default_voice) {
         Ok(default_voice) => default_voice,

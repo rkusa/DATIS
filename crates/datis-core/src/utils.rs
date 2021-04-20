@@ -6,6 +6,10 @@ pub fn round(n: f64, max_decimal_places: i32) -> f64 {
     (n * m).round() / m
 }
 
+pub fn round_hundreds(n: f64) -> f64 {
+    (n / 100.0).round() * 100.0
+}
+
 static PHONETIC_NUMBERS: &[&str] = &["ZERO", "1", "2", "3", "4", "5", "6", "7", "8", "NINER"];
 
 pub fn pronounce_number<S>(n: S, pronounce: bool) -> String

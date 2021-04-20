@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.0.0-beta.1] - 2021-04-20
+
+BREAKING: Requires DCS 2.7 from now on.
+
+### Added
+
+- Added support for DCS 2.7 cloud presets.
+
 ## [2.2.2] - 2021-04-11
 
 ### Changed

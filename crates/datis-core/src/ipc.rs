@@ -6,24 +6,21 @@ use crate::weather::{Clouds, WeatherInfo};
 use dcs_module_ipc::Error;
 use serde::Deserialize;
 use serde_json::json;
+use tokio::sync::Mutex;
 
 pub struct MissionRpcInner {
     ipc: dcs_module_ipc::IPC<()>,
-    clouds: Option<Clouds>,
-    fog_thickness: u32,  // in m
-    fog_visibility: u32, // in m
+    clouds: Mutex<Option<Clouds>>,
 }
 
 #[derive(Clone)]
 pub struct MissionRpc(Arc<MissionRpcInner>);
 
 impl MissionRpc {
-    pub fn new(clouds: Option<Clouds>, fog_thickness: u32, fog_visibility: u32) -> Self {
+    pub fn new() -> Self {
         MissionRpc(Arc::new(MissionRpcInner {
             ipc: dcs_module_ipc::IPC::new(),
-            clouds,
-            fog_thickness,
-            fog_visibility,
+            clouds: Mutex::new(None),
         }))
     }
 
@@ -35,15 +32,10 @@ impl MissionRpc {
             wind_dir: f64,
             temp: f64,
             pressure: f64,
+            fog_thickness: f64,  // in m
+            fog_visibility: f64, // in m
+            dust_density: u32,
         }
-
-        let clouds = self.0.clouds.clone();
-
-        let visibility = if self.0.fog_thickness > 200 {
-            Some(self.0.fog_visibility)
-        } else {
-            None
-        };
 
         let data: Data = self
             .0
@@ -72,16 +64,32 @@ impl MissionRpc {
             wind_dir += 360.0;
         }
 
+        let clouds = {
+            let mut clouds = self.0.clouds.lock().await;
+            if clouds.is_none() {
+                *clouds = Some(self.get_clouds().await?);
+            }
+            clouds.clone().unwrap()
+        };
+
         Ok(WeatherInfo {
-            clouds,
-            visibility,
+            clouds: Some(clouds),
             wind_speed: data.wind_speed,
             wind_dir,
             temperature: data.temp,
             pressure_qnh,
             pressure_qfe: data.pressure,
+            fog_thickness: data.fog_thickness,
+            fog_visibility: data.fog_visibility,
+            dust_density: data.dust_density,
             position: pos.clone(),
         })
+    }
+
+    pub async fn get_clouds(&self) -> Result<Clouds, Error> {
+        let clouds: Clouds = self.0.ipc.request("get_clouds", None::<()>).await?;
+
+        Ok(clouds)
     }
 
     pub async fn get_unit_position(&self, name: &str) -> Result<Position, Error> {
