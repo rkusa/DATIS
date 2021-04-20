@@ -6,13 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [3.0.0-beta.1] - 2021-04-20
+## [3.0.0-beta.2] - 2021-04-20
 
-BREAKING: Requires DCS 2.7 from now on.
+### Removed
+
+- **BREAKING:** The plugin settings have been removed from the DCS settings screen. DATIS is now configured through a config file at `Saved Games\DCS.openbeta\Config\DATIS.json`, see [Settings](./docs/Settings.md). Existing settings are not automatically migrated. This has been done, because each mission you save contains all your plugin settings. This included the cloud provider access keys set for DATIS. The change has been made to prevent the accidential sharing of those credentials.
+
+## [3.0.0-beta.1] - 2021-04-20
 
 ### Added
 
-- Added support for DCS 2.7 cloud presets.
+- **BREAKING:** Added support for DCS 2.7 cloud presets. Requires DCS 2.7 from now on.
 
 ## [2.2.2] - 2021-04-11
 

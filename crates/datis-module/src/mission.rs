@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 
 use datis_core::extract::*;
 use datis_core::ipc::*;
@@ -10,18 +9,10 @@ use rand::Rng;
 
 pub struct Info {
     pub stations: Vec<Station>,
-    pub gcloud_key: String,
-    pub aws_key: String,
-    pub aws_secret: String,
-    pub aws_region: String,
-    pub srs_port: u16,
     pub ipc: MissionRpc,
 }
 
-pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
-    let options = get_options(lua)?;
-    log::info!("Using SRS Server port: {}", options.srs_port);
-
+pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, mlua::Error> {
     // extract frequencies from mission briefing, which is retrieved from
     // `DCS.getMissionDescription()`
     let station_configs_from_description = {
@@ -171,14 +162,6 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
 
     // initialize the dynamic weather component
     let ipc = MissionRpc::new();
-
-    let default_voice = match TextToSpeechProvider::from_str(&options.default_voice) {
-        Ok(default_voice) => default_voice,
-        Err(err) => {
-            log::warn!("Invalid default voice `{}`: {}", options.default_voice, err);
-            TextToSpeechProvider::default()
-        }
-    };
 
     // combine the frequencies that have extracted from the mission's situation with their
     // corresponding airfield
@@ -355,45 +338,7 @@ pub fn extract(lua: &Lua) -> Result<Info, mlua::Error> {
     stations.extend(broadcasts);
     stations.extend(weather_stations);
 
-    Ok(Info {
-        stations,
-        gcloud_key: options.gcloud_key,
-        aws_key: options.aws_key,
-        aws_secret: options.aws_secret,
-        aws_region: options.aws_region,
-        srs_port: options.srs_port,
-        ipc,
-    })
-}
-
-struct Options {
-    default_voice: String,
-    gcloud_key: String,
-    aws_key: String,
-    aws_secret: String,
-    aws_region: String,
-    srs_port: u16,
-}
-
-fn get_options(lua: &Lua) -> Result<Options, mlua::Error> {
-    let options_data: LuaTable<'_> = lua.globals().get("OptionsData")?;
-
-    // OptionsData.getPlugin("DATIS", "defaultVoice")
-    let default_voice = options_data.call_function("getPlugin", ("DATIS", "defaultVoice"))?;
-    let gcloud_key = options_data.call_function("getPlugin", ("DATIS", "gcloudAccessKey"))?;
-    let aws_key = options_data.call_function("getPlugin", ("DATIS", "awsAccessKey"))?;
-    let aws_secret = options_data.call_function("getPlugin", ("DATIS", "awsPrivateKey"))?;
-    let aws_region = options_data.call_function("getPlugin", ("DATIS", "awsRegion"))?;
-    let srs_port: u16 = options_data.call_function("getPlugin", ("DATIS", "srsPort"))?;
-
-    Ok(Options {
-        default_voice,
-        gcloud_key,
-        aws_key,
-        aws_secret,
-        aws_region,
-        srs_port,
-    })
+    Ok(Info { stations, ipc })
 }
 
 #[derive(Debug)]

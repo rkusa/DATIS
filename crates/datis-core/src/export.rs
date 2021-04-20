@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{error, fmt};
 
@@ -9,14 +10,14 @@ use futures::lock::Mutex;
 pub struct ReportExporter(Arc<Mutex<ReportExporterInner>>);
 
 pub struct ReportExporterInner {
-    path: String,
+    path: PathBuf,
     reports: HashMap<String, String>,
 }
 
 impl ReportExporter {
-    pub fn new(path: String) -> Self {
+    pub fn new(path: impl AsRef<Path>) -> Self {
         ReportExporter(Arc::new(Mutex::new(ReportExporterInner {
-            path,
+            path: path.as_ref().to_path_buf(),
             reports: HashMap::new(),
         })))
     }

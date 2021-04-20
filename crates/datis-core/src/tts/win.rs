@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::ops::Deref;
 use std::str::FromStr;
 
@@ -116,5 +117,11 @@ impl Deref for VoiceKind {
             VoiceKind::Zira => "Zira",
             VoiceKind::Mark => "Mark",
         }
+    }
+}
+
+impl Display for VoiceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self)
     }
 }

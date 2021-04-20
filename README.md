@@ -23,48 +23,26 @@ ATIS stations are not the only report kind this mod supports, all supported repo
 
 The mods uses the Window' built-in TTS by default, but can also either use Google Cloud's TTS, AWS Polly, or a combination of all of them (tip: setup both Google Cloud and Amazon Web Services to have a greater choice of different voices).
 
+## Migrate to 3.x.x
+
+The plugin settings have been removed from the DCS settings screen. DATIS is now configured through a config file at `Saved Games\DCS.openbeta\Config\DATIS.json`, see [Settings](./docs/Settings.md).
+This has been done, because each mission you save contains all your plugin settings. This included the cloud provider access keys set for DATIS. The change has been made to prevent the accidential sharing of those credentials.
+
 ## Installation
 
 [Build it](#build) yourself and use the content inside the `mod` directory or use the pre-build mod from one of the [releases](https://github.com/rkusa/DATIS/releases).
 
 1. Copy the content (`Mods` and `Scripts` directory) into `Saved Games\DCS.openbeta\`.
-2. Optional (not necessary when using Window' built-in TTS): Setup your cloud provider of choice
-   1. Create your cloud credentials, either
-      1. Google Cloud: Go to https://console.cloud.google.com/apis/credentials and create an API key and restrict API access to Google Text-to-Speech, or
-      2. Amazon Web Services: Go to https://console.aws.amazon.com/iam/home#/users and create a new user with `AmazonPollyReadOnlyAccess` permissions
-   2. Open DCS go to OPTIONS -> SPECIAL -> DCS ATIS, enter your API keys into the respective input fields
+2. Optional: Customize your settings, see [Settings](./docs/Settings.md)
 
 Once you start a mission that contains a pattern as described in the next section, DATIS runs automatically.
-It thereby expects a SRS server to run locally on the default SRS ports. The port can be changed in the DCS DATIS mod settings page.
+It thereby expects a SRS server to run locally on the default SRS ports.
 
 If DATIS isn't working, you might find some helpful information in the log file at `DCS.openbeta\Logs\DATIS.log`.
 
 For information about the free tier of both GCloud and AWS see:
 - https://cloud.google.com/text-to-speech/pricing
 - https://aws.amazon.com/polly/pricing/
-
-![Settings](./docs/settings.jpg)
-
-While it is easiest to temporariely start DCS with a GUI even on a dedicated server for the sake of changing DATIS settings, they can also be changed by manually updating `Saved Games\DCS.openbeta\Config\options.lua`:
-
-```lua
-options = {
-	-- ...
-	["plugins"] = {
-		-- ..
-		["DATIS"] = {
-			["awsAccessKey"] = "Your AWS access key",
-			["awsPrivateKey"] = "Your AWS private key",
-			["awsRegion"] = "eu-central-1",
-			["debugLoggingEnabled"] = false,
-			["defaultVoice"] = "WIN",
-			["gcloudAccessKey"] = "Your Google Cloud access key",
-			["srsPort"] = "5002",
-		},
-		-- ..
-	}
-}
-```
 
 ## Setup
 

@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::str::FromStr;
 
 use audiopus::{coder::Encoder, Application, Channels, SampleRate};
@@ -109,8 +110,8 @@ impl FromStr for VoiceKind {
     }
 }
 
-impl ToString for VoiceKind {
-    fn to_string(&self) -> String {
-        format!("{:?}", self)
+impl Display for VoiceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }

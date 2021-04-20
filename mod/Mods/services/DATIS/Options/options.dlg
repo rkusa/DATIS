@@ -5,18 +5,6 @@ local width = 600
 
 -- Skins
 
-local EditBoxSkin = {
-	["params"] = {
-		["name"] = "editBoxSkin_login",
-	}
-}
-
-local CheckBoxSkin = {
-	["params"] = {
-		["name"] = "checkBoxSkin_options",
-	}
-}
-
 local TitleSkin = {
 	["params"] = {
 		["name"] = "staticOptionsTitleSkin",
@@ -34,12 +22,6 @@ local TitleSkin = {
 	}
 }
 
-local LabelSkin = {
-	["params"] = {
-		["name"] = "staticOptionsCaptionSkin",
-	}
-}
-
 local HelpSkin = {
 	["params"] = {
 		["name"] = "staticSkin2",
@@ -48,19 +30,12 @@ local HelpSkin = {
 		["released"] = {
 			[1] = {
 				["text"] = {
-					["fontSize"] = 10,
 					["horzAlign"] = {
 						["type"] = "min"
 					}
 				}
 			}
 		}
-	}
-}
-
-local ComboListSkin = {
-	["params"] = {
-		["name"] = "comboListSkin_options",
 	}
 }
 
@@ -92,315 +67,20 @@ dialog = {
 						["type"] = "Static",
 					},
 
-					-----------------------------------------------
-					-- Default Voice
-					-----------------------------------------------
-
-					["defaultVoiceLabel"] = {
-						["params"] = {
-							["bounds"] = {
-								["x"] = leftMargin,
-								["y"] = 95,
-								["w"] = width,
-								["h"] = 20,
-							},
-							["enabled"] = true,
-							["text"] = "$DATIS_DEFAULT_VOICE",
-							["tooltip"] = "",
-							["visible"] = true,
-							["zindex"] = 0,
-						},
-						["skin"] = LabelSkin,
-						["type"] = "Static",
-					},
-
-					["defaultVoiceComboList"] = {
-						["params"] = {
-							["bounds"] = {
-									["x"] = 200 + leftMargin,
-									["y"] = 95,
-									["w"] = width - 200,
-									["h"] = 25,
-								},
-								["enabled"] = true,
-								["tooltip"] = "",
-								["visible"] = true,
-								["zindex"] = 0,
-								["tabOrder"] = 3,
-						},
-						["skin"] = ComboListSkin,
-						["type"] = "ComboList",
-					},
-
-					-----------------------------------------------
-					-- Google Cloud Access Key
-					-----------------------------------------------
-					["gcloudAccessKeyLabel"] = {
-						["params"] = {
-							["bounds"] = {
-								["x"] = leftMargin,
-								["y"] = 145,
-								["w"] = width,
-								["h"] = 20,
-							},
-							["enabled"] = true,
-							["text"] = "$DATIS_CLOUD_ACCESS_KEY",
-							["tooltip"] = "",
-							["visible"] = true,
-							["zindex"] = 0,
-						},
-						["skin"] = LabelSkin,
-						["type"] = "Static",
-					},
-
-					["gcloudAccessKeyEditBox"] = {
-						["params"] = {
-							["bounds"] = {
-								["x"] = 200 + leftMargin,
-								["y"] = 145,
-								["w"] = width - 200,
-								["h"] = 20,
-							},
-							["zindex"] = 0,
-							["tabOrder"] = 0,
-						},
-						["skin"] = EditBoxSkin,
-						["type"] = "EditBox",
-						["enabled"] = true
-					},
-
-					-----------------------------------------------
-					-- Amazon Access Key
-					-----------------------------------------------
-
-					["awsAccessKeyLabel"] = {
-						["params"] = {
-							["bounds"] = {
-								["x"] = leftMargin,
-								["y"] = 195,
-								["w"] = 200,
-								["h"] = 20,
-							},
-							["enabled"] = true,
-							["text"] = "$DATIS_AWS_ACCESS_KEY",
-							["tooltip"] = "",
-							["visible"] = true,
-							["zindex"] = 0,
-						},
-						["skin"] = LabelSkin,
-						["type"] = "Static",
-					},
-
-					["awsAccessKeyEditBox"] = {
-						["params"] = {
-							["acceptDecimalPoint"] = false,
-							["bounds"] = {
-								["x"] = 200 + leftMargin,
-								["y"] = 195,
-								["w"] = width - 200,
-								["h"] = 20,
-							},
-							["enabled"] = true,
-							["multiline"] = false,
-							["numeric"] = true,
-							["password"] = false,
-							["readOnly"] = false,
-							["text"] = "",
-							["textWrapping"] = true,
-							["tooltip"] = "",
-							["visible"] = true,
-							["zindex"] = 0,
-							["tabOrder"] = 1,
-						},
-						["skin"] = EditBoxSkin,
-						["type"] = "EditBox",
-					},
-
-					-----------------------------------------------
-					-- Amazon Private Key
-					-----------------------------------------------
-
-					["awsPrivateKeyLabel"] = {
-						["params"] = {
-							["bounds"] = {
-								["x"] = leftMargin,
-								["y"] = 245,
-								["w"] = 200,
-								["h"] = 20,
-							},
-							["enabled"] = true,
-							["text"] = "$DATIS_AWS_PRIVATE_KEY",
-							["tooltip"] = "",
-							["visible"] = true,
-							["zindex"] = 0,
-						},
-						["skin"] = LabelSkin,
-						["type"] = "Static",
-					},
-
-					["awsPrivateKeyEditBox"] = {
-						["params"] = {
-							["acceptDecimalPoint"] = false,
-							["bounds"] = {
-								["x"] = 200 + leftMargin,
-								["y"] = 245,
-								["w"] = width - 200,
-								["h"] = 20,
-							},
-							["enabled"] = true,
-							["multiline"] = false,
-							["numeric"] = true,
-							["password"] = true,
-							["readOnly"] = false,
-							["text"] = "",
-							["textWrapping"] = true,
-							["tooltip"] = "",
-							["visible"] = true,
-							["zindex"] = 0,
-							["tabOrder"] = 2,
-						},
-						["skin"] = EditBoxSkin,
-						["type"] = "EditBox",
-					},
-
-					-----------------------------------------------
-					-- Amazon Region
-					-----------------------------------------------
-
-					["awsRegionLabel"] = {
-						["params"] = {
-							["bounds"] = {
-								["x"] = leftMargin,
-								["y"] = 295,
-								["w"] = 200,
-								["h"] = 20,
-							},
-							["enabled"] = true,
-							["text"] = "$DATIS_AWS_REGION",
-							["tooltip"] = "",
-							["visible"] = true,
-							["zindex"] = 0,
-						},
-						["skin"] = LabelSkin,
-						["type"] = "Static",
-					},
-
-					["awsRegionComboList"] = {
-						["params"] = {
-							["bounds"] = {
-									["x"] = 200 + leftMargin,
-									["y"] = 295,
-									["w"] = 151,
-									["h"] = 25,
-								},
-								["enabled"] = true,
-								["tooltip"] = "",
-								["visible"] = true,
-								["zindex"] = 0,
-								["tabOrder"] = 3,
-						},
-						["skin"] = ComboListSkin,
-						["type"] = "ComboList",
-					},
+					----------------------------------------
+					-- Info
+					----------------------------------------
 
 					["awsRegionText"] = {
 						["params"] = {
 							["bounds"] = {
 								["x"] = leftMargin,
-								["y"] = 325,
-								["w"] = 900,
-								["h"] = 20,
-							},
-							["enabled"] = true,
-							["text"] = "$DATIS_AWS_REGION_TEXT",
-							["tooltip"] = "",
-							["visible"] = true,
-							["zindex"] = 0,
-						},
-						["skin"] = HelpSkin,
-						["type"] = "Static",
-					},
-
-					-----------------------------------------------
-					-- SRS Server Port (5001)
-					-----------------------------------------------
-
-					["srsPortLabel"] = {
-						["params"] = {
-							["bounds"] = {
-								["x"] = leftMargin,
-								["y"] = 375,
-								["w"] = 200,
-								["h"] = 20,
-							},
-							["enabled"] = true,
-							["text"] = "$DATIS_SRS_SERVER_PORT",
-							["tooltip"] = "",
-							["visible"] = true,
-							["zindex"] = 0,
-						},
-						["skin"] = LabelSkin,
-						["type"] = "Static",
-					},
-
-					["srsPortEditBox"] = {
-						["params"] = {
-							["acceptDecimalPoint"] = false,
-							["bounds"] = {
-								["x"] = 200 + leftMargin,
-								["y"] = 375,
-								["w"] = width - 200,
-								["h"] = 20,
-							},
-							["enabled"] = true,
-							["multiline"] = false,
-							["numeric"] = true,
-							["password"] = false,
-							["readOnly"] = false,
-							["text"] = "",
-							["textWrapping"] = true,
-							["tooltip"] = "",
-							["visible"] = true,
-							["zindex"] = 0,
-							["tabOrder"] = 4,
-						},
-						["skin"] = EditBoxSkin,
-						["type"] = "EditBox",
-					},
-
-					-----------------------------------------------
-					-- [ ] Debug Logging
-					-----------------------------------------------
-					["debugLoggingEnabledCheckbox"] = {
-						["params"] = {
-							["bounds"] = {
-								["x"] = leftMargin,
-								["y"] = 425,
+								["y"] = 65,
 								["w"] = width,
 								["h"] = 20,
 							},
 							["enabled"] = true,
-							["state"] = false,
-							["text"] = "$DATIS_DEBUG_LOGGING",
-							["tooltip"] = "",
-							["visible"] = true,
-							["zindex"] = 0,
-							["tabOrder"] = 0,
-						},
-						["skin"] = CheckBoxSkin,
-						["type"] = "CheckBox",
-					},
-
-					["debugLoggingEnabledHelpLabel"] = {
-						["params"] = {
-							["bounds"] = {
-								["x"] = leftMargin,
-								["y"] = 445,
-								["w"] = width,
-								["h"] = 40,
-							},
-							["enabled"] = true,
-							["text"] = "$DATIS_DEBUG_LOGGING_HELP",
+							["text"] = "$DATIS_CONFIG_INFO",
 							["tooltip"] = "",
 							["visible"] = true,
 							["zindex"] = 0,

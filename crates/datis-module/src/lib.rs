@@ -1,8 +1,12 @@
+mod config;
 mod mission;
 
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
+use config::read_config;
+use datis_core::config::Config;
 use datis_core::ipc::MissionRpc;
 use datis_core::Datis;
 use mlua::prelude::*;
@@ -12,53 +16,47 @@ use once_cell::sync::Lazy;
 static INITIALIZED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 static DATIS: Lazy<RwLock<Option<(Datis, MissionRpc)>>> = Lazy::new(|| RwLock::new(None));
 
-pub fn init(lua: &Lua) -> Result<String, mlua::Error> {
+pub fn init(lua: &Lua) -> Result<(Config, PathBuf), mlua::Error> {
     // init logging
     use log::LevelFilter;
     use log4rs::append::file::FileAppender;
     use log4rs::config::{Appender, Config, Logger, Root};
 
-    let mut write_dir: String = {
+    let write_dir: String = {
         let lfs: LuaTable<'_> = lua.globals().get("lfs")?;
         lfs.call_method("writedir", ())?
     };
-    write_dir += "Logs\\";
+    let write_dir = PathBuf::from(write_dir);
+
+    let config = read_config(&write_dir).map_err(|err| to_lua_err("reading config file", err))?;
 
     if INITIALIZED.swap(true, Ordering::Relaxed) {
-        return Ok(write_dir);
+        return Ok((config, write_dir));
     }
 
-    // read whether debug logging is enabled
-    let is_debug_loglevel = {
-        // OptionsData.getPlugin("DATIS", "debugLoggingEnabled")
-        let options_data: LuaTable<'_> = lua.globals().get("OptionsData")?;
-        let is_debug_loglevel: bool =
-            options_data.call_function("getPlugin", ("DATIS", "debugLoggingEnabled"))?;
-        is_debug_loglevel
-    };
-
-    let log_file = write_dir.clone() + "DATIS.log";
-
+    let log_file = write_dir.clone().join("Logs").join("DATIS.log");
     let requests = FileAppender::builder().append(false).build(log_file)?;
 
-    let log_level = if is_debug_loglevel {
+    let log_level = if config.debug {
         LevelFilter::Debug
     } else {
         LevelFilter::Info
     };
-    let config = Config::builder()
-        .appender(Appender::builder().build("file", Box::new(requests)))
-        .logger(Logger::builder().build("datis", log_level))
-        .logger(Logger::builder().build("datis_core", log_level))
-        .logger(Logger::builder().build("srs", log_level))
-        .logger(Logger::builder().build("win_tts", log_level))
-        .logger(Logger::builder().build("dcs_module_ipc", log_level))
-        .build(Root::builder().appender("file").build(LevelFilter::Off))
-        .map_err(to_lua_err)?;
 
-    log4rs::init_config(config).map_err(to_lua_err)?;
+    log4rs::init_config(
+        Config::builder()
+            .appender(Appender::builder().build("file", Box::new(requests)))
+            .logger(Logger::builder().build("datis", log_level))
+            .logger(Logger::builder().build("datis_core", log_level))
+            .logger(Logger::builder().build("srs", log_level))
+            .logger(Logger::builder().build("win_tts", log_level))
+            .logger(Logger::builder().build("dcs_module_ipc", log_level))
+            .build(Root::builder().appender("file").build(LevelFilter::Off))
+            .map_err(|err| to_lua_err("creating log config", err))?,
+    )
+    .map_err(|err| to_lua_err("initializing logging", err))?;
 
-    Ok(write_dir)
+    Ok((config, write_dir))
 }
 
 fn start(lua: &Lua, (): ()) -> LuaResult<()> {
@@ -68,31 +66,19 @@ fn start(lua: &Lua, (): ()) -> LuaResult<()> {
         }
     }
 
-    let log_dir = init(lua)?;
+    let (config, write_dir) = init(lua)?;
     log::info!("Starting DATIS version {} ...", env!("CARGO_PKG_VERSION"));
+    log::info!("Using SRS Server port: {}", config.srs_port);
 
-    let start = mission::extract(lua).and_then(|info| {
-        let mut datis = Datis::new(info.stations).map_err(to_lua_err)?;
-        datis.set_port(info.srs_port);
-        if !info.gcloud_key.is_empty() {
-            datis.set_gcloud_key(info.gcloud_key);
-        }
-        if !info.aws_key.is_empty() && !info.aws_secret.is_empty() && !info.aws_region.is_empty() {
-            datis.set_aws_keys(info.aws_key, info.aws_secret, info.aws_region);
-        }
-        datis.set_log_dir(log_dir);
-        Ok((datis, info.ipc))
-    });
-    match start {
-        Ok((datis, mission_info)) => {
-            let mut d = DATIS.write().unwrap();
-            *d = Some((datis, mission_info));
-        }
-        Err(err) => {
-            log::error!("Error initializing DATIS: {}", err.to_string());
-            return Err(err);
-        }
-    }
+    let info = mission::extract(lua, &config.default_voice)
+        .map_err(|err| to_lua_err("extracting mission information", err))?;
+
+    let mut datis = Datis::new(info.stations, config)
+        .map_err(|err| to_lua_err("creating DATIS instance", err))?;
+    datis.enable_exporter(write_dir.join("Logs"));
+
+    let mut d = DATIS.write().unwrap();
+    *d = Some((datis, info.ipc));
 
     Ok(())
 }
@@ -101,8 +87,7 @@ fn stop(_: &Lua, _: ()) -> LuaResult<()> {
     if let Some((datis, _)) = DATIS.write().unwrap().take() {
         log::info!("Stopping ...");
         if let Err(err) = datis.stop() {
-            log::error!("Error stopping SRS Client: {}", err.to_string());
-            return Err(to_lua_err(err));
+            return Err(to_lua_err("stopping SRS client", err));
         }
     }
 
@@ -113,8 +98,7 @@ fn pause(_: &Lua, _: ()) -> LuaResult<()> {
     if let Some((ref mut datis, _)) = *DATIS.write().unwrap() {
         log::info!("Pausing ...");
         if let Err(err) = datis.pause() {
-            log::error!("Error pausing SRS Client: {}", err.to_string());
-            return Err(to_lua_err(err));
+            return Err(to_lua_err("pausing SRS client", err));
         }
     }
 
@@ -125,8 +109,7 @@ fn resume(_: &Lua, _: ()) -> LuaResult<()> {
     if let Some((ref mut datis, _)) = *DATIS.write().unwrap() {
         log::info!("Resuming ...");
         if let Err(err) = datis.resume() {
-            log::error!("Error resuming SRS Client: {}", err.to_string());
-            return Err(to_lua_err(err));
+            return Err(to_lua_err("resuming SRC client", err));
         }
     }
 
@@ -193,7 +176,8 @@ pub enum Error {
     SerializeParams(#[source] mlua::Error),
 }
 
-fn to_lua_err(err: impl std::error::Error + Send + Sync + 'static) -> mlua::Error {
+fn to_lua_err(context: &str, err: impl std::error::Error + Send + Sync + 'static) -> mlua::Error {
+    log::error!("Error {}: {}", context, err.to_string());
     mlua::Error::ExternalError(Arc::new(err))
 }
 
