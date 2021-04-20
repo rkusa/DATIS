@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use clap::{App, Arg};
-use datis_core::config::{AwsConfig, GcloudConfig};
+use datis_core::config::{AwsConfig, Config, GcloudConfig};
 use datis_core::station::{Airfield, Position, Station, Transmitter};
 use datis_core::tts::TextToSpeechProvider;
 use datis_core::Datis;
@@ -91,7 +91,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             active_rwy_override: None,
         }),
     };
-    let mut config = Default::default();
+    let mut config = Config::default();
 
     if let Some(key) = matches.value_of("gcloud_key") {
         config.gcloud = Some(GcloudConfig {
@@ -111,7 +111,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
     }
 
-    let datis = Datis::new(vec![station], config)?;
+    let mut datis = Datis::new(vec![station], config)?;
     datis.start()?;
 
     let (tx, rx) = std::sync::mpsc::channel();

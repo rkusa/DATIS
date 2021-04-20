@@ -1,6 +1,6 @@
 #[cfg(target_os = "windows")]
 #[allow(dead_code)]
-mod bindings {
+pub mod bindings {
     ::windows::include_bindings!();
 }
 

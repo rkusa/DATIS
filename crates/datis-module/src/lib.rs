@@ -128,26 +128,31 @@ fn try_next(lua: &Lua, callback: Function<'_>) -> LuaResult<bool> {
             let error: Option<String> = result.get("error")?;
 
             if let Some(error) = error {
-                next.error(error);
+                next.error(error, None);
                 return Ok(true);
             }
 
             let res = match result.get::<_, Value<'_>>("result") {
                 Ok(res) => res,
                 Err(_) => {
-                    next.error("received empty IPC response".to_string());
+                    next.error("received empty IPC response".to_string(), None);
                     return Ok(true);
                 }
             };
 
             if let Err(err) = next.success(lua, &res) {
-                next.error(format!(
-                    "Failed to deserialize result for method {}: {}\n{}",
-                    method,
-                    err,
-                    pretty_print_value(res, 0)
-                        .unwrap_or_else(|err| format!("failed to pretty print result: {}", err))
-                ));
+                next.error(
+                    format!(
+                        "Failed to deserialize result for method {}: {}\n{}",
+                        method,
+                        err,
+                        pretty_print_value(res, 0).unwrap_or_else(|err| format!(
+                            "failed to pretty print result: {}",
+                            err
+                        ))
+                    ),
+                    None,
+                );
             }
 
             return Ok(true);

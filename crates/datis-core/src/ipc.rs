@@ -116,7 +116,10 @@ impl MissionRpc {
             .ipc
             .request::<(), _>("get_mission_start_date", None)
             .await?;
-        time::Date::parse(&date, "%Y-%-m-%-d").map_err(|err| Error::Script(err.to_string()))
+        time::Date::parse(&date, "%Y-%-m-%-d").map_err(|err| Error::Script {
+            kind: None,
+            message: err.to_string(),
+        })
     }
 
     pub async fn get_mission_hour(&self) -> Result<u16, Error> {

@@ -138,19 +138,13 @@ mod test {
         use crate::tts::{aws, gcloud, TextToSpeechProvider};
 
         #[test]
-        fn fallback_on_empty_string() {
-            assert_eq!(
-                TextToSpeechProvider::from_str("").unwrap(),
-                TextToSpeechProvider::default()
-            )
+        fn err_when_invalid() {
+            assert!(TextToSpeechProvider::from_str("").is_err())
         }
 
         #[test]
-        fn fallback_on_unknown_prefix() {
-            assert_eq!(
-                TextToSpeechProvider::from_str("UNK:foobar").unwrap(),
-                TextToSpeechProvider::default()
-            )
+        fn err_on_unknown_prefix() {
+            assert!(TextToSpeechProvider::from_str("UNK:foobar").is_err())
         }
 
         #[test]
