@@ -1,6 +1,7 @@
 pub mod aws;
 pub mod gcloud;
 pub mod win;
+pub mod azure;
 
 use std::fmt;
 use std::str::FromStr;
@@ -10,6 +11,7 @@ pub enum TextToSpeechProvider {
     GoogleCloud { voice: gcloud::VoiceKind },
     AmazonWebServices { voice: aws::VoiceKind },
     Windows { voice: Option<win::VoiceKind> },
+    AzureCognitiveServices { voice: azure::VoiceKind },
 }
 
 #[derive(Clone)]
@@ -17,6 +19,7 @@ pub enum TextToSpeechConfig {
     GoogleCloud(gcloud::GoogleCloudConfig),
     AmazonWebServices(aws::AmazonWebServicesConfig),
     Windows(win::WindowsConfig),
+    AzureCognitiveServices(azure::AzureCognitiveServicesConfig),
 }
 
 impl Default for TextToSpeechProvider {
@@ -33,6 +36,9 @@ impl fmt::Debug for TextToSpeechProvider {
             }
             TextToSpeechProvider::AmazonWebServices { voice } => {
                 write!(f, "Amazon Web Services (Voice: {:?})", voice)
+            }
+            TextToSpeechProvider::AzureCognitiveServices { voice } => {
+                write!(f, "Azure Cognitive Services (Voice: {:?})", voice)
             }
             TextToSpeechProvider::Windows { voice } => write!(
                 f,
@@ -59,6 +65,12 @@ impl FromStr for TextToSpeechProvider {
                 "AWS" | "aws" => {
                     return Ok(TextToSpeechProvider::AmazonWebServices {
                         voice: aws::VoiceKind::from_str(voice)
+                            .map_err(TextToSpeechProviderError::Voice)?,
+                    })
+                }
+                "AZURE" | "azure" => {
+                    return Ok(TextToSpeechProvider::AzureCognitiveServices {
+                        voice: azure::VoiceKind::from_str(voice)
                             .map_err(TextToSpeechProviderError::Voice)?,
                     })
                 }
@@ -119,6 +131,9 @@ impl serde::Serialize for TextToSpeechProvider {
             TextToSpeechProvider::AmazonWebServices { voice } => {
                 format!("AWS:{}", voice)
             }
+            TextToSpeechProvider::AzureCognitiveServices { voice } => {
+                format!("AZURE:{}", voice)
+            }
             TextToSpeechProvider::Windows { voice } => {
                 if let Some(voice) = voice {
                     format!("WIN:{}", voice)
@@ -135,7 +150,7 @@ mod test {
     mod tts_provider_from_str {
         use std::str::FromStr;
 
-        use crate::tts::{aws, gcloud, TextToSpeechProvider};
+        use crate::tts::{aws, gcloud, azure, TextToSpeechProvider};
 
         #[test]
         fn err_when_invalid() {
@@ -183,6 +198,16 @@ mod test {
                 TextToSpeechProvider::from_str("AWS:Brian").unwrap(),
                 TextToSpeechProvider::AmazonWebServices {
                     voice: aws::VoiceKind::Brian
+                }
+            )
+        }
+
+        #[test]
+        fn prefix_azure() {
+            assert_eq!(
+                TextToSpeechProvider::from_str("AZURE:en-US-AriaRUS").unwrap(),
+                TextToSpeechProvider::AzureCognitiveServices {
+                    voice: azure::VoiceKind::AriaRUS
                 }
             )
         }

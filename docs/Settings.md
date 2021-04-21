@@ -17,6 +17,10 @@
     "secret": "YOUR_SECRET",
     "region": "eu-central-1"
   },
+  "azure": {
+    "key": "YOUR_KEY",
+    "region": "YOUR_REGION"
+  },
   "srs_port": 5002,
   "debug": false
 }
@@ -53,6 +57,24 @@ Your AWS access key and secret (Go to https://console.aws.amazon.com/iam/home#/u
 <td valign="top">
 
 Your AWS region (see https://docs.aws.amazon.com/general/latest/gr/rande.html#pol_region for regions polly is available in), possible values are: `ap-northeast-1`, `ap-northeast-2`, `ap-south-1`, `ap-southeast-1`, `ap-southeast-2`, `ca-central-1`, `cn-northwest-1`, `eu-central-1`, `eu-north-1`, `eu-west-1`, `eu-west-2`, `eu-west-3`, `sa-east-1`, `us-east-1`, `us-east-2`, `us-gov-west-1`, `us-west-1`, `us-west-2`
+
+</td>
+</tr>
+
+<tr>
+<td valign="top">`azure.key`</td>
+<td valign="top">
+
+Your endpoint api key. Available in `Key and Endpoint` of your Cognitive Services resource (https://portal.azure.com/)
+
+</td>
+</tr>
+
+<tr>
+<td valign="top">`azure.region`</td>
+<td valign="top">
+
+Your Azure region (see https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/regions#speech-to-text-text-to-speech-and-translation for regions)
 
 </td>
 </tr>
@@ -157,6 +179,10 @@ Whether debug logging is enabled or not (default: `false`)
   <tr><td>AWS:Kevin</td><td>AWS: Kevin (en-US)</td></tr>
   <tr><td>AWS:Matthew</td><td>AWS: Matthew (en-US)</td></tr>
   <tr><td>AWS:Geraint</td><td>AWS: Geraint (en-US)</td></tr>
+  <tr><td>AZURE:en-US-BenjaminRUS</td><td>AZURE: Benjamin (en-US)</td></tr>
+  <tr><td>AZURE:en-US-GuyRUS</td><td>AZURE: Guy (en-US)</td></tr>
+  <tr><td>AZURE:en-US-AriaRUS</td><td>AZURE: Aria (en-US)</td></tr>
+  <tr><td>AZURE:en-US-ZiraRUS</td><td>AZURE: Zira (en-US)</td></tr>
 
   </table>
 

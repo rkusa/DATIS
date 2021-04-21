@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use clap::{App, Arg};
-use datis_core::config::{AwsConfig, Config, GcloudConfig};
+use datis_core::config::{AwsConfig, Config, GcloudConfig, AzureConfig};
 use datis_core::station::{Airfield, Position, Station, Transmitter};
 use datis_core::tts::TextToSpeechProvider;
 use datis_core::Datis;
@@ -58,6 +58,18 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .default_value("EuCentral1")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("azure_key")
+                .long("azure-key")
+                .env("AZURE_KEY")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("azure_region")
+            .long("azure-region")
+            .env("AZURE_REGION")
+            .takes_value(true),
+        )
         .get_matches();
 
     let freq = matches.value_of("frequency").unwrap();
@@ -110,6 +122,17 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             region: region.to_string(),
         })
     }
+
+    if let (Some(key), Some(region)) = (
+        matches.value_of("azure_key"),
+        matches.value_of("azure_region"),
+    ) {
+        config.azure = Some(AzureConfig {
+            key: key.to_string(),
+            region: region.to_string(),
+        })
+    }
+
 
     let mut datis = Datis::new(vec![station], config)?;
     datis.start()?;
