@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.0.0-beta.3] - 2021-04-22
+
+### Added
+
+- Added Azure as an additional TTS provider [#90](https://github.com/rkusa/DATIS/pull/90) (thanks [ugene143](https://github.com/ugene143) for the implementation!)
+
 ## [3.0.0-beta.2] - 2021-04-20
 
 ### Removed
