@@ -23,10 +23,11 @@ use crate::station::{LatLngPosition, Station, Transmitter};
 use crate::tts::{
     aws::{self, AmazonWebServicesConfig},
     gcloud::{self, GoogleCloudConfig},
+    azure::{self, AzureCognitiveServicesConfig},
     win::{self, WindowsConfig},
     TextToSpeechConfig, TextToSpeechProvider,
 };
-use config::{AwsConfig, Config};
+use config::{AwsConfig, AzureConfig, Config};
 use futures::future::FutureExt;
 use futures::select;
 use futures::sink::SinkExt;
@@ -122,6 +123,25 @@ impl Datis {
                     TextToSpeechConfig::Windows(WindowsConfig {
                         voice: voice.clone(),
                     })
+                }
+                TextToSpeechProvider::AzureCognitiveServices { voice } => {
+                    if let Some(AzureConfig {
+                        ref key,
+                        ref region,
+                    }) = self.config.azure
+                    {
+                        TextToSpeechConfig::AzureCognitiveServices(AzureCognitiveServicesConfig {
+                            key: key.clone(),
+                            region: region.clone(),
+                            voice,
+                        })
+                    } else {
+                        log::error!(
+                            "Cannot start {} due to missing azure key",
+                            station.name
+                        );
+                        continue;
+                    }
                 }
             };
 
@@ -344,6 +364,9 @@ async fn audio_broadcast(
                 }
                 TextToSpeechConfig::Windows(config) => {
                     win::text_to_speech(&report.spoken, config).await?
+                }
+                TextToSpeechConfig::AzureCognitiveServices(config) => {
+                    azure::text_to_speech(&report.spoken, config).await?
                 }
             };
         }
