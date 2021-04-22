@@ -30,6 +30,7 @@ pub struct Airfield {
     pub info_ltr_offset: usize,
     pub info_ltr_override: Option<char>,
     pub active_rwy_override: Option<String>,
+    pub qnh_override: Option<f64>
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -166,20 +167,20 @@ fn temperatur_report(weather: &WeatherInfo, spoken: bool) -> Result<String, anyh
     ))
 }
 
-fn altimeter_report(weather: &WeatherInfo, spoken: bool) -> Result<String, anyhow::Error> {
+fn altimeter_report(pressure_qnh: f64, spoken: bool) -> Result<String, anyhow::Error> {
     Ok(format!(
         "ALTIMETER {}. {}",
         // inHg, but using 0.02953 instead of 0.0002953 since we don't want to speak the
         // DECIMAL here
-        pronounce_number((weather.pressure_qnh * 0.02953).round(), spoken),
+        pronounce_number((pressure_qnh * 0.02953).round(), spoken),
         break_(spoken),
     ))
 }
 
-fn hectopascal_report(weather: &WeatherInfo, spoken: bool) -> Result<String, anyhow::Error> {
+fn hectopascal_report(pressure_qnh: f64, spoken: bool) -> Result<String, anyhow::Error> {
     Ok(format!(
         "{} hectopascal. {}",
-        pronounce_number((weather.pressure_qnh / 100.0).round(), spoken), // to hPA
+        pronounce_number((pressure_qnh / 100.0).round(), spoken), // to hPA
         break_(spoken),
     ))
 }
@@ -456,15 +457,22 @@ impl Airfield {
             );
         }
 
+        // If this Airfield as a QNH override, apply it now
+        let pressure_qnh = if let Some(pressure_qnh_in_hg) = self.qnh_override {
+            pressure_qnh_in_hg / 0.0002953
+        } else {
+            weather.pressure_qnh
+        };
+
         report += &wind_report(weather, spoken)?;
         report += &ceiling_report(weather, alt, spoken)?;
         report += &weather_condition_report(weather, alt, spoken)?;
         report += &visibility_report(weather, alt, spoken)?;
         report += &temperatur_report(weather, spoken)?;
-        report += &altimeter_report(weather, spoken)?;
+        report += &altimeter_report(pressure_qnh, spoken)?;
 
         report += &format!("REMARKS. {}", break_(spoken),);
-        report += &hectopascal_report(weather, spoken)?;
+        report += &hectopascal_report(pressure_qnh, spoken)?;
         report += &qfe_report(weather, spoken)?;
 
         report += &format!("End information {}.", information_letter);
@@ -594,10 +602,10 @@ impl WeatherTransmitter {
         report += &weather_condition_report(weather, alt, spoken)?;
         report += &visibility_report(weather, alt, spoken)?;
         report += &temperatur_report(weather, spoken)?;
-        report += &altimeter_report(weather, spoken)?;
+        report += &altimeter_report(weather.pressure_qnh, spoken)?;
 
         report += &format!("REMARKS. {}", break_(spoken),);
-        report += &hectopascal_report(weather, spoken)?;
+        report += &hectopascal_report(weather.pressure_qnh, spoken)?;
         report += &qfe_report(weather, spoken)?;
 
         report += &format!("End information {}.", information_letter);
@@ -641,6 +649,7 @@ mod test {
             info_ltr_offset: 0,
             info_ltr_override: None,
             active_rwy_override: None,
+            qnh_override: None,
         };
 
         assert_eq!(airfield.get_active_runway(0.0), Some("04"));
@@ -667,6 +676,7 @@ mod test {
                 info_ltr_offset: 0,
                 info_ltr_override: None,
                 active_rwy_override: None,
+                qnh_override: None,
             }),
         };
 
@@ -689,6 +699,7 @@ mod test {
                 info_ltr_offset: 15, // Should be "Papa"
                 info_ltr_override: None,
                 active_rwy_override: None,
+                qnh_override: None,
             }),
         };
 
@@ -711,6 +722,7 @@ mod test {
                 info_ltr_offset: 15,
                 info_ltr_override: Some('Q'),
                 active_rwy_override: None,
+                qnh_override: None,
             }),
         };
 
