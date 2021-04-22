@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::io::Cursor;
 use std::str::FromStr;
 
@@ -186,5 +187,11 @@ impl FromStr for VoiceKind {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_value(json!(s))
+    }
+}
+
+impl Display for VoiceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&serde_json::to_string(self).unwrap())
     }
 }

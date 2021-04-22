@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate anyhow;
 
+pub mod config;
 pub mod export;
 pub mod extract;
 #[cfg(feature = "ipc")]
@@ -12,6 +13,7 @@ pub mod weather;
 
 use std::mem;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -24,6 +26,7 @@ use crate::tts::{
     win::{self, WindowsConfig},
     TextToSpeechConfig, TextToSpeechProvider,
 };
+use config::{AwsConfig, Config};
 use futures::future::FutureExt;
 use futures::select;
 use futures::sink::SinkExt;
@@ -36,57 +39,27 @@ use tokio::time::sleep;
 pub struct Datis {
     stations: Vec<Station>,
     exporter: Option<ReportExporter>,
-    gcloud_key: Option<String>,
-    aws_config: Option<AwsConfig>,
-    port: u16,
+    config: Config,
     runtime: Runtime,
     started: bool,
     shutdown_signals: Vec<oneshot::Sender<()>>,
 }
 
-struct AwsConfig {
-    key: String,
-    secret: String,
-    region: String,
-}
-
 impl Datis {
-    pub fn new(stations: Vec<Station>) -> Result<Self, Error> {
+    pub fn new(stations: Vec<Station>, config: Config) -> Result<Self, Error> {
         Ok(Datis {
             stations,
             exporter: None,
-            gcloud_key: None,
-            aws_config: None,
-            port: 5002,
+            config,
             runtime: runtime::Builder::new_multi_thread().enable_all().build()?,
             started: false,
             shutdown_signals: Vec::new(),
         })
     }
 
-    pub fn set_port(&mut self, port: u16) {
-        self.port = port;
-    }
-
-    pub fn set_gcloud_key<S: Into<String>>(&mut self, key: S) {
-        self.gcloud_key = Some(key.into());
-    }
-
-    pub fn set_aws_keys<K: Into<String>, S: Into<String>, R: Into<String>>(
-        &mut self,
-        key: K,
-        secret: S,
-        region: R,
-    ) {
-        self.aws_config = Some(AwsConfig {
-            key: key.into(),
-            secret: secret.into(),
-            region: region.into(),
-        });
-    }
-
-    pub fn set_log_dir<S: Into<String>>(&mut self, log_dir: S) {
-        let exporter = ReportExporter::new(log_dir.into() + "atis-reports.json");
+    pub fn enable_exporter(&mut self, write_dir: impl AsRef<Path>) {
+        let path = write_dir.as_ref().to_path_buf().join("atis-reports.json");
+        let exporter = ReportExporter::new(path);
         self.exporter = Some(exporter);
     }
 
@@ -100,9 +73,9 @@ impl Datis {
         for station in &mut self.stations {
             let config = match station.tts {
                 TextToSpeechProvider::GoogleCloud { voice } => {
-                    if let Some(ref key) = self.gcloud_key {
+                    if let Some(ref config) = self.config.gcloud {
                         TextToSpeechConfig::GoogleCloud(GoogleCloudConfig {
-                            key: key.clone(),
+                            key: config.key.clone(),
                             voice,
                         })
                     } else {
@@ -118,7 +91,7 @@ impl Datis {
                         ref key,
                         ref secret,
                         ref region,
-                    }) = self.aws_config
+                    }) = self.config.aws
                     {
                         TextToSpeechConfig::AmazonWebServices(AmazonWebServicesConfig {
                             key: key.clone(),
@@ -157,7 +130,7 @@ impl Datis {
             self.runtime.spawn(
                 spawn(
                     station.clone(),
-                    self.port,
+                    self.config.srs_port,
                     config,
                     self.exporter.clone(),
                     rx,

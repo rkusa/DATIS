@@ -44,7 +44,7 @@ impl fmt::Debug for TextToSpeechProvider {
 }
 
 impl FromStr for TextToSpeechProvider {
-    type Err = serde_json::Error;
+    type Err = TextToSpeechProviderError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let v: Vec<&str> = s.splitn(2, ':').collect();
@@ -52,17 +52,22 @@ impl FromStr for TextToSpeechProvider {
             [prefix, voice] => match prefix {
                 "GC" | "gc" => {
                     return Ok(TextToSpeechProvider::GoogleCloud {
-                        voice: gcloud::VoiceKind::from_str(voice)?,
+                        voice: gcloud::VoiceKind::from_str(voice)
+                            .map_err(TextToSpeechProviderError::Voice)?,
                     })
                 }
                 "AWS" | "aws" => {
                     return Ok(TextToSpeechProvider::AmazonWebServices {
-                        voice: aws::VoiceKind::from_str(voice)?,
+                        voice: aws::VoiceKind::from_str(voice)
+                            .map_err(TextToSpeechProviderError::Voice)?,
                     })
                 }
                 "WIN" | "win" => {
                     return Ok(TextToSpeechProvider::Windows {
-                        voice: Some(win::VoiceKind::from_str(voice)?),
+                        voice: Some(
+                            win::VoiceKind::from_str(voice)
+                                .map_err(TextToSpeechProviderError::Voice)?,
+                        ),
                     })
                 }
                 _ => {}
@@ -72,15 +77,56 @@ impl FromStr for TextToSpeechProvider {
                     return Ok(TextToSpeechProvider::Windows { voice: None });
                 } else {
                     return Ok(TextToSpeechProvider::GoogleCloud {
-                        voice: gcloud::VoiceKind::from_str(voice)?,
+                        voice: gcloud::VoiceKind::from_str(voice)
+                            .map_err(TextToSpeechProviderError::Voice)?,
                     });
                 }
             }
             _ => {}
         }
 
-        // fallback
-        Ok(TextToSpeechProvider::default())
+        Err(TextToSpeechProviderError::Provider(s.to_string()))
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum TextToSpeechProviderError {
+    #[error("Invalid default voice `{0}`")]
+    Provider(String),
+    #[error("Invalid default voice: `{0}`")]
+    Voice(serde_json::Error),
+}
+
+impl<'de> serde::Deserialize<'de> for TextToSpeechProvider {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        FromStr::from_str(&s).map_err(serde::de::Error::custom)
+    }
+}
+
+impl serde::Serialize for TextToSpeechProvider {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&match self {
+            TextToSpeechProvider::GoogleCloud { voice } => {
+                format!("GC:{}", voice)
+            }
+            TextToSpeechProvider::AmazonWebServices { voice } => {
+                format!("AWS:{}", voice)
+            }
+            TextToSpeechProvider::Windows { voice } => {
+                if let Some(voice) = voice {
+                    format!("WIN:{}", voice)
+                } else {
+                    "WIN".to_string()
+                }
+            }
+        })
     }
 }
 
@@ -92,19 +138,13 @@ mod test {
         use crate::tts::{aws, gcloud, TextToSpeechProvider};
 
         #[test]
-        fn fallback_on_empty_string() {
-            assert_eq!(
-                TextToSpeechProvider::from_str("").unwrap(),
-                TextToSpeechProvider::default()
-            )
+        fn err_when_invalid() {
+            assert!(TextToSpeechProvider::from_str("").is_err())
         }
 
         #[test]
-        fn fallback_on_unknown_prefix() {
-            assert_eq!(
-                TextToSpeechProvider::from_str("UNK:foobar").unwrap(),
-                TextToSpeechProvider::default()
-            )
+        fn err_on_unknown_prefix() {
+            assert!(TextToSpeechProvider::from_str("UNK:foobar").is_err())
         }
 
         #[test]

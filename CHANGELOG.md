@@ -6,16 +6,34 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.0.0-beta.2] - 2021-04-20
+
+### Removed
+
+- **BREAKING:** The plugin settings have been removed from the DCS settings screen. DATIS is now configured through a config file at `Saved Games\DCS.openbeta\Config\DATIS.json`, see [Settings](./docs/Settings.md). Existing settings are not automatically migrated. This has been done, because each mission you save contains all your plugin settings. This included the cloud provider access keys set for DATIS. The change has been made to prevent the accidential sharing of those credentials.
+
+## [3.0.0-beta.1] - 2021-04-20
+
+### Added
+
+- **BREAKING:** Added support for DCS 2.7 cloud presets. Requires DCS 2.7 from now on.
+
+## [2.2.2] - 2021-04-11
+
 ### Changed
 
 - Changed the wind direction of ATIS reports from true to magnetic north
 
-## [2.2.0] - 2021-01-24
+### Fixed
+
+- Correctly report wind speed at carrier in feet (instead of in m/s) [#99](https://github.com/rkusa/DATIS/issues/88)
+
+## [2.2.1] - 2021-01-24
 
 ### Fixed
 
-- Fixed pronunciation pronunciation of noun "wind" (from `/waɪnd/` to `/wɪnd/`) for Windows' TTS. #80
-- Fixed carrier report to report correct magnetic BRC (by estimating the magnetic declination using the IGRF model). #68
+- Fixed pronunciation pronunciation of noun "wind" (from `/waɪnd/` to `/wɪnd/`) for Windows' TTS. [#80](https://github.com/rkusa/DATIS/issues/80)
+- Fixed carrier report to report correct magnetic BRC (by estimating the magnetic declination using the IGRF model). [#68](https://github.com/rkusa/DATIS/issues/68)
 
 ## [2.2.0] - 2021-01-22
 

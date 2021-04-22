@@ -1,7 +1,7 @@
+use crate::bindings::Windows::Media::SpeechSynthesis::SpeechSynthesizer;
+use crate::bindings::Windows::Storage::Streams::DataReader;
 use thiserror::Error;
 use tokio::task;
-use win_media::media::speech_synthesis::SpeechSynthesizer;
-use win_media::windows::storage::streams::DataReader;
 
 pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>, Error> {
     let ssml = ssml.into();
@@ -37,16 +37,16 @@ async fn tts_local(mut ssml: String, voice: Option<String>) -> Result<Vec<u8>, E
 
     let mut voice_info = None;
     if let Some(ref voice) = voice {
-        let all_voices = SpeechSynthesizer::all_voices()?;
-        let len = all_voices.size()? as usize;
+        let all_voices = SpeechSynthesizer::AllVoices()?;
+        let len = all_voices.Size()? as usize;
         for i in 0..len {
-            let v = all_voices.get_at(i as u32)?;
-            let lang = v.language()?.to_string();
+            let v = all_voices.GetAt(i as u32)?;
+            let lang = v.Language()?.to_string();
             if !lang.starts_with("en-") {
                 continue;
             }
 
-            let name = v.display_name()?.to_string();
+            let name = v.DisplayName()?.to_string();
             if name.ends_with(voice) {
                 voice_info = Some(v);
                 break;
@@ -54,13 +54,13 @@ async fn tts_local(mut ssml: String, voice: Option<String>) -> Result<Vec<u8>, E
         }
     } else {
         // default to the first english voice in the list
-        let all_voices = SpeechSynthesizer::all_voices()?;
-        let len = all_voices.size()? as usize;
+        let all_voices = SpeechSynthesizer::AllVoices()?;
+        let len = all_voices.Size()? as usize;
         for i in 0..len {
-            let v = all_voices.get_at(i as u32)?;
-            let lang = v.language()?.to_string();
+            let v = all_voices.GetAt(i as u32)?;
+            let lang = v.Language()?.to_string();
             if lang.starts_with("en-") {
-                let name = v.display_name()?.to_string();
+                let name = v.DisplayName()?.to_string();
                 log::debug!("Using WIN voice: {}", name);
                 voice_info = Some(v);
                 break;
@@ -73,37 +73,37 @@ async fn tts_local(mut ssml: String, voice: Option<String>) -> Result<Vec<u8>, E
     }
 
     if voice_info.is_none() {
-        let all_voices = SpeechSynthesizer::all_voices()?;
-        let len = all_voices.size()? as usize;
+        let all_voices = SpeechSynthesizer::AllVoices()?;
+        let len = all_voices.Size()? as usize;
         log::info!("Available WIN voices are (you don't have to include the `Microsoft` prefix in the name):");
         for i in 0..len {
-            let v = all_voices.get_at(i as u32)?;
-            let lang = v.language()?.to_string();
+            let v = all_voices.GetAt(i as u32)?;
+            let lang = v.Language()?.to_string();
             if !lang.starts_with("en-") {
                 continue;
             }
 
-            let name = v.display_name()?.to_string();
+            let name = v.DisplayName()?.to_string();
             log::info!("- {} ({})", name, lang);
         }
     }
 
     let synth = SpeechSynthesizer::new()?;
     if let Some(info) = voice_info {
-        let lang = info.language()?.to_string();
+        let lang = info.Language()?.to_string();
         ssml = ssml.replacen("xml:lang=\"en\"", &format!("xml:lang=\"{}\"", lang), 1);
-        synth.set_voice(info)?;
+        synth.SetVoice(info)?;
     }
 
     // the DataReader is !Send, which is why we have to process it in a local set
-    let stream = synth.synthesize_ssml_to_stream_async(ssml)?.await?;
-    let size = stream.size()?;
+    let stream = synth.SynthesizeSsmlToStreamAsync(ssml)?.await?;
+    let size = stream.Size()?;
 
-    let rd = DataReader::create_data_reader(stream.get_input_stream_at(0)?)?;
-    rd.load_async(size as u32)?.await?;
+    let rd = DataReader::CreateDataReader(stream.GetInputStreamAt(0)?)?;
+    rd.LoadAsync(size as u32)?.await?;
 
     let mut buf = vec![0u8; size as usize];
-    rd.read_bytes(buf.as_mut_slice())?;
+    rd.ReadBytes(buf.as_mut_slice())?;
 
     Ok(buf)
 }
@@ -116,8 +116,8 @@ pub enum Error {
     Io(#[from] std::io::Error),
 }
 
-impl From<win_media::Error> for Error {
-    fn from(err: win_media::Error) -> Self {
+impl From<windows::Error> for Error {
+    fn from(err: windows::Error) -> Self {
         Error::WinRT(err.code().0, err.message())
     }
 }
