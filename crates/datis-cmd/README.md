@@ -13,12 +13,12 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-        --aws-key <aws_key>            [env: AWS_ACCESS_KEY_ID=]
-        --aws-region <aws_region>      [env: AWS_REGION=]  [default: EuCentral1]
-    -f, --freq <frequency>             Sets the SRS frequency (in Hz, e.g. 251000000 for 251MHz) [default: 251000000]
-        --gcloud <gcloud_key>          [env: GCLOUD_KEY=]
-        --tts <tts>                    Sets the TTS provider and voice to be used [default: GC:en-US-Standard-C]
-        --aws-secret <was_secret>      [env: AWS_SECRET_ACCESS_KEY=]
-        --azure-key <azure_key>        [env:AZURE_KEY]
-        --azure-region <azure_region>  [env:AZURE_REGION]
+        --aws-key <aws_key>               [env: AWS_ACCESS_KEY_ID=]
+        --aws-region <aws_region>         [env: AWS_REGION=]  [default: EuCentral1]
+        --aws-secret <aws_secret>         [env: AWS_SECRET_ACCESS_KEY=]
+        --azure-key <azure_key>           [env: AZURE_KEY=]
+        --azure-region <azure_region>     [env: AZURE_REGION=]
+    -f, --freq <frequency>               Sets the SRS frequency (in Hz, e.g. 251000000 for 251MHz) [default: 251000000]
+        --gcloud <gcloud_key>             [env: GCLOUD_KEY=]
+        --tts <tts>                      Sets the TTS provider and voice to be used [default: GC:en-US-Standard-C]
 ```

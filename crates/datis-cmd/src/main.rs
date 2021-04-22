@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use clap::{App, Arg};
-use datis_core::config::{AwsConfig, Config, GcloudConfig, AzureConfig};
+use datis_core::config::{AwsConfig, AzureConfig, Config, GcloudConfig};
 use datis_core::station::{Airfield, Position, Station, Transmitter};
 use datis_core::tts::TextToSpeechProvider;
 use datis_core::Datis;
@@ -66,9 +66,9 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             Arg::with_name("azure_region")
-            .long("azure-region")
-            .env("AZURE_REGION")
-            .takes_value(true),
+                .long("azure-region")
+                .env("AZURE_REGION")
+                .takes_value(true),
         )
         .get_matches();
 
@@ -132,7 +132,6 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             region: region.to_string(),
         })
     }
-
 
     let mut datis = Datis::new(vec![station], config)?;
     datis.start()?;

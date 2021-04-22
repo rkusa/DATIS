@@ -22,8 +22,8 @@ use crate::export::ReportExporter;
 use crate::station::{LatLngPosition, Station, Transmitter};
 use crate::tts::{
     aws::{self, AmazonWebServicesConfig},
-    gcloud::{self, GoogleCloudConfig},
     azure::{self, AzureCognitiveServicesConfig},
+    gcloud::{self, GoogleCloudConfig},
     win::{self, WindowsConfig},
     TextToSpeechConfig, TextToSpeechProvider,
 };
@@ -136,10 +136,7 @@ impl Datis {
                             voice,
                         })
                     } else {
-                        log::error!(
-                            "Cannot start {} due to missing azure key",
-                            station.name
-                        );
+                        log::error!("Cannot start {} due to missing azure key", station.name);
                         continue;
                     }
                 }

@@ -1,7 +1,7 @@
 pub mod aws;
+pub mod azure;
 pub mod gcloud;
 pub mod win;
-pub mod azure;
 
 use std::fmt;
 use std::str::FromStr;
@@ -150,7 +150,7 @@ mod test {
     mod tts_provider_from_str {
         use std::str::FromStr;
 
-        use crate::tts::{aws, gcloud, azure, TextToSpeechProvider};
+        use crate::tts::{aws, azure, gcloud, TextToSpeechProvider};
 
         #[test]
         fn err_when_invalid() {
