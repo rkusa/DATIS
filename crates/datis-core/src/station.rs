@@ -30,7 +30,9 @@ pub struct Airfield {
     pub info_ltr_offset: usize,
     pub info_ltr_override: Option<char>,
     pub active_rwy_override: Option<String>,
-    pub qnh_override: Option<f64>
+    pub qnh_override: Option<f64>,
+    pub no_hpa: bool,
+    pub no_qfe: bool,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -471,9 +473,17 @@ impl Airfield {
         report += &temperatur_report(weather, spoken)?;
         report += &altimeter_report(pressure_qnh, spoken)?;
 
-        report += &format!("REMARKS. {}", break_(spoken),);
-        report += &hectopascal_report(pressure_qnh, spoken)?;
-        report += &qfe_report(weather, spoken)?;
+        if !self.no_hpa || !self.no_qfe {
+            report += &format!("REMARKS. {}", break_(spoken),);
+        }
+
+        if !self.no_hpa {
+            report += &hectopascal_report(pressure_qnh, spoken)?;
+        }
+
+        if !self.no_qfe {
+            report += &qfe_report(weather, spoken)?;
+        }
 
         report += &format!("End information {}.", information_letter);
 
@@ -650,6 +660,8 @@ mod test {
             info_ltr_override: None,
             active_rwy_override: None,
             qnh_override: None,
+            no_hpa: false,
+            no_qfe: false,
         };
 
         assert_eq!(airfield.get_active_runway(0.0), Some("04"));
@@ -677,6 +689,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             }),
         };
 
@@ -700,6 +714,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             }),
         };
 
@@ -723,6 +739,8 @@ mod test {
                 info_ltr_override: Some('Q'),
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             }),
         };
 

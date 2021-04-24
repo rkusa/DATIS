@@ -64,6 +64,8 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                     info_ltr_override: None,
                     active_rwy_override: None,
                     qnh_override: None,
+                    no_hpa: false,
+                    no_qfe: false,
                 },
             );
         }
@@ -174,6 +176,8 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                 airfield.info_ltr_override = config.info_ltr_override;
                 airfield.active_rwy_override = config.active_rwy_override;
                 airfield.qnh_override = config.qnh_override;
+                airfield.no_hpa = config.no_hpa;
+                airfield.no_qfe = config.no_qfe;
 
                 Station {
                     name,
@@ -195,6 +199,8 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                 airfield.info_ltr_override = config.info_ltr_override;
                 airfield.active_rwy_override = config.active_rwy_override;
                 airfield.qnh_override = config.qnh_override;
+                airfield.no_hpa = config.no_hpa;
+                airfield.no_qfe = config.no_qfe;
                 airfield.position.x = mission_unit.x;
                 airfield.position.y = mission_unit.y;
                 airfield.position.alt = mission_unit.alt;

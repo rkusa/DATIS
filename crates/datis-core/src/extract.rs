@@ -12,7 +12,9 @@ pub struct StationConfig {
     pub tts: Option<TextToSpeechProvider>,
     pub info_ltr_override: Option<char>,
     pub active_rwy_override: Option<String>,
-    pub qnh_override: Option<f64>
+    pub qnh_override: Option<f64>,
+    pub no_hpa: bool,
+    pub no_qfe: bool,
 }
 
 pub fn extract_station_config_from_mission_description(
@@ -63,6 +65,8 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
     let mut info_ltr_override = None;
     let mut active_rwy_override = None;
     let mut qnh_override = None;
+    let mut no_hpa = false;
+    let mut no_qfe = false;
 
     for (option_key, option_value) in options.split(',').filter_map(|t| {
         let t = t.trim();
@@ -98,12 +102,20 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                 if let Ok(qnh_in_hg) = option_value.parse::<f64>() {
                     qnh_override = Some(qnh_in_hg);
                 } else {
-                    log::warn!(
-                        "Unable to extract QNH from {}",
-                        option_value
-                    );
+                    log::warn!("Unable to extract QNH from {}", option_value);
                 }
             }
+            "NO" => match option_value {
+                "HPA" => {
+                    no_hpa = true;
+                }
+                "QFE" => {
+                    no_qfe = true;
+                }
+                _ => {
+                    log::warn!("Unsupported ATIS NO option {}", option_value);
+                }
+            },
             _ => {
                 log::warn!("Unsupported ATIS station option {}", option_key);
             }
@@ -118,6 +130,8 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
         info_ltr_override,
         active_rwy_override,
         qnh_override,
+        no_hpa,
+        no_qfe,
     };
 
     Some(result)
@@ -169,6 +183,8 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
         info_ltr_override,
         active_rwy_override: None,
         qnh_override: None,
+        no_hpa: false,
+        no_qfe: false,
     };
 
     Some(result)
@@ -302,6 +318,8 @@ mod test {
                         info_ltr_override: None,
                         active_rwy_override: None,
                         qnh_override: None,
+                        no_hpa: false,
+                        no_qfe: false,
                     }
                 ),
                 (
@@ -314,6 +332,8 @@ mod test {
                         info_ltr_override: None,
                         active_rwy_override: None,
                         qnh_override: None,
+                        no_hpa: false,
+                        no_qfe: false,
                     }
                 ),
                 (
@@ -326,6 +346,8 @@ mod test {
                         info_ltr_override: None,
                         active_rwy_override: None,
                         qnh_override: None,
+                        no_hpa: false,
+                        no_qfe: false,
                     }
                 )
             ]
@@ -356,7 +378,9 @@ mod test {
                     tts: None,
                     info_ltr_override: Some('T'),
                     active_rwy_override: Some("12".to_string()),
-                    qnh_override: Some(30.02)
+                    qnh_override: Some(30.02),
+                    no_hpa: false,
+                    no_qfe: false,
                 }
             )]
             .into_iter()
@@ -376,6 +400,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -389,6 +415,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -402,6 +430,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -415,6 +445,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -432,6 +464,8 @@ mod test {
                 info_ltr_override: Some('Q'),
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -449,6 +483,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -464,6 +500,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -477,6 +515,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -491,6 +531,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -505,6 +547,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
     }
@@ -521,6 +565,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -534,6 +580,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -549,6 +597,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
     }
@@ -567,6 +617,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
 
@@ -582,6 +634,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
     }
@@ -603,6 +657,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
     }
@@ -642,6 +698,8 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: Some("21L".to_string()),
                 qnh_override: None,
+                no_hpa: false,
+                no_qfe: false,
             })
         );
     }
@@ -658,6 +716,56 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
                 qnh_override: Some(28.72),
+                no_hpa: false,
+                no_qfe: false,
+            })
+        );
+    }
+
+    #[test]
+    fn test_supression_flags() {
+        assert_eq!(
+            extract_atis_station_config("ATIS Kutaisi 131.400, QNH 28.72, NO HPA, NO QFE"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 131_400_000,
+                traffic: None,
+                tts: None,
+                info_ltr_override: None,
+                active_rwy_override: None,
+                qnh_override: Some(28.72),
+                no_hpa: true,
+                no_qfe: true,
+            })
+        );
+
+        assert_eq!(
+            extract_atis_station_config("ATIS Kutaisi 131.400, QNH 28.72, NO HPA"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 131_400_000,
+                traffic: None,
+                tts: None,
+                info_ltr_override: None,
+                active_rwy_override: None,
+                qnh_override: Some(28.72),
+                no_hpa: true,
+                no_qfe: false,
+            })
+        );
+
+        assert_eq!(
+            extract_atis_station_config("ATIS Kutaisi 131.400, QNH 28.72, NO QFE"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 131_400_000,
+                traffic: None,
+                tts: None,
+                info_ltr_override: None,
+                active_rwy_override: None,
+                qnh_override: Some(28.72),
+                no_hpa: false,
+                no_qfe: true,
             })
         );
     }

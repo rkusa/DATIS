@@ -113,12 +113,8 @@ impl serde::Serialize for TextToSpeechProvider {
         S: serde::Serializer,
     {
         serializer.serialize_str(&match self {
-            TextToSpeechProvider::GoogleCloud { voice } => {
-                format!("GC:{}", voice)
-            }
-            TextToSpeechProvider::AmazonWebServices { voice } => {
-                format!("AWS:{}", voice)
-            }
+            TextToSpeechProvider::GoogleCloud { voice } => format!("GC:{}", voice),
+            TextToSpeechProvider::AmazonWebServices { voice } => format!("AWS:{}", voice),
             TextToSpeechProvider::Windows { voice } => {
                 if let Some(voice) = voice {
                     format!("WIN:{}", voice)
