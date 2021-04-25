@@ -34,8 +34,6 @@ pub struct NewClouds {
 #[serde(rename_all = "camelCase")]
 pub struct CloudPreset {
     pub precipitation_power: f64,
-    pub preset_alt_min: u32, // in m
-    pub preset_alt_max: u32, // in m
     pub layers: Vec<NewCloudLayer>,
 }
 
@@ -204,7 +202,7 @@ impl Clouds {
 impl NewClouds {
     pub fn get_cloud_layers(&self) -> Vec<CloudLayer> {
         let diff = match self.preset.layers.first() {
-            Some(first) => first.altitude_min - self.base,
+            Some(first) => self.base - first.altitude_min,
             None => return Vec::new(),
         };
 

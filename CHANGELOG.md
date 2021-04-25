@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.0.0] - 2021-04-25
+
+The following list is a summary of changes of all previous beta releases, there were no changes since the previous beta `3.0.0-beta.3`,
+
+### Added
+
+- **BREAKING:** Added support for DCS 2.7 cloud presets. Requires DCS 2.7 from now on.
+- Added Azure as an additional TTS provider [#90](https://github.com/rkusa/DATIS/pull/90) (thanks [ugene143](https://github.com/ugene143) for the implementation!)
+
+### Removed
+
+- **BREAKING:** The plugin settings have been removed from the DCS settings screen. DATIS is now configured through a config file at `Saved Games\DCS.openbeta\Config\DATIS.json`, see [Settings](./docs/Settings.md). Existing settings are not automatically migrated. This has been done, because each mission you save contains all your plugin settings. This included the cloud provider access keys set for DATIS. The change has been made to prevent the accidential sharing of those credentials.
+
 ## [3.0.0-beta.3] - 2021-04-22
 
 ### Added
