@@ -1,4 +1,3 @@
-use crate::ipc::MissionRpc;
 use crate::tts::TextToSpeechProvider;
 use crate::utils::{m_to_nm, pronounce_number, round, round_hundreds};
 use crate::weather::WeatherInfo;
@@ -202,14 +201,16 @@ impl Station {
     pub async fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
         match &self.ipc {
             MissionInterface::Static => self.generate_static_report(report_nr).await,
+            #[cfg(feature = "ipc")]
             MissionInterface::Ipc(ipc) => self.generate_report_from_ipc(report_nr, &ipc).await,
         }
     }
 
+    #[cfg(feature = "ipc")]
     async fn generate_report_from_ipc(
         &self,
         report_nr: usize,
-        ipc: &MissionRpc,
+        ipc: &crate::ipc::MissionRpc,
     ) -> Result<Option<Report>, anyhow::Error> {
         use anyhow::Context;
 
@@ -684,6 +685,7 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
             }),
+            ipc: MissionInterface::Static,
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
@@ -706,6 +708,7 @@ mod test {
                 info_ltr_override: None,
                 active_rwy_override: None,
             }),
+            ipc: MissionInterface::Static,
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
@@ -728,6 +731,7 @@ mod test {
                 info_ltr_override: Some('Q'),
                 active_rwy_override: None,
             }),
+            ipc: MissionInterface::Static,
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
@@ -757,6 +761,7 @@ mod test {
                 unit_id: 42,
                 unit_name: "Stennis".to_string(),
             }),
+            ipc: MissionInterface::Static,
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
@@ -776,6 +781,7 @@ mod test {
                 unit_name: "Soldier".to_string(),
                 message: "Hello world".to_string(),
             }),
+            ipc: MissionInterface::Static,
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
@@ -800,6 +806,7 @@ mod test {
                 info_ltr_offset: 15, // Should be "Papa",
                 info_ltr_override: None,
             }),
+            ipc: MissionInterface::Static,
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();

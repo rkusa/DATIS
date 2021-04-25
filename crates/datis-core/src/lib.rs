@@ -234,7 +234,10 @@ async fn run(
     match &station.transmitter {
         Transmitter::Airfield(airfield) => {
             let pos = match &station.ipc {
-                station::MissionInterface::Static => LatLngPosition::default(),
+                station::MissionInterface::Static => {
+                    let _ = airfield;
+                    LatLngPosition::default()
+                }
                 #[cfg(feature = "ipc")]
                 station::MissionInterface::Ipc(ipc) => ipc.to_lat_lng(&airfield.position).await?,
             };
