@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Added a 500ms break between the two different QFE reports (`QFE 2997 <break time=\"500ms\" /> or 1015.`) [#83](https://github.com/rkusa/DATIS/issues/83)
+
 ## [3.0.0] - 2021-04-25
 
 The following list is a summary of changes of all previous beta releases, there were no changes since the previous beta `3.0.0-beta.3`,
