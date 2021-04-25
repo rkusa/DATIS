@@ -1,3 +1,4 @@
+use crate::ipc::MissionRpc;
 use crate::tts::TextToSpeechProvider;
 use crate::utils::{m_to_nm, pronounce_number, round, round_hundreds};
 use crate::weather::WeatherInfo;
@@ -9,8 +10,14 @@ pub struct Station {
     pub freq: u64,
     pub tts: TextToSpeechProvider,
     pub transmitter: Transmitter,
+    pub ipc: MissionInterface,
+}
+
+#[derive(Clone)]
+pub enum MissionInterface {
+    Static,
     #[cfg(feature = "ipc")]
-    pub ipc: Option<crate::ipc::MissionRpc>,
+    Ipc(crate::ipc::MissionRpc),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -192,12 +199,22 @@ fn qfe_report(weather: &WeatherInfo, spoken: bool) -> String {
 }
 
 impl Station {
-    #[cfg(feature = "ipc")]
     pub async fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
+        match &self.ipc {
+            MissionInterface::Static => self.generate_static_report(report_nr).await,
+            MissionInterface::Ipc(ipc) => self.generate_report_from_ipc(report_nr, &ipc).await,
+        }
+    }
+
+    async fn generate_report_from_ipc(
+        &self,
+        report_nr: usize,
+        ipc: &MissionRpc,
+    ) -> Result<Option<Report>, anyhow::Error> {
         use anyhow::Context;
 
-        match (self.ipc.as_ref(), &self.transmitter) {
-            (Some(ipc), Transmitter::Airfield(airfield)) => {
+        match &self.transmitter {
+            Transmitter::Airfield(airfield) => {
                 let mut weather = ipc
                     .get_weather_at(&airfield.position)
                     .await
@@ -239,7 +256,7 @@ impl Station {
                     position,
                 }))
             }
-            (Some(ipc), Transmitter::Carrier(unit)) => {
+            Transmitter::Carrier(unit) => {
                 let pos = ipc
                     .get_unit_position(&unit.unit_name)
                     .await
@@ -285,7 +302,7 @@ impl Station {
                     Ok(None)
                 }
             }
-            (Some(ipc), Transmitter::Custom(custom)) => {
+            Transmitter::Custom(custom) => {
                 let pos = match &custom.position {
                     Some(pos) => pos.clone(),
                     None => ipc
@@ -308,7 +325,7 @@ impl Station {
                     position,
                 }))
             }
-            (Some(ipc), Transmitter::Weather(weather)) => {
+            Transmitter::Weather(weather) => {
                 let pos = match &weather.position {
                     Some(pos) => pos.clone(),
                     None => ipc
@@ -342,12 +359,13 @@ impl Station {
                     position,
                 }))
             }
-            (None, _) => Ok(None),
         }
     }
 
-    #[cfg(not(feature = "ipc"))]
-    pub async fn generate_report(&self, report_nr: usize) -> Result<Option<Report>, anyhow::Error> {
+    async fn generate_static_report(
+        &self,
+        report_nr: usize,
+    ) -> Result<Option<Report>, anyhow::Error> {
         let weather_info = WeatherInfo {
             clouds: None,
             wind_speed: 2.5,

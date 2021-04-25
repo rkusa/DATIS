@@ -232,19 +232,12 @@ async fn run(
     let name = format!("ATIS {}", station.name);
     let mut client = Client::new(&name, station.freq, Coalition::Blue);
     match &station.transmitter {
-        #[cfg(feature = "ipc")]
         Transmitter::Airfield(airfield) => {
-            let pos = if let Some(ipc) = &station.ipc {
-                ipc.to_lat_lng(&airfield.position).await?
-            } else {
-                LatLngPosition::default()
+            let pos = match &station.ipc {
+                station::MissionInterface::Static => LatLngPosition::default(),
+                #[cfg(feature = "ipc")]
+                station::MissionInterface::Ipc(ipc) => ipc.to_lat_lng(&airfield.position).await?,
             };
-            client.set_position(pos).await;
-            // TODO: set unit?
-        }
-        #[cfg(not(feature = "ipc"))]
-        Transmitter::Airfield(_) => {
-            let pos = LatLngPosition::default();
             client.set_position(pos).await;
             // TODO: set unit?
         }

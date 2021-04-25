@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use clap::{App, Arg};
 use datis_core::config::{AwsConfig, AzureConfig, Config, GcloudConfig};
-use datis_core::station::{Airfield, Position, Station, Transmitter};
+use datis_core::station::{Airfield, MissionInterface, Position, Station, Transmitter};
 use datis_core::tts::TextToSpeechProvider;
 use datis_core::Datis;
 use dotenv::dotenv;
@@ -102,6 +102,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             info_ltr_override: None,
             active_rwy_override: None,
         }),
+        ipc: MissionInterface::Static,
     };
     let mut config = Config::default();
 
