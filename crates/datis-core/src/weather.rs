@@ -54,6 +54,30 @@ pub struct OldClouds {
 }
 
 impl WeatherInfo {
+    /// Get QNH correct for the current temperature (as far as possible in DCS)
+    pub fn get_qnh(&self, alt: u32) -> f64 {
+        self.pressure_qnh + self.pressure_correction(alt)
+    }
+
+    /// Get QFE correct for the current temperature (as far as possible in DCS)
+    pub fn get_qfe(&self, alt: u32) -> f64 {
+        self.pressure_qfe + self.pressure_correction(alt)
+    }
+
+    fn pressure_correction(&self, alt: u32) -> f64 {
+        let alt = m_to_ft(alt as f64);
+        let angels = alt / 1000.0;
+        // ISA at see level is 16 and not 15 in DCS, see
+        // https://forums.eagle.ru/topic/256057-altitude-qnh-error-bug/
+        let isa_at_alt = 16.0 - 1.98 * angels;
+        let isa_diff = self.temperature - isa_at_alt;
+        let palt_diff = 4.0 * isa_diff * angels;
+
+        // translate alt diff into a QNH diff
+        let qnh_diff = (palt_diff / 27.0) * 100.0;
+        qnh_diff
+    }
+
     /// in m
     pub fn get_visibility(&self, alt: u32) -> Option<u32> {
         let clouds_vis = self.clouds.as_ref().and_then(|c| c.get_visibility(alt));

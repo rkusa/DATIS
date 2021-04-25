@@ -164,35 +164,35 @@ fn temperatur_report(weather: &WeatherInfo, spoken: bool) -> String {
     )
 }
 
-fn altimeter_report(weather: &WeatherInfo, spoken: bool) -> String {
+fn altimeter_report(weather: &WeatherInfo, alt: u32, spoken: bool) -> String {
     format!(
         "ALTIMETER {}. {}",
         // inHg, but using 0.02953 instead of 0.0002953 since we don't want to speak the
         // DECIMAL here
-        pronounce_number((weather.pressure_qnh * 0.02953).round(), spoken),
+        pronounce_number((weather.get_qnh(alt) * 0.02953).round(), spoken),
         break_(spoken),
     )
 }
 
-fn hectopascal_report(weather: &WeatherInfo, spoken: bool) -> String {
+fn hectopascal_report(weather: &WeatherInfo, alt: u32, spoken: bool) -> String {
     format!(
         "{} hectopascal. {}",
-        pronounce_number((weather.pressure_qnh / 100.0).round(), spoken), // to hPA
+        pronounce_number((weather.get_qnh(alt) / 100.0).round(), spoken), // to hPA
         break_(spoken),
     )
 }
 
-fn qfe_report(weather: &WeatherInfo, spoken: bool) -> String {
+fn qfe_report(weather: &WeatherInfo, alt: u32, spoken: bool) -> String {
     format!(
         "QFE {} {}or {}. {}",
-        pronounce_number((weather.pressure_qfe * 0.02953).round(), spoken), // to inHg
+        pronounce_number((weather.get_qfe(alt) * 0.02953).round(), spoken), // to inHg
         if spoken {
             // add break to make it easier to mentally process the different numbers
             "<break time=\"500ms\" /> "
         } else {
             ""
         },
-        pronounce_number((weather.pressure_qfe / 100.0).round(), spoken), // to hPA
+        pronounce_number((weather.get_qfe(alt) / 100.0).round(), spoken), // to hPA
         break_(spoken),
     )
 }
@@ -478,11 +478,11 @@ impl Airfield {
         report += &weather_condition_report(weather, alt, spoken);
         report += &visibility_report(weather, alt, spoken);
         report += &temperatur_report(weather, spoken);
-        report += &altimeter_report(weather, spoken);
+        report += &altimeter_report(weather, alt, spoken);
 
         report += &format!("REMARKS. {}", break_(spoken));
-        report += &hectopascal_report(weather, spoken);
-        report += &qfe_report(weather, spoken);
+        report += &hectopascal_report(weather, alt, spoken);
+        report += &qfe_report(weather, alt, spoken);
 
         report += &format!("End information {}.", information_letter);
 
@@ -520,15 +520,15 @@ impl Carrier {
             break_(spoken),
         );
 
+        let alt = 21; // carrier deck alt in m
+
         report += &format!(
             "altimeter {}, {}",
             // inHg, but using 0.02953 instead of 0.0002953 since we don't want to speak the
             // DECIMAL here
-            pronounce_number((weather.pressure_qnh * 0.02953).round(), spoken),
+            pronounce_number((weather.get_qnh(alt) * 0.02953).round(), spoken),
             break_(spoken),
         );
-
-        let alt = 21; // carrier deck alt in m
 
         // Case 1: daytime, ceiling >= 3000ft; visibility distance >= 5nm
         // Case 2: daytime, ceiling >= 1000ft; visibility distance >= 5nm
@@ -611,11 +611,11 @@ impl WeatherTransmitter {
         report += &weather_condition_report(weather, alt, spoken);
         report += &visibility_report(weather, alt, spoken);
         report += &temperatur_report(weather, spoken);
-        report += &altimeter_report(weather, spoken);
+        report += &altimeter_report(weather, alt, spoken);
 
-        report += &format!("REMARKS. {}", break_(spoken));
-        report += &hectopascal_report(weather, spoken);
-        report += &qfe_report(weather, spoken);
+        report += &format!("REMARKS. {}", break_(spoken),);
+        report += &hectopascal_report(weather, alt, spoken);
+        report += &qfe_report(weather, alt, spoken);
 
         report += &format!("End information {}.", information_letter);
 
