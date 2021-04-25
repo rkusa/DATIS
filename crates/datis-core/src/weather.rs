@@ -74,7 +74,7 @@ impl WeatherInfo {
         }
 
         // The multiplier of 4 was derived by manual testing the resulting visibility.
-        return Some(self.dust_density * 4);
+        Some(self.dust_density * 4)
     }
 
     /// in m
@@ -83,7 +83,7 @@ impl WeatherInfo {
             return None;
         }
 
-        return Some(self.fog_visibility.round() as u32);
+        Some(self.fog_visibility.round() as u32)
     }
 
     /// in ft

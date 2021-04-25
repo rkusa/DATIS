@@ -17,13 +17,6 @@ pub struct MissionRpcInner {
 pub struct MissionRpc(Arc<MissionRpcInner>);
 
 impl MissionRpc {
-    pub fn new() -> Self {
-        MissionRpc(Arc::new(MissionRpcInner {
-            ipc: dcs_module_ipc::IPC::new(),
-            clouds: Mutex::new(None),
-        }))
-    }
-
     pub async fn get_weather_at(&self, pos: &Position) -> Result<WeatherInfo, Error> {
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "camelCase")]
@@ -147,6 +140,15 @@ impl MissionRpc {
                 Some(json!({ "x": pos.x, "y": pos.y, "alt": pos.alt})),
             )
             .await
+    }
+}
+
+impl Default for MissionRpc {
+    fn default() -> Self {
+        MissionRpc(Arc::new(MissionRpcInner {
+            ipc: dcs_module_ipc::IPC::new(),
+            clouds: Mutex::new(None),
+        }))
     }
 }
 

@@ -81,9 +81,9 @@ fn break_(spoken: bool) -> &'static str {
     }
 }
 
-fn wind_report(weather: &WeatherInfo, spoken: bool) -> Result<String, anyhow::Error> {
+fn wind_report(weather: &WeatherInfo, spoken: bool) -> String {
     let wind_dir = format!("{:0>3}", weather.wind_dir.round().to_string());
-    Ok(format!(
+    format!(
         "{} {} at {} knots. {}",
         if spoken {
             r#"<phoneme alphabet="ipa" ph="w&#618;nd">Wind</phoneme>"#
@@ -93,30 +93,26 @@ fn wind_report(weather: &WeatherInfo, spoken: bool) -> Result<String, anyhow::Er
         pronounce_number(wind_dir, spoken),
         pronounce_number((weather.wind_speed * 1.94384).round(), spoken), // to knots
         break_(spoken),
-    ))
+    )
 }
 
-fn ceiling_report(weather: &WeatherInfo, alt: u32, spoken: bool) -> Result<String, anyhow::Error> {
+fn ceiling_report(weather: &WeatherInfo, alt: u32, spoken: bool) -> String {
     if let Some(ceiling) = weather.get_ceiling(alt) {
-        return Ok(format!(
+        return format!(
             "Ceiling {} {}. {}",
             round_hundreds(ceiling.alt),
             ceiling.coverage,
             break_(spoken)
-        ));
+        );
     }
 
-    Ok(String::new())
+    String::new()
 }
 
-fn weather_condition_report(
-    weather: &WeatherInfo,
-    alt: u32,
-    spoken: bool,
-) -> Result<String, anyhow::Error> {
+fn weather_condition_report(weather: &WeatherInfo, alt: u32, spoken: bool) -> String {
     let conditions = weather.get_weather_conditions(alt);
     if conditions.is_empty() {
-        return Ok(String::new());
+        return String::new();
     }
 
     let ix_last = conditions.len();
@@ -135,57 +131,53 @@ fn weather_condition_report(
         )
     }
 
-    Ok(format!("{}. {}", result, break_(spoken)))
+    format!("{}. {}", result, break_(spoken))
 }
 
-fn visibility_report(
-    weather: &WeatherInfo,
-    alt: u32,
-    spoken: bool,
-) -> Result<String, anyhow::Error> {
+fn visibility_report(weather: &WeatherInfo, alt: u32, spoken: bool) -> String {
     if let Some(visibility) = weather.get_visibility(alt) {
         // 9260 m = 5 nm
         if visibility < 9_260 {
             let visibility = round(m_to_nm(f64::from(visibility)), 1);
-            return Ok(format!(
+            return format!(
                 "Visibility {}. {}",
                 pronounce_number(visibility, spoken),
                 break_(spoken)
-            ));
+            );
         }
     }
 
-    Ok(String::new())
+    String::new()
 }
 
-fn temperatur_report(weather: &WeatherInfo, spoken: bool) -> Result<String, anyhow::Error> {
-    Ok(format!(
+fn temperatur_report(weather: &WeatherInfo, spoken: bool) -> String {
+    format!(
         "Temperature {} celcius. {}",
         pronounce_number(round(weather.temperature, 1), spoken),
         break_(spoken),
-    ))
+    )
 }
 
-fn altimeter_report(weather: &WeatherInfo, spoken: bool) -> Result<String, anyhow::Error> {
-    Ok(format!(
+fn altimeter_report(weather: &WeatherInfo, spoken: bool) -> String {
+    format!(
         "ALTIMETER {}. {}",
         // inHg, but using 0.02953 instead of 0.0002953 since we don't want to speak the
         // DECIMAL here
         pronounce_number((weather.pressure_qnh * 0.02953).round(), spoken),
         break_(spoken),
-    ))
+    )
 }
 
-fn hectopascal_report(weather: &WeatherInfo, spoken: bool) -> Result<String, anyhow::Error> {
-    Ok(format!(
+fn hectopascal_report(weather: &WeatherInfo, spoken: bool) -> String {
+    format!(
         "{} hectopascal. {}",
         pronounce_number((weather.pressure_qnh / 100.0).round(), spoken), // to hPA
         break_(spoken),
-    ))
+    )
 }
 
-fn qfe_report(weather: &WeatherInfo, spoken: bool) -> Result<String, anyhow::Error> {
-    Ok(format!(
+fn qfe_report(weather: &WeatherInfo, spoken: bool) -> String {
+    format!(
         "QFE {} {}or {}. {}",
         pronounce_number((weather.pressure_qfe * 0.02953).round(), spoken), // to inHg
         if spoken {
@@ -196,7 +188,7 @@ fn qfe_report(weather: &WeatherInfo, spoken: bool) -> Result<String, anyhow::Err
         },
         pronounce_number((weather.pressure_qfe / 100.0).round(), spoken), // to hPA
         break_(spoken),
-    ))
+    )
 }
 
 impl Station {
@@ -462,16 +454,16 @@ impl Airfield {
             );
         }
 
-        report += &wind_report(weather, spoken)?;
-        report += &ceiling_report(weather, alt, spoken)?;
-        report += &weather_condition_report(weather, alt, spoken)?;
-        report += &visibility_report(weather, alt, spoken)?;
-        report += &temperatur_report(weather, spoken)?;
-        report += &altimeter_report(weather, spoken)?;
+        report += &wind_report(weather, spoken);
+        report += &ceiling_report(weather, alt, spoken);
+        report += &weather_condition_report(weather, alt, spoken);
+        report += &visibility_report(weather, alt, spoken);
+        report += &temperatur_report(weather, spoken);
+        report += &altimeter_report(weather, spoken);
 
-        report += &format!("REMARKS. {}", break_(spoken),);
-        report += &hectopascal_report(weather, spoken)?;
-        report += &qfe_report(weather, spoken)?;
+        report += &format!("REMARKS. {}", break_(spoken));
+        report += &hectopascal_report(weather, spoken);
+        report += &qfe_report(weather, spoken);
 
         report += &format!("End information {}.", information_letter);
 
@@ -595,16 +587,16 @@ impl WeatherTransmitter {
             break_(spoken)
         );
 
-        report += &wind_report(weather, spoken)?;
-        report += &ceiling_report(weather, alt, spoken)?;
-        report += &weather_condition_report(weather, alt, spoken)?;
-        report += &visibility_report(weather, alt, spoken)?;
-        report += &temperatur_report(weather, spoken)?;
-        report += &altimeter_report(weather, spoken)?;
+        report += &wind_report(weather, spoken);
+        report += &ceiling_report(weather, alt, spoken);
+        report += &weather_condition_report(weather, alt, spoken);
+        report += &visibility_report(weather, alt, spoken);
+        report += &temperatur_report(weather, spoken);
+        report += &altimeter_report(weather, spoken);
 
-        report += &format!("REMARKS. {}", break_(spoken),);
-        report += &hectopascal_report(weather, spoken)?;
-        report += &qfe_report(weather, spoken)?;
+        report += &format!("REMARKS. {}", break_(spoken));
+        report += &hectopascal_report(weather, spoken);
+        report += &qfe_report(weather, spoken);
 
         report += &format!("End information {}.", information_letter);
 

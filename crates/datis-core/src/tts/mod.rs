@@ -207,7 +207,7 @@ mod test {
             assert_eq!(
                 TextToSpeechProvider::from_str("AZURE:en-US-AriaRUS").unwrap(),
                 TextToSpeechProvider::AzureCognitiveServices {
-                    voice: azure::VoiceKind::AriaRUS
+                    voice: azure::VoiceKind::Aria
                 }
             )
         }

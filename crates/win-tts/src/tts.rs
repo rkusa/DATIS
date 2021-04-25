@@ -111,13 +111,13 @@ async fn tts_local(mut ssml: String, voice: Option<String>) -> Result<Vec<u8>, E
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Calling WinRT API failed with error code {0}: {1}")]
-    WinRT(u32, String),
+    Win(u32, String),
     #[error("Runtime error")]
     Io(#[from] std::io::Error),
 }
 
 impl From<windows::Error> for Error {
     fn from(err: windows::Error) -> Self {
-        Error::WinRT(err.code().0, err.message())
+        Error::Win(err.code().0, err.message())
     }
 }

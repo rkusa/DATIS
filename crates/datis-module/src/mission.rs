@@ -161,7 +161,7 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
     }
 
     // initialize the dynamic weather component
-    let ipc = MissionRpc::new();
+    let ipc = MissionRpc::default();
 
     // combine the frequencies that have extracted from the mission's situation with their
     // corresponding airfield

@@ -34,7 +34,7 @@ pub fn init(lua: &Lua) -> Result<(Config, PathBuf), mlua::Error> {
         return Ok((config, write_dir));
     }
 
-    let log_file = write_dir.clone().join("Logs").join("DATIS.log");
+    let log_file = write_dir.join("Logs").join("DATIS.log");
     let requests = FileAppender::builder().append(false).build(log_file)?;
 
     let log_level = if config.debug {

@@ -120,9 +120,7 @@ impl Datis {
                     }
                 }
                 TextToSpeechProvider::Windows { ref voice } => {
-                    TextToSpeechConfig::Windows(WindowsConfig {
-                        voice: voice.clone(),
-                    })
+                    TextToSpeechConfig::Windows(WindowsConfig { voice: *voice })
                 }
                 TextToSpeechProvider::AzureCognitiveServices { voice } => {
                     if let Some(AzureConfig {

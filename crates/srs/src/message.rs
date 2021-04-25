@@ -152,8 +152,8 @@ impl Default for FreqMode {
 #[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum Modulation {
-    AM = 0,
-    FM = 1,
+    Am = 0,
+    Fm = 1,
     Intercom = 2,
     Disabled = 3,
     HaveQuick = 4,
@@ -245,17 +245,17 @@ pub struct GameMessage {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Transponder {
-    control: IFFControlMode,
+    control: IffControlMode,
     mode1: i32,
     mode3: i32,
     mode4: bool,
     mic: i32,
-    status: IFFStatus,
+    status: IffStatus,
 }
 
 #[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy)]
 #[repr(u8)]
-pub enum IFFControlMode {
+pub enum IffControlMode {
     Cockpit = 0,
     Overlay = 1,
     Disabled = 2,
@@ -263,7 +263,7 @@ pub enum IFFControlMode {
 
 #[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy)]
 #[repr(u8)]
-pub enum IFFStatus {
+pub enum IffStatus {
     Off = 0,
     Normal = 1,
     Ident = 2,
@@ -272,12 +272,12 @@ pub enum IFFStatus {
 impl Default for Transponder {
     fn default() -> Self {
         Transponder {
-            control: IFFControlMode::Disabled,
+            control: IffControlMode::Disabled,
             mode1: -1,
             mode3: -1,
             mode4: false,
             mic: -1,
-            status: IFFStatus::Off,
+            status: IffStatus::Off,
         }
     }
 }

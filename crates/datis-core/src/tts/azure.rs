@@ -16,13 +16,13 @@ pub struct AzureCognitiveServicesConfig {
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum VoiceKind {
     #[serde(rename = "en-US-BenjaminRUS")]
-    BenjaminRUS,
+    Benjamin,
     #[serde(rename = "en-US-AriaRUS")]
-    AriaRUS,
+    Aria,
     #[serde(rename = "en-US-ZiraRUS")]
-    ZiraRUS,
+    Zira,
     #[serde(rename = "en-US-GuyRUS")]
-    GuyRUS,
+    Guy,
 }
 
 pub async fn text_to_speech(
