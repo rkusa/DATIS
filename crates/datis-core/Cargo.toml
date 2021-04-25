@@ -26,9 +26,13 @@ srs = { path = "../srs" }
 thiserror = "1.0"
 time = "0.2"
 tokio = { version = "1.0", features = ["time", "rt-multi-thread", "sync"] }
+uom = { version = "0.31", default-features = false, features = ["f64", "i32", "si", "std", "use_serde"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 win-tts = { path = "../win-tts" }
+
+[dev-dependencies]
+pretty_assertions = "0.7"
 
 [features]
 default = []

@@ -7,6 +7,9 @@ use dcs_module_ipc::Error;
 use serde::Deserialize;
 use serde_json::json;
 use tokio::sync::Mutex;
+use uom::si::angle::degree;
+use uom::si::f64::{Angle, Pressure, ThermodynamicTemperature as Temperature, Velocity};
+use uom::si::i32::Length;
 
 pub struct MissionRpcInner {
     ipc: dcs_module_ipc::IPC<()>,
@@ -21,15 +24,21 @@ impl MissionRpc {
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct Data {
-            wind_speed: f64,
-            wind_dir: f64,
-            temp: f64,
-            pressure: f64,
-            fog_thickness: f64,  // in m
-            fog_visibility: f64, // in m
-            dust_density: u32,
+            #[serde(deserialize_with = "crate::de::from_meter_per_second")]
+            wind_speed: Velocity,
+            #[serde(deserialize_with = "crate::de::from_radian")]
+            wind_dir: Angle,
+            temp: Temperature,
+            #[serde(deserialize_with = "crate::de::from_pascal")]
+            pressure: Pressure,
+            #[serde(deserialize_with = "crate::de::from_meter")]
+            fog_thickness: Length,
+            #[serde(deserialize_with = "crate::de::from_meter")]
+            fog_visibility: Length,
+            dust_density: i32,
         }
 
+        // first, get weather at sea level
         let data: Data = self
             .0
             .ipc
@@ -38,8 +47,10 @@ impl MissionRpc {
                 Some(json!({ "x": pos.x, "y": pos.y, "alt": 0})),
             )
             .await?;
+        // ... to retrieve the QNH
         let pressure_qnh = data.pressure;
 
+        // then get weather at actual altitude
         let data: Data = self
             .0
             .ipc
@@ -50,11 +61,11 @@ impl MissionRpc {
             .await?;
 
         // convert to degrees and rotate wind direction
-        let mut wind_dir = data.wind_dir.to_degrees() - 180.0;
+        let mut wind_dir = data.wind_dir - Angle::new::<degree>(180.0);
 
         // normalize wind direction
-        while wind_dir < 0.0 {
-            wind_dir += 360.0;
+        while wind_dir < Angle::new::<degree>(0.0) {
+            wind_dir += Angle::new::<degree>(360.0);
         }
 
         let clouds = {

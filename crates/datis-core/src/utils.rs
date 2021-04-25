@@ -6,8 +6,8 @@ pub fn round(n: f64, max_decimal_places: i32) -> f64 {
     (n * m).round() / m
 }
 
-pub fn round_hundreds(n: f64) -> f64 {
-    (n / 100.0).round() * 100.0
+pub fn round_hundreds(n: i32) -> i32 {
+    (n / 100) * 100
 }
 
 static PHONETIC_NUMBERS: &[&str] = &["ZERO", "1", "2", "3", "4", "5", "6", "7", "8", "NINER"];
@@ -29,12 +29,4 @@ where
         })
         .collect::<Vec<String>>()
         .join(" ")
-}
-
-pub fn m_to_nm(n: f64) -> f64 {
-    n * 0.000_539_957
-}
-
-pub fn m_to_ft(n: f64) -> f64 {
-    n * 3.28084
 }

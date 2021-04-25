@@ -2,6 +2,7 @@
 extern crate anyhow;
 
 pub mod config;
+mod de;
 pub mod export;
 pub mod extract;
 #[cfg(feature = "ipc")]

@@ -1,18 +1,25 @@
 use crate::station::Position;
-use crate::utils::m_to_ft;
 use serde::Deserialize;
+use uom::num::Zero;
+use uom::si::f64::{Angle, Pressure, ThermodynamicTemperature as Temperature, Velocity};
+use uom::si::i32::Length;
+use uom::si::length::{foot, meter};
+use uom::si::pressure::pascal;
+use uom::si::thermodynamic_temperature::degree_celsius;
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct WeatherInfo {
     pub clouds: Option<Clouds>,
-    pub wind_speed: f64,     // in m/s
-    pub wind_dir: f64,       // in degrees (the direction the wind is coming from)
-    pub temperature: f64,    // in °C
-    pub pressure_qnh: f64,   // in N/m2
-    pub pressure_qfe: f64,   // in N/m2
-    pub fog_thickness: f64,  // in m
-    pub fog_visibility: f64, // in m
-    pub dust_density: u32,
+    pub wind_speed: Velocity,
+    /// The direction the wind is coming from
+    pub wind_dir: Angle,
+    pub temperature: Temperature,
+    pub pressure_qnh: Pressure,
+    pub pressure_qfe: Pressure,
+    /// This basically determines how heigh the fog is, from 0 to `fog_thickness`.
+    pub fog_thickness: Length,
+    pub fog_visibility: Length,
+    pub dust_density: i32,
     pub position: Position,
 }
 
@@ -26,7 +33,8 @@ pub enum Clouds {
 #[derive(Debug, PartialEq, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewClouds {
-    pub base: u32, // in m
+    #[serde(deserialize_with = "crate::de::from_meter")]
+    pub base: Length,
     pub preset: CloudPreset,
 }
 
@@ -40,46 +48,47 @@ pub struct CloudPreset {
 #[derive(Debug, PartialEq, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewCloudLayer {
-    altitude_min: u32, // in m
-    altitude_max: u32, // in m
-    coverage: f64,
+    #[serde(deserialize_with = "crate::de::from_meter")]
+    altitude_min: Length,
+    #[serde(deserialize_with = "crate::de::from_meter")]
+    altitude_max: Length,
+    coverage: f32,
 }
 
 #[derive(Debug, PartialEq, Clone, Default, Deserialize)]
 pub struct OldClouds {
-    pub base: u32, // in m
+    #[serde(deserialize_with = "crate::de::from_meter")]
+    pub base: Length,
     pub density: u32,
-    pub thickness: u32,
+    pub thickness: Length,
     pub iprecptns: u32,
 }
 
 impl WeatherInfo {
     /// Get QNH correct for the current temperature (as far as possible in DCS)
-    pub fn get_qnh(&self, alt: u32) -> f64 {
+    pub fn get_qnh(&self, alt: Length) -> Pressure {
         self.pressure_qnh + self.pressure_correction(alt)
     }
 
     /// Get QFE correct for the current temperature (as far as possible in DCS)
-    pub fn get_qfe(&self, alt: u32) -> f64 {
+    pub fn get_qfe(&self, alt: Length) -> Pressure {
         self.pressure_qfe + self.pressure_correction(alt)
     }
 
-    fn pressure_correction(&self, alt: u32) -> f64 {
-        let alt = m_to_ft(alt as f64);
-        let angels = alt / 1000.0;
+    fn pressure_correction(&self, alt: Length) -> Pressure {
+        let alt = alt.get::<foot>();
+        let angels = f64::from(alt) / 1000.0;
         // ISA at see level is 16 and not 15 in DCS, see
         // https://forums.eagle.ru/topic/256057-altitude-qnh-error-bug/
         let isa_at_alt = 16.0 - 1.98 * angels;
-        let isa_diff = self.temperature - isa_at_alt;
+        let isa_diff = self.temperature.get::<degree_celsius>() - isa_at_alt;
         let palt_diff = 4.0 * isa_diff * angels;
 
         // translate alt diff into a QNH diff
-        let qnh_diff = (palt_diff / 27.0) * 100.0;
-        qnh_diff
+        Pressure::new::<pascal>((palt_diff / 27.0) * 100.0)
     }
 
-    /// in m
-    pub fn get_visibility(&self, alt: u32) -> Option<u32> {
+    pub fn get_visibility(&self, alt: Length) -> Option<Length> {
         let clouds_vis = self.clouds.as_ref().and_then(|c| c.get_visibility(alt));
         let dust_vis = self.get_dust_storm_visibility(alt);
         let fog_vis = self.get_fog_visibility(alt);
@@ -88,30 +97,34 @@ impl WeatherInfo {
             .filter_map(|e| e)
             .min();
         // Visibility below 50m is considered as ZERO
-        vis.map(|v| if v < 50 { 0 } else { v })
+        vis.map(|v| {
+            if v < Length::new::<meter>(50) {
+                Length::zero()
+            } else {
+                v
+            }
+        })
     }
 
-    /// in m
-    fn get_dust_storm_visibility(&self, alt: u32) -> Option<u32> {
-        if self.dust_density == 0 || alt >= 50 {
+    fn get_dust_storm_visibility(&self, alt: Length) -> Option<Length> {
+        // The dust will only be between 0 and 50 meters altitude
+        if self.dust_density == 0 || alt > Length::new::<meter>(50) {
             return None;
         }
 
         // The multiplier of 4 was derived by manual testing the resulting visibility.
-        Some(self.dust_density * 4)
+        Some(Length::new::<meter>(self.dust_density * 4))
     }
 
-    /// in m
-    fn get_fog_visibility(&self, alt: u32) -> Option<u32> {
-        if self.fog_visibility == 0.0 || alt as f64 > self.fog_thickness {
+    fn get_fog_visibility(&self, alt: Length) -> Option<Length> {
+        if self.fog_visibility.is_zero() || alt > self.fog_thickness {
             return None;
         }
 
-        Some(self.fog_visibility.round() as u32)
+        Some(self.fog_visibility)
     }
 
-    /// in ft
-    pub fn get_ceiling(&self, alt: u32) -> Option<Ceiling> {
+    pub fn get_ceiling(&self, alt: Length) -> Option<Ceiling> {
         for layer in self.get_cloud_layers() {
             if (layer.altitude_min..=layer.altitude_max).contains(&alt) {
                 return None;
@@ -124,7 +137,7 @@ impl WeatherInfo {
                 )
             {
                 return Some(Ceiling {
-                    alt: m_to_ft(layer.altitude_min as f64),
+                    alt: layer.altitude_min,
                     coverage: layer.coverage,
                 });
             }
@@ -140,7 +153,7 @@ impl WeatherInfo {
             .unwrap_or_default()
     }
 
-    pub fn get_weather_conditions(&self, alt: u32) -> Vec<WeatherCondition> {
+    pub fn get_weather_conditions(&self, alt: Length) -> Vec<WeatherCondition> {
         let mut kind = self
             .clouds
             .as_ref()
@@ -157,8 +170,7 @@ impl WeatherInfo {
 }
 
 pub struct Ceiling {
-    /// in ft
-    pub alt: f64,
+    pub alt: Length,
     pub coverage: CloudCoverage,
 }
 
@@ -183,8 +195,8 @@ pub enum WeatherCondition {
 
 pub struct CloudLayer {
     coverage: CloudCoverage,
-    altitude_min: u32,
-    altitude_max: u32,
+    altitude_min: Length,
+    altitude_max: Length,
 }
 
 impl Clouds {
@@ -202,8 +214,7 @@ impl Clouds {
         }
     }
 
-    /// in meters
-    pub fn get_visibility(&self, alt: u32) -> Option<u32> {
+    pub fn get_visibility(&self, alt: Length) -> Option<Length> {
         for layer in self.get_cloud_layers() {
             if alt >= layer.altitude_min
                 && alt <= layer.altitude_max
@@ -212,7 +223,7 @@ impl Clouds {
                     CloudCoverage::Scattered | CloudCoverage::Broken | CloudCoverage::Overcast
                 )
             {
-                return Some(0);
+                return Some(Length::zero());
             }
         }
 
@@ -239,7 +250,7 @@ impl NewClouds {
                     x if (0.3..0.5).contains(&x) => CloudCoverage::Few,
                     x if (0.5..0.6).contains(&x) => CloudCoverage::Scattered,
                     x if (0.6..0.9).contains(&x) => CloudCoverage::Broken,
-                    x if (0.9..f64::MAX).contains(&x) => CloudCoverage::Overcast,
+                    x if (0.9..f32::MAX).contains(&x) => CloudCoverage::Overcast,
                     _ => CloudCoverage::Clear, // unreachable
                 },
                 altitude_min: layer.altitude_min + diff,
@@ -261,20 +272,20 @@ impl NewClouds {
         }
     }
 
-    pub fn get_visibility(&self) -> Option<u32> {
+    pub fn get_visibility(&self) -> Option<Length> {
         if self.preset.precipitation_power <= 0.0 {
             return None;
         }
 
         match self.preset.precipitation_power {
-            x if (0.0..0.3).contains(&x) => Some(5_000),
-            x if (0.3..0.5).contains(&x) => Some(4_000),
-            x if (0.5..0.6).contains(&x) => Some(3_000),
-            x if (0.6..0.7).contains(&x) => Some(2_500),
-            x if (0.7..0.8).contains(&x) => Some(2_000),
-            x if (0.8..0.9).contains(&x) => Some(1_500),
-            x if (0.9..0.97).contains(&x) => Some(1_000),
-            x if (1.0..f64::MAX).contains(&x) => Some(700),
+            x if (0.0..0.3).contains(&x) => Some(Length::new::<meter>(5_000)),
+            x if (0.3..0.5).contains(&x) => Some(Length::new::<meter>(4_000)),
+            x if (0.5..0.6).contains(&x) => Some(Length::new::<meter>(3_000)),
+            x if (0.6..0.7).contains(&x) => Some(Length::new::<meter>(2_500)),
+            x if (0.7..0.8).contains(&x) => Some(Length::new::<meter>(2_000)),
+            x if (0.8..0.9).contains(&x) => Some(Length::new::<meter>(1_500)),
+            x if (0.9..0.97).contains(&x) => Some(Length::new::<meter>(1_000)),
+            x if (1.0..f64::MAX).contains(&x) => Some(Length::new::<meter>(700)),
             _ => None, // unreachable
         }
     }
@@ -291,12 +302,12 @@ impl OldClouds {
                 x if (9..u32::MAX).contains(&x) => CloudCoverage::Overcast,
                 _ => CloudCoverage::Clear, // unreachable
             },
-            altitude_min: if self.base < 1_000 {
-                0
+            altitude_min: if self.base < Length::new::<foot>(1_000) {
+                Length::zero()
             } else {
-                self.base - 200
+                self.base - Length::new::<foot>(200)
             },
-            altitude_max: self.base + self.thickness - 200,
+            altitude_max: self.base + self.thickness - Length::new::<foot>(200),
         }]
     }
 
@@ -308,10 +319,10 @@ impl OldClouds {
         }
     }
 
-    pub fn get_visibility(&self) -> Option<u32> {
+    pub fn get_visibility(&self) -> Option<Length> {
         match self.iprecptns {
-            1 => Some(7_400),
-            2 => Some(1_200),
+            1 => Some(Length::new::<meter>(7_400)),
+            2 => Some(Length::new::<meter>(1_200)),
             _ => None,
         }
     }
