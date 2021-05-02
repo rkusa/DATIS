@@ -1,11 +1,11 @@
 use crate::station::Position;
 use serde::Deserialize;
 use uom::num::Zero;
+use uom::num_traits::Pow;
 use uom::si::f64::{Angle, Pressure, ThermodynamicTemperature as Temperature, Velocity};
 use uom::si::i32::Length;
 use uom::si::length::{foot, meter};
-use uom::si::pressure::pascal;
-use uom::si::thermodynamic_temperature::degree_celsius;
+use uom::si::pressure::{inch_of_mercury, millibar, pascal};
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct WeatherInfo {
@@ -14,8 +14,8 @@ pub struct WeatherInfo {
     /// The direction the wind is coming from
     pub wind_dir: Angle,
     pub temperature: Temperature,
-    pub pressure_qnh: Pressure,
-    pub pressure_qfe: Pressure,
+    pub pressure_sealevel: Pressure,
+    pub pressure_groundlevel: Pressure,
     /// This basically determines how heigh the fog is, from 0 to `fog_thickness`.
     pub fog_thickness: Length,
     pub fog_visibility: Length,
@@ -67,25 +67,23 @@ pub struct OldClouds {
 impl WeatherInfo {
     /// Get QNH correct for the current temperature (as far as possible in DCS)
     pub fn get_qnh(&self, alt: Length) -> Pressure {
-        self.pressure_qnh + self.pressure_correction(alt)
+        // see https://en.wikipedia.org/wiki/Pressure_altitude
+        let pressure_altitude: f64 = 14_5366.45
+            * (1.0
+                - (self.get_qfe().get::<millibar>() / self.pressure_sealevel.get::<millibar>())
+                    .pow(0.190284));
+        let alt_diff = f64::from(alt.get::<foot>()) - pressure_altitude;
+
+        // this corrects the pressure for the current temperature
+        let correction = Pressure::new::<pascal>(alt_diff / 27.0 * 100.0);
+
+        self.pressure_sealevel + correction
     }
 
     /// Get QFE correct for the current temperature (as far as possible in DCS)
-    pub fn get_qfe(&self, alt: Length) -> Pressure {
-        self.pressure_qfe + self.pressure_correction(alt)
-    }
-
-    fn pressure_correction(&self, alt: Length) -> Pressure {
-        let alt = alt.get::<foot>();
-        let angels = f64::from(alt) / 1000.0;
-        // ISA at see level is 16 and not 15 in DCS, see
-        // https://forums.eagle.ru/topic/256057-altitude-qnh-error-bug/
-        let isa_at_alt = 16.0 - 1.98 * angels;
-        let isa_diff = self.temperature.get::<degree_celsius>() - isa_at_alt;
-        let palt_diff = 4.0 * isa_diff * angels;
-
-        // translate alt diff into a QNH diff
-        Pressure::new::<pascal>((palt_diff / 27.0) * 100.0)
+    pub fn get_qfe(&self) -> Pressure {
+        // offset ground level pressure by empirically derived offset (DCS specific)
+        self.pressure_groundlevel - Pressure::new::<inch_of_mercury>(0.02)
     }
 
     pub fn get_visibility(&self, alt: Length) -> Option<Length> {

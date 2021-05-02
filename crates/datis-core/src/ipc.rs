@@ -49,7 +49,7 @@ impl MissionRpc {
             )
             .await?;
         // ... to retrieve the QNH
-        let pressure_qnh = data.pressure;
+        let pressure_sealevel = data.pressure;
 
         // then get weather at actual altitude
         let data: Data = self
@@ -82,8 +82,8 @@ impl MissionRpc {
             wind_speed: data.wind_speed,
             wind_dir,
             temperature: data.temp,
-            pressure_qnh,
-            pressure_qfe: data.pressure,
+            pressure_sealevel,
+            pressure_groundlevel: data.pressure,
             fog_thickness: data.fog_thickness,
             fog_visibility: data.fog_visibility,
             dust_density: data.dust_density,
