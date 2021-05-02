@@ -28,6 +28,7 @@ impl MissionRpc {
             wind_speed: Velocity,
             #[serde(deserialize_with = "crate::de::from_radian")]
             wind_dir: Angle,
+            #[serde(deserialize_with = "crate::de::from_degree_celcius")]
             temp: Temperature,
             #[serde(deserialize_with = "crate::de::from_pascal")]
             pressure: Pressure,

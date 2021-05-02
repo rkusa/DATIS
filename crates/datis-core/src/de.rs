@@ -1,9 +1,10 @@
 use serde::Deserialize;
 use uom::si::angle::radian;
-use uom::si::f64::{Angle, Pressure, Velocity};
+use uom::si::f64::{Angle, Pressure, ThermodynamicTemperature as Temperature, Velocity};
 use uom::si::i32::Length;
 use uom::si::length::meter;
 use uom::si::pressure::pascal;
+use uom::si::thermodynamic_temperature::degree_celsius;
 use uom::si::velocity::meter_per_second;
 
 #[allow(unused)]
@@ -40,4 +41,13 @@ where
 {
     let v = i32::deserialize(deserializer)?;
     Ok(Length::new::<meter>(v))
+}
+
+#[allow(unused)]
+pub fn from_degree_celcius<'de, D>(deserializer: D) -> Result<Temperature, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    let v = f64::deserialize(deserializer)?;
+    Ok(Temperature::new::<degree_celsius>(v))
 }
