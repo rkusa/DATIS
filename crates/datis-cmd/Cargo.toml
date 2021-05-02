@@ -1,6 +1,6 @@
 [package]
 name = "datis-cmd"
-version = "3.0.0"
+version = "3.0.1"
 authors = ["Markus Ast <m@rkusa.st>"]
 edition = "2018"
 
