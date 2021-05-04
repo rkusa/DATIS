@@ -260,9 +260,9 @@ impl Sink<Vec<u8>> for VoiceStream {
             frequencies: vec![Frequency {
                 freq: self.client.freq() as f64,
                 modulation: if self.client.freq() <= 87_995_000 {
-                    Modulation::FM
+                    Modulation::Fm
                 } else {
-                    Modulation::AM
+                    Modulation::Am
                 },
                 encryption: Encryption::None,
             }],

@@ -15,6 +15,6 @@ pub fn read_config(write_dir: &Path) -> Result<Config> {
                 .map_err(|err| Error::new(ErrorKind::Other, err))?;
             Ok(new_config)
         }
-        Err(err) => return Err(err),
+        Err(err) => Err(err),
     }
 }

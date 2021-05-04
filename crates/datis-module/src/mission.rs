@@ -163,7 +163,7 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
     }
 
     // initialize the dynamic weather component
-    let ipc = MissionRpc::new();
+    let ipc = MissionRpc::default();
 
     // combine the frequencies that have extracted from the mission's situation with their
     // corresponding airfield
@@ -182,7 +182,7 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                     freq: config.atis,
                     tts: config.tts.unwrap_or_else(|| default_voice.clone()),
                     transmitter: Transmitter::Airfield(airfield),
-                    ipc: Some(ipc.clone()),
+                    ipc: MissionInterface::Ipc(ipc.clone()),
                 }
             })
         })
@@ -207,7 +207,7 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                     freq: config.atis,
                     tts: config.tts.unwrap_or_else(|| default_voice.clone()),
                     transmitter: Transmitter::Airfield(airfield),
-                    ipc: Some(ipc.clone()),
+                    ipc: MissionInterface::Ipc(ipc.clone()),
                 }
             })
         })
@@ -239,7 +239,7 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                     unit_id: mission_unit.id,
                     unit_name: mission_unit.name.clone(),
                 }),
-                ipc: Some(ipc.clone()),
+                ipc: MissionInterface::Ipc(ipc.clone()),
             })
         })
         .collect::<Vec<_>>();
@@ -279,7 +279,7 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                     unit_name: mission_unit.name.clone(),
                     message: config.message,
                 }),
-                ipc: Some(ipc.clone()),
+                ipc: MissionInterface::Ipc(ipc.clone()),
             })
         })
         .collect::<Vec<_>>();
@@ -321,7 +321,7 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                     info_ltr_offset: rng.gen_range(0..25),
                     info_ltr_override: None,
                 }),
-                ipc: Some(ipc.clone()),
+                ipc: MissionInterface::Ipc(ipc.clone()),
             })
         })
         .collect::<Vec<_>>();

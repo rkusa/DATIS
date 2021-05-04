@@ -94,7 +94,9 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                 info_ltr_override = option_value.chars().next().map(|c| c.to_ascii_uppercase());
             }
             "ACTIVE" => {
-                active_rwy_override = Some(option_value.to_string());
+                active_rwy_override = caps
+                    .get(2)
+                    .map_or(None, |param| Some(param.as_str().into()));
             }
             "NO" => match option_value.to_uppercase().as_str() {
                 "HPA" => {
@@ -106,7 +108,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                 _ => {
                     log::warn!("Unsupported ATIS NO option {}", option_value);
                 }
-            },
+            }
             _ => {
                 log::warn!("Unsupported ATIS station option {}", option_key);
             }
