@@ -66,9 +66,8 @@ Available settings:
 - `TRAFFIC {FREQUENCY}`: An optional traffic frequency that, if provided, is mentioned as part of the ATIS report.
 - `OVERRIDE {INFO LETTER}`: Allows you to override the dynamic rotating selection of the ATIS information letter if your mission requires a specific and constant value.
 - `ACTIVE {RUNWAY OVERRIDE}`: Can be used if the SPINS for the airfield differ from the prevailing winds and you want to override the calculated active runway.
-- `QNH {QNH OVERRIDE in inHg}`: Can be used if the QNH announcement needs to be a specific value, usually to include compensation for temperature which DCS's data export does not include.
 - `NO HPA`: Disable adding pressures in hectopascals to the remarks section..
-- `NO QFE`: Disabled inclusion of QFE in the remarks section.
+- `NO QFE`: Disable inclusion of QFE in the remarks section.
 
 Examples:
 

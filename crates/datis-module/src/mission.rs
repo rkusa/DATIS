@@ -63,7 +63,6 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                     info_ltr_offset: rng.gen_range(0..25),
                     info_ltr_override: None,
                     active_rwy_override: None,
-                    qnh_override: None,
                     no_hpa: false,
                     no_qfe: false,
                 },
@@ -175,7 +174,6 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                 airfield.traffic_freq = config.traffic;
                 airfield.info_ltr_override = config.info_ltr_override;
                 airfield.active_rwy_override = config.active_rwy_override;
-                airfield.qnh_override = config.qnh_override;
                 airfield.no_hpa = config.no_hpa;
                 airfield.no_qfe = config.no_qfe;
 
@@ -198,7 +196,6 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                 airfield.traffic_freq = config.traffic;
                 airfield.info_ltr_override = config.info_ltr_override;
                 airfield.active_rwy_override = config.active_rwy_override;
-                airfield.qnh_override = config.qnh_override;
                 airfield.no_hpa = config.no_hpa;
                 airfield.no_qfe = config.no_qfe;
                 airfield.position.x = mission_unit.x;
