@@ -94,9 +94,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                 info_ltr_override = option_value.chars().next().map(|c| c.to_ascii_uppercase());
             }
             "ACTIVE" => {
-                active_rwy_override = caps
-                    .get(2)
-                    .map_or(None, |param| Some(param.as_str().into()));
+                active_rwy_override = Some(option_value.to_string());
             }
             "NO" => match option_value.to_uppercase().as_str() {
                 "HPA" => {

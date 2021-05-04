@@ -517,15 +517,15 @@ impl Airfield {
         report += &altimeter_report(weather, alt, spoken);
 
         if !self.no_hpa || !self.no_qfe {
-            report += &format!("REMARKS. {}", break_(spoken),);
+            report += &format!("REMARKS. {}", break_(spoken));
         }
 
         if !self.no_hpa {
-            report += &hectopascal_report(weather, alt, spoken)?;
+            report += &hectopascal_report(weather, alt, spoken);
         }
 
         if !self.no_qfe {
-            report += &qfe_report(weather, spoken)?;
+            report += &qfe_report(weather, spoken);
         }
 
         report += &format!("End information {}.", information_letter);
