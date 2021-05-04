@@ -25,8 +25,8 @@ impl VoiceCodec {
 
 #[derive(Debug, Clone)]
 pub enum Modulation {
-    AM,
-    FM,
+    Am,
+    Fm,
     Intercom,
     Disabled,
 }
@@ -102,11 +102,11 @@ impl Decoder for VoiceCodec {
             while rd.position() - len_before < len_frequencies {
                 let freq = rd.read_f64::<LittleEndian>()?;
                 let modulation = match rd.read_u8()? {
-                    0 => Modulation::AM,
-                    1 => Modulation::FM,
+                    0 => Modulation::Am,
+                    1 => Modulation::Fm,
                     2 => Modulation::Intercom,
                     3 => Modulation::Disabled,
-                    _ => Modulation::AM,
+                    _ => Modulation::Am,
                 };
                 let encryption = match rd.read_u8()? {
                     0 => Encryption::None,
@@ -212,8 +212,8 @@ impl Encoder<Packet> for VoiceCodec {
             wd.write_f64::<LittleEndian>(f.freq)?;
 
             wd.write_u8(match f.modulation {
-                Modulation::AM => 0,
-                Modulation::FM => 1,
+                Modulation::Am => 0,
+                Modulation::Fm => 1,
                 Modulation::Intercom => 2,
                 Modulation::Disabled => 3,
             })?;

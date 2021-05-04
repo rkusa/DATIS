@@ -192,6 +192,6 @@ impl FromStr for VoiceKind {
 
 impl Display for VoiceKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&serde_json::to_string(self).unwrap())
+        f.write_str(serde_json::to_string(self).unwrap().trim_matches('"'))
     }
 }

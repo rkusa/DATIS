@@ -7,6 +7,9 @@ use dcs_module_ipc::Error;
 use serde::Deserialize;
 use serde_json::json;
 use tokio::sync::Mutex;
+use uom::si::angle::degree;
+use uom::si::f64::{Angle, Pressure, ThermodynamicTemperature as Temperature, Velocity};
+use uom::si::i32::Length;
 
 pub struct MissionRpcInner {
     ipc: dcs_module_ipc::IPC<()>,
@@ -17,26 +20,26 @@ pub struct MissionRpcInner {
 pub struct MissionRpc(Arc<MissionRpcInner>);
 
 impl MissionRpc {
-    pub fn new() -> Self {
-        MissionRpc(Arc::new(MissionRpcInner {
-            ipc: dcs_module_ipc::IPC::new(),
-            clouds: Mutex::new(None),
-        }))
-    }
-
     pub async fn get_weather_at(&self, pos: &Position) -> Result<WeatherInfo, Error> {
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct Data {
-            wind_speed: f64,
-            wind_dir: f64,
-            temp: f64,
-            pressure: f64,
-            fog_thickness: f64,  // in m
-            fog_visibility: f64, // in m
-            dust_density: u32,
+            #[serde(deserialize_with = "crate::de::from_meter_per_second")]
+            wind_speed: Velocity,
+            #[serde(deserialize_with = "crate::de::from_radian")]
+            wind_dir: Angle,
+            #[serde(deserialize_with = "crate::de::from_degree_celcius")]
+            temp: Temperature,
+            #[serde(deserialize_with = "crate::de::from_pascal")]
+            pressure: Pressure,
+            #[serde(deserialize_with = "crate::de::from_meter")]
+            fog_thickness: Length,
+            #[serde(deserialize_with = "crate::de::from_meter")]
+            fog_visibility: Length,
+            dust_density: i32,
         }
 
+        // first, get weather at sea level
         let data: Data = self
             .0
             .ipc
@@ -45,8 +48,10 @@ impl MissionRpc {
                 Some(json!({ "x": pos.x, "y": pos.y, "alt": 0})),
             )
             .await?;
-        let pressure_qnh = data.pressure;
+        // ... to retrieve the QNH
+        let pressure_sealevel = data.pressure;
 
+        // then get weather at actual altitude
         let data: Data = self
             .0
             .ipc
@@ -57,11 +62,11 @@ impl MissionRpc {
             .await?;
 
         // convert to degrees and rotate wind direction
-        let mut wind_dir = data.wind_dir.to_degrees() - 180.0;
+        let mut wind_dir = data.wind_dir - Angle::new::<degree>(180.0);
 
         // normalize wind direction
-        while wind_dir < 0.0 {
-            wind_dir += 360.0;
+        while wind_dir < Angle::new::<degree>(0.0) {
+            wind_dir += Angle::new::<degree>(360.0);
         }
 
         let clouds = {
@@ -77,8 +82,8 @@ impl MissionRpc {
             wind_speed: data.wind_speed,
             wind_dir,
             temperature: data.temp,
-            pressure_qnh,
-            pressure_qfe: data.pressure,
+            pressure_sealevel,
+            pressure_groundlevel: data.pressure,
             fog_thickness: data.fog_thickness,
             fog_visibility: data.fog_visibility,
             dust_density: data.dust_density,
@@ -147,6 +152,15 @@ impl MissionRpc {
                 Some(json!({ "x": pos.x, "y": pos.y, "alt": pos.alt})),
             )
             .await
+    }
+}
+
+impl Default for MissionRpc {
+    fn default() -> Self {
+        MissionRpc(Arc::new(MissionRpcInner {
+            ipc: dcs_module_ipc::IPC::new(),
+            clouds: Mutex::new(None),
+        }))
     }
 }
 

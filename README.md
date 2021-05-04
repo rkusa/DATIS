@@ -40,9 +40,10 @@ It thereby expects a SRS server to run locally on the default SRS ports.
 
 If DATIS isn't working, you might find some helpful information in the log file at `DCS.openbeta\Logs\DATIS.log`.
 
-For information about the free tier of both GCloud and AWS see:
+For information about the free tier of GCloud, AWS and Azure see:
 - https://cloud.google.com/text-to-speech/pricing
 - https://aws.amazon.com/polly/pricing/
+- https://azure.microsoft.com/en-us/pricing/details/cognitive-services/speech-services/
 
 ## Setup
 
@@ -63,6 +64,7 @@ Available settings:
   - Windows: `WIN` or `WIN:voice`: Available voice names are: `Catherine` (en-AU), `James` (en-AU), `Linda` (en-CA), `Richard` (en-CA), `George` (en-GB), `Hazel` (en-GB), `Susan` (en-GB), `Sean` (en-IE), `Heera` (en-IN), `Ravi` (en-IN), `David` (en-US), `Zira` (en-US), `Mark` (en-US). Make sure  to install the corresponding voice package (for the language of the voice) for the voices to be available.
   - Google Gloud (`GC:{VOICE NAME}`): For available voices see https://cloud.google.com/text-to-speech/docs/voices. Use the name from the `Voice name` column. All voices starting with `en-` are supported. Keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota, see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing).
   - AWS (`AWS:{VOICE NAME}`): For available voices see https://docs.aws.amazon.com/polly/latest/dg/voicelist.html. Use the name from the `Name/ID` column (without `*` prefixes). All English voices are supported.
+  - Azure (`AZURE:{VOICE NAME}`): For available voices see https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support#standard-voices. Use the name from the `Voice name` column. All `en-US` voices are supported.
 - `TRAFFIC {FREQUENCY}`: An optional traffic frequency that, if provided, is mentioned as part of the ATIS report.
 - `OVERRIDE {INFO LETTER}`: Allows you to override the dynamic rotating selection of the ATIS information letter if your mission requires a specific and constant value.
 - `ACTIVE {RUNWAY OVERRIDE}`: Can be used if the SPINS for the airfield differ from the prevailing winds and you want to override the calculated active runway.

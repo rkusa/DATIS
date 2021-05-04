@@ -7,6 +7,7 @@ pub struct Config {
     pub default_voice: TextToSpeechProvider,
     pub gcloud: Option<GcloudConfig>,
     pub aws: Option<AwsConfig>,
+    pub azure: Option<AzureConfig>,
     #[serde(default = "default_srs_port")]
     pub srs_port: u16,
     #[serde(default)]
@@ -25,12 +26,19 @@ pub struct AwsConfig {
     pub region: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AzureConfig {
+    pub key: String,
+    pub region: String,
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
             default_voice: TextToSpeechProvider::default(),
             gcloud: None,
             aws: None,
+            azure: None,
             srs_port: default_srs_port(),
             debug: false,
         }
