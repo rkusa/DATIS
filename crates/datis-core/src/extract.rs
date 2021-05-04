@@ -72,7 +72,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
             .map(|p| t.split_at(p))
             .map(|(k, v)| (k, &v[1..]))
     }) {
-        match option_key {
+        match option_key.to_uppercase().as_str() {
             "TRAFFIC" => {
                 if let Ok(traffic_freq_hz) = option_value.parse::<f64>() {
                     traffic_freq = Some((traffic_freq_hz * 1_000_000.0) as u64);
@@ -96,7 +96,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
             "ACTIVE" => {
                 active_rwy_override = Some(option_value.to_string());
             }
-            "NO" => match option_value {
+            "NO" => match option_value.to_uppercase().as_str() {
                 "HPA" => {
                     no_hpa = true;
                 }
@@ -676,6 +676,20 @@ mod test {
     fn test_supression_flags() {
         assert_eq!(
             extract_atis_station_config("ATIS Kutaisi 131.400, NO HPA, NO QFE"),
+            Some(StationConfig {
+                name: "Kutaisi".to_string(),
+                atis: 131_400_000,
+                traffic: None,
+                tts: None,
+                info_ltr_override: None,
+                active_rwy_override: None,
+                no_hpa: true,
+                no_qfe: true,
+            })
+        );
+
+        assert_eq!(
+            extract_atis_station_config("ATIS Kutaisi 131.400, no hpa, no qfe"),
             Some(StationConfig {
                 name: "Kutaisi".to_string(),
                 atis: 131_400_000,
