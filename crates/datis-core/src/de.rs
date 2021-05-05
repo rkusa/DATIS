@@ -39,8 +39,8 @@ pub fn from_meter<'de, D>(deserializer: D) -> Result<Length, D::Error>
 where
     D: serde::de::Deserializer<'de>,
 {
-    let v = i32::deserialize(deserializer)?;
-    Ok(Length::new::<meter>(v))
+    let v = f64::deserialize(deserializer)?;
+    Ok(Length::new::<meter>(v.round() as i32))
 }
 
 #[allow(unused)]

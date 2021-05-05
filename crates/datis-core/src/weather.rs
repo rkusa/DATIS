@@ -60,6 +60,7 @@ pub struct OldClouds {
     #[serde(deserialize_with = "crate::de::from_meter")]
     pub base: Length,
     pub density: u32,
+    #[serde(deserialize_with = "crate::de::from_meter")]
     pub thickness: Length,
     pub iprecptns: u32,
 }
