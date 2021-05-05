@@ -101,6 +101,8 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             info_ltr_offset: 0,
             info_ltr_override: None,
             active_rwy_override: None,
+            no_hpa: false,
+            no_qfe: false,
         }),
         ipc: MissionInterface::Static,
     };

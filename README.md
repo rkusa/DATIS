@@ -65,9 +65,12 @@ Available settings:
   - Google Gloud (`GC:{VOICE NAME}`): For available voices see https://cloud.google.com/text-to-speech/docs/voices. Use the name from the `Voice name` column. All voices starting with `en-` are supported. Keep in mind that `en-US-Wavenet-*` voices come with a smaller free quota, see [Gcloud TTS pricing](https://cloud.google.com/text-to-speech/pricing).
   - AWS (`AWS:{VOICE NAME}`): For available voices see https://docs.aws.amazon.com/polly/latest/dg/voicelist.html. Use the name from the `Name/ID` column (without `*` prefixes). All English voices are supported.
   - Azure (`AZURE:{VOICE NAME}`): For available voices see https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support#standard-voices. Use the name from the `Voice name` column. All `en-US` voices are supported.
-- `TRAFFIC {FREQUENCY}`: An optional traffic frequency that, if provided, is mentioned as part of the ATIS report.
-- `OVERRIDE {INFO LETTER}`: Allows you to override the dynamic rotating selection of the ATIS information letter if your mission requires a specific and constant value.
-- `ACTIVE {RUNWAY OVERRIDE}`: Can be used if the SPINS for the airfield differ from the prevailing winds and you want to override the calculated active runway.
+  - `TRAFFIC {FREQUENCY}`: An optional traffic frequency that, if provided, is mentioned as part of the ATIS report.
+  - `OVERRIDE {INFO LETTER}`: Allows you to override the dynamic rotating selection of the ATIS information letter if your mission requires a specific and constant value.
+  - `ACTIVE {RUNWAY OVERRIDE}`: Can be used if the SPINS for the airfield differ from the prevailing winds and you want to override the calculated active runway.
+  - `NO HPA`: Disable adding pressures in hectopascals to the remarks section..
+  - `NO QFE`: Disable inclusion of QFE in the remarks section.
+
 
 Examples:
 
@@ -81,7 +84,7 @@ ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE en-US-Standard-E
 ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE GC:en-US-Wavenet-B
 ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE AWS:Nicole
 ATIS Kutaisi 251.000, TRAFFIC 252.000, VOICE WIN
-ATIS Kutaisi 251.000, TRAFFIC 252.000, INFO Q, ACTIVE 21L
+ATIS Kutaisi 251.000, TRAFFIC 252.000, INFO Q, ACTIVE 21L, NO QFE, NO HPA
 ```
 
 ![Example](./docs/static.jpg)

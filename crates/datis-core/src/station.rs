@@ -44,6 +44,8 @@ pub struct Airfield {
     pub info_ltr_offset: usize,
     pub info_ltr_override: Option<char>,
     pub active_rwy_override: Option<String>,
+    pub no_hpa: bool,
+    pub no_qfe: bool,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -514,9 +516,17 @@ impl Airfield {
         report += &temperatur_report(weather, spoken);
         report += &altimeter_report(weather, alt, spoken);
 
-        report += &format!("REMARKS. {}", break_(spoken));
-        report += &hectopascal_report(weather, alt, spoken);
-        report += &qfe_report(weather, spoken);
+        if !self.no_hpa || !self.no_qfe {
+            report += &format!("REMARKS. {}", break_(spoken));
+        }
+
+        if !self.no_hpa {
+            report += &hectopascal_report(weather, alt, spoken);
+        }
+
+        if !self.no_qfe {
+            report += &qfe_report(weather, spoken);
+        }
 
         report += &format!("End information {}.", information_letter);
 
@@ -697,6 +707,8 @@ mod test {
             info_ltr_offset: 0,
             info_ltr_override: None,
             active_rwy_override: None,
+            no_hpa: false,
+            no_qfe: false,
         };
 
         assert_eq!(
@@ -747,6 +759,8 @@ mod test {
                 info_ltr_offset: 0,
                 info_ltr_override: None,
                 active_rwy_override: None,
+                no_hpa: false,
+                no_qfe: false,
             }),
             ipc: MissionInterface::Static,
         };
@@ -770,6 +784,8 @@ mod test {
                 info_ltr_offset: 15, // Should be "Papa"
                 info_ltr_override: None,
                 active_rwy_override: None,
+                no_hpa: false,
+                no_qfe: false,
             }),
             ipc: MissionInterface::Static,
         };
@@ -793,6 +809,8 @@ mod test {
                 info_ltr_offset: 15,
                 info_ltr_override: Some('Q'),
                 active_rwy_override: None,
+                no_hpa: false,
+                no_qfe: false,
             }),
             ipc: MissionInterface::Static,
         };
