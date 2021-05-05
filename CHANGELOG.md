@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Added `NO HPA` ATIS station option. Each ATIS station with this option set omits the hectopascals from the remarks section (thanks [@talbotmcinnis](https://github.com/talbotmcinnis) for the implementation!) [#92](https://github.com/rkusa/DATIS/pull/92)
+- Added `NO QFE` ATIS station option. Each ATIS station with this option set omits the QFE from the remarks section (thanks [@talbotmcinnis](https://github.com/talbotmcinnis) for the implementation!) [#92](https://github.com/rkusa/DATIS/pull/92)
+
 ## [3.0.1] - 2021-05-02
 
 ### Added
