@@ -106,7 +106,7 @@ pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
                 _ => {
                     log::warn!("Unsupported ATIS NO option {}", option_value);
                 }
-            }
+            },
             _ => {
                 log::warn!("Unsupported ATIS station option {}", option_key);
             }
