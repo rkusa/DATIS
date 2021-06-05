@@ -48,7 +48,7 @@ pub fn extract_station_config_from_mission_description(
 }
 
 pub fn extract_atis_station_config(config: &str) -> Option<StationConfig> {
-    let re = RegexBuilder::new(r"ATIS ([a-zA-Z- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,(.+))?")
+    let re = RegexBuilder::new(r"ATIS ([a-zA-Z0-9- ]+) ([1-3]\d{2}(\.\d{1,3})?)(,(.+))?")
         .case_insensitive(true)
         .build()
         .unwrap();
@@ -337,6 +337,34 @@ mod test {
                     }
                 )
             ]
+            .into_iter()
+            .collect()
+        );
+    }
+
+    #[test]
+    fn test_airfield_names_with_numbers() {
+        let freqs = extract_station_config_from_mission_description(
+            r#"
+            ATIS H4 251.000
+        "#,
+        );
+
+        assert_eq!(
+            freqs,
+            vec![(
+                "H4".to_string(),
+                StationConfig {
+                    name: "H4".to_string(),
+                    atis: 251_000_000,
+                    traffic: None,
+                    tts: None,
+                    info_ltr_override: None,
+                    active_rwy_override: None,
+                    no_hpa: false,
+                    no_qfe: false,
+                }
+            ),]
             .into_iter()
             .collect()
         );
