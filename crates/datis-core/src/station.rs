@@ -758,8 +758,8 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Traffic frequency 2 4 NINER DECIMAL 5. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> 3 3 ZERO at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 5. | REMARKS. | 1 ZERO 1 4 hectopascal. | QFE 2 NINER NINER 5 <break time=\"500ms\" /> or 1 ZERO 1 4. | End information Alpha.\n</speak>");
-        assert_eq!(report.textual, "This is Kutaisi information Alpha. Runway in use is 04. Traffic frequency 249.5. Wind 330 at 5 knots. Temperature 22 celcius. ALTIMETER 2995. REMARKS. 1014 hectopascal. QFE 2995 or 1014. End information Alpha.");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Traffic frequency 2 4 NINER DECIMAL 5. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> 3 3 ZERO at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 <break time=\"500ms\" /> or 1 ZERO 1 5. | End information Alpha.\n</speak>");
+        assert_eq!(report.textual, "This is Kutaisi information Alpha. Runway in use is 04. Traffic frequency 249.5. Wind 330 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Alpha.");
     }
 
     #[tokio::test]
@@ -783,8 +783,8 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Papa. | Runway in use is ZERO 4. | Traffic frequency 2 4 NINER DECIMAL 5. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> 3 3 ZERO at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 5. | REMARKS. | 1 ZERO 1 4 hectopascal. | QFE 2 NINER NINER 5 <break time=\"500ms\" /> or 1 ZERO 1 4. | End information Papa.\n</speak>");
-        assert_eq!(report.textual, "This is Kutaisi information Papa. Runway in use is 04. Traffic frequency 249.5. Wind 330 at 5 knots. Temperature 22 celcius. ALTIMETER 2995. REMARKS. 1014 hectopascal. QFE 2995 or 1014. End information Papa.");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Papa. | Runway in use is ZERO 4. | Traffic frequency 2 4 NINER DECIMAL 5. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> 3 3 ZERO at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 <break time=\"500ms\" /> or 1 ZERO 1 5. | End information Papa.\n</speak>");
+        assert_eq!(report.textual, "This is Kutaisi information Papa. Runway in use is 04. Traffic frequency 249.5. Wind 330 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Papa.");
     }
 
     #[tokio::test]
@@ -808,8 +808,8 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Quebec. | Runway in use is ZERO 4. | Traffic frequency 2 4 NINER DECIMAL 5. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> 3 3 ZERO at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 5. | REMARKS. | 1 ZERO 1 4 hectopascal. | QFE 2 NINER NINER 5 <break time=\"500ms\" /> or 1 ZERO 1 4. | End information Quebec.\n</speak>");
-        assert_eq!(report.textual, "This is Kutaisi information Quebec. Runway in use is 04. Traffic frequency 249.5. Wind 330 at 5 knots. Temperature 22 celcius. ALTIMETER 2995. REMARKS. 1014 hectopascal. QFE 2995 or 1014. End information Quebec.");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Quebec. | Runway in use is ZERO 4. | Traffic frequency 2 4 NINER DECIMAL 5. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> 3 3 ZERO at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 <break time=\"500ms\" /> or 1 ZERO 1 5. | End information Quebec.\n</speak>");
+        assert_eq!(report.textual, "This is Kutaisi information Quebec. Runway in use is 04. Traffic frequency 249.5. Wind 330 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Quebec.");
     }
 
     #[test]
@@ -838,8 +838,8 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\n99, | Stennis\'s <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">wind</phoneme> 3 3 ZERO at 5 knots, | altimeter 3 ZERO ZERO 3, | CASE 1, | BRC 1 8 ZERO, | expected final heading 1 7 1, | report initial.\n</speak>");
-        assert_eq!(report.textual, "99, Stennis\'s wind 330 at 5 knots, altimeter 3003, CASE 1, BRC 180, expected final heading 171, report initial.");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\n99, | Stennis's <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">wind</phoneme> 3 3 ZERO at 5 knots, | ALTIMETER 3 ZERO ZERO 5. | CASE 1, | BRC 1 8 ZERO, | expected final heading 1 7 1, | report initial.\n</speak>");
+        assert_eq!(report.textual, "99, Stennis's wind 330 at 5 knots, ALTIMETER 3005. CASE 1, BRC 180, expected final heading 171, report initial.");
     }
 
     #[tokio::test]
@@ -883,7 +883,7 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is weather station Mountain Range information Papa. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> 3 3 ZERO at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 5. | REMARKS. | 1 ZERO 1 4 hectopascal. | QFE 2 NINER NINER 5 <break time=\"500ms\" /> or 1 ZERO 1 4. | End information Papa.\n</speak>");
-        assert_eq!(report.textual, "This is weather station Mountain Range information Papa. Wind 330 at 5 knots. Temperature 22 celcius. ALTIMETER 2995. REMARKS. 1014 hectopascal. QFE 2995 or 1014. End information Papa.");
+        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is weather station Mountain Range information Papa. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> 3 3 ZERO at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 <break time=\"500ms\" /> or 1 ZERO 1 5. | End information Papa.\n</speak>");
+        assert_eq!(report.textual, "This is weather station Mountain Range information Papa. Wind 330 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Papa.");
     }
 }
