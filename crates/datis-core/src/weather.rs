@@ -81,10 +81,9 @@ impl WeatherInfo {
         self.pressure_sealevel + correction
     }
 
-    /// Get QFE correct for the current temperature (as far as possible in DCS)
+    /// Get QFE
     pub fn get_qfe(&self) -> Pressure {
-        // offset ground level pressure by empirically derived offset (DCS specific)
-        self.pressure_groundlevel - Pressure::new::<inch_of_mercury>(0.02)
+        self.pressure_groundlevel
     }
 
     pub fn get_visibility(&self, alt: Length) -> Option<Length> {
