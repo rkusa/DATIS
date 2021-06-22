@@ -92,7 +92,7 @@ impl WeatherInfo {
         let fog_vis = self.get_fog_visibility(alt);
         let vis = vec![clouds_vis, dust_vis, fog_vis]
             .into_iter()
-            .filter_map(|e| e)
+            .flatten()
             .min();
         // Visibility below 50m is considered as ZERO
         vis.map(|v| {
@@ -327,7 +327,7 @@ impl OldClouds {
 }
 
 impl CloudCoverage {
-    pub fn to_metar(&self) -> &str {
+    pub fn to_metar(self) -> &'static str {
         match self {
             CloudCoverage::Clear => "CLR",
             CloudCoverage::Few => "FEW",
@@ -351,7 +351,7 @@ impl std::fmt::Display for CloudCoverage {
 }
 
 impl WeatherCondition {
-    pub fn to_metar(&self) -> &str {
+    pub fn to_metar(self) -> &'static str {
         match self {
             WeatherCondition::SlightRain => "-RA",
             WeatherCondition::Rain => "RA",

@@ -171,7 +171,7 @@ impl Datis {
     pub fn pause(&mut self) -> Result<(), Error> {
         log::debug!("Shutting down all stations");
 
-        let shutdown_signals = mem::replace(&mut self.shutdown_signals, Vec::new());
+        let shutdown_signals = mem::take(&mut self.shutdown_signals);
         for signal in shutdown_signals {
             let _ = signal.send(());
         }
