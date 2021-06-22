@@ -44,13 +44,14 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
             };
 
             let mut runways: Vec<String> = Vec::new();
-            let rwys: LuaTable<'_> = airdrome.get("runways")?;
-            for pair in rwys.pairs::<usize, LuaTable<'_>>() {
-                let (_, rwy) = pair?;
-                let start: String = rwy.get("start")?;
-                let end: String = rwy.get("end")?;
-                runways.push(start);
-                runways.push(end);
+            if let Some(rwys) = airdrome.get::<_, Option<LuaTable<'_>>>("runways")? {
+                for pair in rwys.pairs::<usize, LuaTable<'_>>() {
+                    let (_, rwy) = pair?;
+                    let start: String = rwy.get("start")?;
+                    let end: String = rwy.get("end")?;
+                    runways.push(start);
+                    runways.push(end);
+                }
             }
 
             airfields.insert(
