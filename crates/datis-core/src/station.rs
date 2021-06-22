@@ -290,7 +290,8 @@ impl Station {
                     .await
                     .context("failed to retrieve unit heading")?;
 
-                if let (pos, Some(heading)) = (pos, heading) {
+                if let (mut pos, Some(heading)) = (pos, heading) {
+                    pos.alt = 21.3; // ~70ft carrier deck height
                     let weather = ipc
                         .get_weather_at(&pos)
                         .await
@@ -568,16 +569,7 @@ impl Carrier {
         );
 
         let alt = Length::new::<foot>(70); // carrier deck alt
-
-        report += &format!(
-            "altimeter {}, {}",
-            // times 100, because we don't want to speak the DECIMAL place
-            pronounce_number(
-                (weather.get_qnh(alt).get::<inch_of_mercury>() * 100.0).round(),
-                spoken
-            ),
-            break_(spoken),
-        );
+        report += &altimeter_report(&weather, alt, spoken);
 
         // Case 1: daytime, ceiling >= 3000ft; visibility distance >= 5nm
         // Case 2: daytime, ceiling >= 1000ft; visibility distance >= 5nm
