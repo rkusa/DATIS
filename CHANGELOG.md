@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.1.1] - 2021-06-22
+
 ### Fixed
 
 - Fixed ATIS stations for airfields that have numbers in their name (e.g. H4 on Syria) [#97](https://github.com/rkusa/DATIS/issues/97)

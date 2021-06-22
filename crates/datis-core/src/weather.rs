@@ -5,7 +5,7 @@ use uom::num_traits::Pow;
 use uom::si::f64::{Angle, Pressure, ThermodynamicTemperature as Temperature, Velocity};
 use uom::si::i32::Length;
 use uom::si::length::{foot, meter};
-use uom::si::pressure::{inch_of_mercury, millibar, pascal};
+use uom::si::pressure::{millibar, pascal};
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct WeatherInfo {
