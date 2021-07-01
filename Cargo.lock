@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "datis"
-version = "3.1.1"
+version = "3.1.2"
 dependencies = [
  "datis-core",
  "log",
@@ -431,7 +431,7 @@ dependencies = [
 
 [[package]]
 name = "datis-cmd"
-version = "3.1.1"
+version = "3.1.2"
 dependencies = [
  "clap",
  "ctrlc",
@@ -443,7 +443,7 @@ dependencies = [
 
 [[package]]
 name = "datis-core"
-version = "3.1.1"
+version = "3.1.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -486,7 +486,7 @@ dependencies = [
 
 [[package]]
 name = "dcs-radio-station"
-version = "3.1.1"
+version = "3.1.2"
 dependencies = [
  "anyhow",
  "async-std",
@@ -1842,7 +1842,7 @@ dependencies = [
 
 [[package]]
 name = "srs"
-version = "3.1.1"
+version = "3.1.2"
 dependencies = [
  "base64",
  "byteorder",
@@ -2382,7 +2382,7 @@ dependencies = [
 
 [[package]]
 name = "win-tts"
-version = "3.1.1"
+version = "3.1.2"
 dependencies = [
  "futures",
  "log",
