@@ -121,7 +121,13 @@ impl MissionRpc {
             .ipc
             .request::<(), _>("get_mission_start_date", None)
             .await?;
-        time::Date::parse(&date, "%Y-%-m-%-d").map_err(|err| Error::Script {
+        let format =
+            time::format_description::parse("[year]-[month padding:none]-[day padding:none]")
+                .map_err(|err| Error::Script {
+                    kind: None,
+                    message: err.to_string(),
+                })?;
+        time::Date::parse(&date, &format).map_err(|err| Error::Script {
             kind: None,
             message: err.to_string(),
         })

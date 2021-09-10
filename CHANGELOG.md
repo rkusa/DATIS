@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-- Fixed ATIS stations for airfields that have a dot (`.`) in their name (e.g. Antonio B. Won Pat Intl on Marina) [#103](https://github.com/rkusa/DATIS/issues/103)
+- Fixed ATIS stations for airfields that have a dot (`.`) in their name (e.g. Antonio B. Won Pat Intl on Mariana) [#103](https://github.com/rkusa/DATIS/issues/103)
 
 ## [3.1.1] - 2021-06-22
 
