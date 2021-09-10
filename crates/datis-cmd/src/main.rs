@@ -81,7 +81,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let tts = matches.value_of("tts").unwrap();
-    let tts = match TextToSpeechProvider::from_str(&tts) {
+    let tts = match TextToSpeechProvider::from_str(tts) {
         Ok(tts) => tts,
         Err(err) => {
             log::error!("The privided TTS provider/voice is invalid: {}", err);

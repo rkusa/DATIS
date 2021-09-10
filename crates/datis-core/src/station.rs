@@ -224,7 +224,7 @@ impl Station {
         match &self.ipc {
             MissionInterface::Static => self.generate_static_report(report_nr).await,
             #[cfg(feature = "ipc")]
-            MissionInterface::Ipc(ipc) => self.generate_report_from_ipc(report_nr, &ipc).await,
+            MissionInterface::Ipc(ipc) => self.generate_report_from_ipc(report_nr, ipc).await,
         }
     }
 
@@ -462,7 +462,7 @@ impl Airfield {
                 let phi = (wind_dir.get::<degree>() - rwy_dir).abs() % 360.0;
                 let distance = if phi > 180.0 { 360.0 - phi } else { phi };
                 if distance <= 90.0 {
-                    return Some(&rwy);
+                    return Some(rwy);
                 }
             } else {
                 log::error!("Error parsing runway: {}", rwy);
@@ -569,7 +569,7 @@ impl Carrier {
         );
 
         let alt = Length::new::<foot>(70); // carrier deck alt
-        report += &altimeter_report(&weather, alt, spoken);
+        report += &altimeter_report(weather, alt, spoken);
 
         // Case 1: daytime, ceiling >= 3000ft; visibility distance >= 5nm
         // Case 2: daytime, ceiling >= 1000ft; visibility distance >= 5nm
