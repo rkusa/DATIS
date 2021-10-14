@@ -82,7 +82,10 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
         let mut mission_units = Vec::new();
 
         for key in &["blue", "red", "neutrals"] {
-            let coalition: LuaTable<'_> = coalitions.get(*key)?;
+            let coalition = match coalitions.get::<_, Option<LuaTable<'_>>>(*key)? {
+                Some(coalition) => coalition,
+                None => continue,
+            };
             let countries: LuaTable<'_> = coalition.get("country")?;
 
             for country in countries.sequence_values::<LuaTable<'_>>() {
