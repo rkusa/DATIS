@@ -2,7 +2,7 @@
 
 DCS World Automatic Terminal Information Service (ATIS) broadcasted through [Simple Radio Standalone](https://github.com/ciribob/DCS-SimpleRadioStandalone). Automatically starts within DCS, extracts weather information from the currently running mission, generates various report, converts it to speech and broadcasts it through SRS.
 
-[Changelog](./CHANGELOG.md) | [Prebuild Releases](https://github.com/rkusa/DATIS/releases)
+[Changelog](./CHANGELOG.md) | [Troubleshooting](./docs/Troubleshooting.md) | [Prebuild Releases](https://github.com/rkusa/DATIS/releases)
 
 Example Report:
 
