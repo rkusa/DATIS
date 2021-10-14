@@ -32,7 +32,7 @@ uom = { version = "0.31", default-features = false, features = ["f64", "i32", "s
 win-tts = { path = "../win-tts" }
 
 [dev-dependencies]
-pretty_assertions = "0.7"
+pretty_assertions = "1.0"
 
 [features]
 default = []
