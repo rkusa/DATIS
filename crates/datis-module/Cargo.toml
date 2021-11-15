@@ -2,7 +2,8 @@
 name = "datis"
 version = "3.1.2"
 authors = ["Markus Ast <m@rkusa.st>"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.56"
 
 [lib]
 crate-type = ["cdylib"]

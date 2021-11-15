@@ -1,8 +1,9 @@
 [package]
 name = "srs"
 version = "3.1.2"
-authors = ["rkusa"]
-edition = "2018"
+authors = ["Markus Ast <m@rkusa.st>"]
+edition = "2021"
+rust-version = "1.56"
 
 [dependencies]
 base64 = "0.13"

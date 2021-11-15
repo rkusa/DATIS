@@ -144,19 +144,19 @@ Instead of building you can also use the pre-build mod from one of the [releases
 Otherwise, build with [Rust (stable)](https://rustup.rs/):
 
 ```
-make release
+cargo build --release --package datis
 ```
 
 ### Run tests
 
 ```bash
-make test
+cargo test
 ```
 
 ### Format code
 
 ```bash
-make fmt
+cargo fmt
 ```
 
 This requires you to have `rustfmt` on your toolchain. It can be installed via `rustup component add rustfmt`.
