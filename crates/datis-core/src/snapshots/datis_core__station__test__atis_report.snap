@@ -1,0 +1,17 @@
+---
+source: crates/datis-core/src/station.rs
+expression: report.spoken
+
+---
+<speak version="1.0" xml:lang="en">
+This is Kutaisi information Alpha.
+Runway in use is ZERO 4.
+Traffic frequency 2 4 NINER DECIMAL 5.
+<phoneme alphabet="ipa" ph="w&#618;nd">Wind</phoneme> 3 3 ZERO at 5 knots.
+Temperature 2 2 celsius.
+ALTIMETER 2 NINER NINER 7.
+REMARKS.
+1 ZERO 1 5 hectopascal.
+QFE 2 NINER NINER 7 <break time="500ms" /> or 1 ZERO 1 5.
+End information Alpha.
+</speak>

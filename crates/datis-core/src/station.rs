@@ -1,6 +1,8 @@
 use crate::tts::TextToSpeechProvider;
 use crate::utils::{pronounce_number, round, round_hundreds};
 use crate::weather::WeatherInfo;
+use handlebars::Handlebars;
+use serde::Serialize;
 pub use srs::message::{LatLngPosition, Position};
 use uom::num::Zero;
 use uom::si::angle::degree;
@@ -479,63 +481,104 @@ impl Airfield {
         alt: Length,
         spoken: bool,
     ) -> Result<String, anyhow::Error> {
-        let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
+        let reg = Handlebars::new();
 
-        let information_num = if let Some(ltr_override) = self.info_ltr_override {
-            (ltr_override.to_ascii_uppercase() as usize) - 65
+        #[derive(Serialize)]
+        struct Data<'a> {
+            spoken: bool,
+            airfield_name: &'a str,
+            letter: &'a str,
+            active_runway: Option<String>,
+            traffic_frequency: Option<String>,
+            wind_heading: String,
+            wind_speed_in_knots: String,
+            cloud_ceiling: Option<i32>,
+            cloud_coverage: Option<String>,
+            weather_conditions: Option<Vec<String>>,
+            visibility: Option<String>,
+            temperature_in_celsius: String,
+            qnh_in_inhg: String,
+            qnh_in_hpa: String,
+            qfe_in_inhg: String,
+            qfe_in_hpa: String,
+        }
+
+        let report = reg.render_template(
+            include_str!("templates/atis.xml"),
+            &Data {
+                spoken,
+                airfield_name: &self.name,
+                letter: phonetic_alphabet::lookup(self.info_ltr_offset + report_nr),
+                active_runway: self
+                    .get_active_runway(weather.wind_dir)
+                    .map(|rwy| pronounce_number(rwy, spoken)),
+                traffic_frequency: self.traffic_freq.map(|traffic_freq| {
+                    pronounce_number(round(traffic_freq as f64 / 1_000_000.0, 3), spoken)
+                }),
+                wind_heading: pronounce_number(
+                    format!(
+                        "{:0>3}",
+                        weather.wind_dir.get::<degree>().round().to_string()
+                    ),
+                    spoken,
+                ),
+                wind_speed_in_knots: pronounce_number(
+                    (weather.wind_speed.get::<knot>()).round(),
+                    spoken,
+                ),
+                cloud_ceiling: weather
+                    .get_ceiling(alt)
+                    .map(|ceiling| round_hundreds(ceiling.alt.get::<foot>())),
+                cloud_coverage: weather
+                    .get_ceiling(alt)
+                    .map(|ceiling| ceiling.coverage.to_string()),
+                weather_conditions: {
+                    let conditions = weather.get_weather_conditions(alt);
+                    if conditions.is_empty() {
+                        None
+                    } else {
+                        Some(conditions.into_iter().map(|c| c.to_string()).collect())
+                    }
+                },
+                visibility: weather.get_visibility(alt).and_then(|visibility| {
+                    if visibility < Length::new::<nautical_mile>(5) {
+                        let visibility = LengthF64::new::<meter>(visibility.get::<meter>() as f64);
+                        let visibility = round(visibility.get::<nautical_mile>(), 1);
+                        Some(pronounce_number(visibility, spoken))
+                    } else {
+                        None
+                    }
+                }),
+                temperature_in_celsius: pronounce_number(
+                    round(weather.temperature.get::<degree_celsius>(), 1),
+                    spoken,
+                ),
+                qnh_in_inhg: pronounce_number(
+                    // times 100, because we don't want to speak the DECIMAL place
+                    (weather.get_qnh(alt).get::<inch_of_mercury>() * 100.0).round(),
+                    spoken,
+                ),
+                qnh_in_hpa: pronounce_number(
+                    weather.get_qnh(alt).get::<hectopascal>().round(),
+                    spoken,
+                ),
+                qfe_in_inhg: pronounce_number(
+                    // times 100, because we don't want to speak the DECIMAL place
+                    (weather.get_qfe().get::<inch_of_mercury>() * 100.0).round(),
+                    spoken,
+                ),
+                qfe_in_hpa: pronounce_number(
+                    weather.get_qfe().get::<hectopascal>().round(),
+                    spoken,
+                ),
+            },
+        )?;
+
+        Ok(if spoken {
+            format!("{}{}{}", SPEAK_START_TAG, report, "\n</speak>")
         } else {
-            self.info_ltr_offset + report_nr
-        };
-        let information_letter = phonetic_alphabet::lookup(information_num);
-
-        report += &format!(
-            "This is {} information {}. {}",
-            self.name,
-            information_letter,
-            break_(spoken)
-        );
-
-        if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
-            let rwy = pronounce_number(rwy, spoken);
-            report += &format!("Runway in use is {}. {}", rwy, break_(spoken));
-        } else {
-            log::error!("Could not find active runway for {}", self.name);
-        }
-
-        if let Some(traffic_freq) = self.traffic_freq {
-            report += &format!(
-                "Traffic frequency {}. {}",
-                pronounce_number(round(traffic_freq as f64 / 1_000_000.0, 3), spoken),
-                break_(spoken)
-            );
-        }
-
-        report += &wind_report(weather, spoken);
-        report += &ceiling_report(weather, alt, spoken);
-        report += &weather_condition_report(weather, alt, spoken);
-        report += &visibility_report(weather, alt, spoken);
-        report += &temperatur_report(weather, spoken);
-        report += &altimeter_report(weather, alt, spoken);
-
-        if !self.no_hpa || !self.no_qfe {
-            report += &format!("REMARKS. {}", break_(spoken));
-        }
-
-        if !self.no_hpa {
-            report += &hectopascal_report(weather, alt, spoken);
-        }
-
-        if !self.no_qfe {
-            report += &qfe_report(weather, spoken);
-        }
-
-        report += &format!("End information {}.", information_letter);
-
-        if spoken {
-            report += "\n</speak>";
-        }
-
-        Ok(report)
+            report.replace("\n", " ")
+        })
     }
 }
 
@@ -758,8 +801,8 @@ mod test {
         };
 
         let report = station.generate_report(26).await.unwrap().unwrap();
-        assert_eq!(report.spoken, "<speak version=\"1.0\" xml:lang=\"en\">\nThis is Kutaisi information Alpha. | Runway in use is ZERO 4. | Traffic frequency 2 4 NINER DECIMAL 5. | <phoneme alphabet=\"ipa\" ph=\"w&#618;nd\">Wind</phoneme> 3 3 ZERO at 5 knots. | Temperature 2 2 celcius. | ALTIMETER 2 NINER NINER 7. | REMARKS. | 1 ZERO 1 5 hectopascal. | QFE 2 NINER NINER 7 <break time=\"500ms\" /> or 1 ZERO 1 5. | End information Alpha.\n</speak>");
-        assert_eq!(report.textual, "This is Kutaisi information Alpha. Runway in use is 04. Traffic frequency 249.5. Wind 330 at 5 knots. Temperature 22 celcius. ALTIMETER 2997. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Alpha.");
+        insta::assert_snapshot!(report.spoken);
+        insta::assert_snapshot!(report.textual);
     }
 
     #[tokio::test]

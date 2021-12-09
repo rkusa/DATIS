@@ -7,12 +7,12 @@ rust-version = "1.56"
 
 [dependencies]
 anyhow = "1.0"
-async-trait = "0.1"
 audiopus = "0.2"
 base64 = "0.13"
 bytes = "1.0"
 dcs-module-ipc = { version = "0.5", optional = true }
 futures = "0.3"
+handlebars = "4.1"
 igrf = "0.2"
 log = "0.4"
 ogg = "0.8"
@@ -34,6 +34,7 @@ win-tts = { path = "../win-tts" }
 
 [dev-dependencies]
 pretty_assertions = "1.0"
+insta = "1.8"
 
 [features]
 default = []

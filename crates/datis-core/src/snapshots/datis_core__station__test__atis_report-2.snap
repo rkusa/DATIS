@@ -1,0 +1,6 @@
+---
+source: crates/datis-core/src/station.rs
+expression: report.textual
+
+---
+This is Kutaisi information Alpha. Runway in use is 04. Traffic frequency 249.5. Wind 330 at 5 knots. Temperature 22 celsius. ALTIMETER 2997. REMARKS. 1015 hectopascal. QFE 2997 or 1015. End information Alpha.

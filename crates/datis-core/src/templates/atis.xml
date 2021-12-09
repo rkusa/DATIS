@@ -1,0 +1,13 @@
+This is {{airfield_name}} information {{letter}}.
+{{#if active_runway}}Runway in use is {{active_runway}}.
+{{/if}}{{#if traffic_frequency}}Traffic frequency {{traffic_frequency}}.
+{{/if}}{{#if spoken}}<phoneme alphabet="ipa" ph="w&#618;nd">Wind</phoneme>{{else}}Wind{{/if}} {{wind_heading}} at {{wind_speed_in_knots}} knots.
+{{#if cloud_ceiling}}Ceiling {{cloud_ceiling}} {{cloud_coverage}}.
+{{/if}}{{#if weather_conditions}}{{#each weather_conditions}}{{this}}{{#unless @last}},{{/unless}}{{/each}}.
+{{/if}}{{#if visibility}}Visibility {{visibility}}.
+{{/if}}Temperature {{temperature_in_celsius}} celsius.
+ALTIMETER {{qnh_in_inhg}}.
+REMARKS.
+{{qnh_in_hpa}} hectopascal.
+QFE {{qfe_in_inhg}} {{#if spoken}}<break time="500ms" /> {{/if}}or {{qfe_in_hpa}}.
+End information {{letter}}.
