@@ -1,7 +1,7 @@
 [workspace]
 # `datis-module` is not part of the workspace on purpose to require Lua 5.1 during development
 members = [
-    "crates/datis-cmd",
+    # "crates/datis-cmd",
     "crates/datis-core",
     "crates/datis-module",
     "crates/radio-station",

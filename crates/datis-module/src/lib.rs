@@ -1,5 +1,4 @@
 mod config;
-mod mission;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -70,15 +69,11 @@ fn start(lua: &Lua, (): ()) -> LuaResult<()> {
     log::info!("Starting DATIS version {} ...", env!("CARGO_PKG_VERSION"));
     log::info!("Using SRS Server port: {}", config.srs_port);
 
-    let info = mission::extract(lua, &config.default_voice)
-        .map_err(|err| to_lua_err("extracting mission information", err))?;
-
-    let mut datis = Datis::new(info.stations, config)
-        .map_err(|err| to_lua_err("creating DATIS instance", err))?;
+    let mut datis = Datis::new(config).map_err(|err| to_lua_err("creating DATIS instance", err))?;
     datis.enable_exporter(write_dir.join("Logs"));
 
     let mut d = DATIS.write().unwrap();
-    *d = Some((datis, info.ipc));
+    *d = Some((datis, MissionRpc::default()));
 
     Ok(())
 }

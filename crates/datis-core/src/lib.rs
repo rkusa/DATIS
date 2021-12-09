@@ -4,7 +4,6 @@ extern crate anyhow;
 pub mod config;
 mod de;
 pub mod export;
-pub mod extract;
 #[cfg(feature = "ipc")]
 pub mod ipc;
 pub mod station;
@@ -48,9 +47,9 @@ pub struct Datis {
 }
 
 impl Datis {
-    pub fn new(stations: Vec<Station>, config: Config) -> Result<Self, Error> {
+    pub fn new(config: Config) -> Result<Self, Error> {
         Ok(Datis {
-            stations,
+            stations: Vec::new(),
             exporter: None,
             config,
             runtime: runtime::Builder::new_multi_thread().enable_all().build()?,
