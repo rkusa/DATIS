@@ -499,8 +499,8 @@ impl Airfield {
             if rwy.contains(".") {
                 let rwyv: Vec<&str> = rwy.split(".").collect();
                 if rwyv.len() > 1 {
-                    let arrrwy =pronounce_number(rwyv[0], spoken);
-                    let deprwy =pronounce_number(rwyv[1], spoken);
+                    let arrrwy = pronounce_number(rwyv[0], spoken);
+                    let deprwy = pronounce_number(rwyv[1], spoken);
                     report += &format!("Runway in use is {} for arrivals and {} for departures. {}", arrrwy, deprwy, break_(spoken));
                 } else {
                     let rwy = pronounce_number(rwyv[0], spoken);
