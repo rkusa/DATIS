@@ -405,7 +405,7 @@ mod test {
             It's not a real mission, but rather a chance to test the mission extraction
             logic in datis!
 
-            ATIS Batumi 131.5, INFO T, ACTIVE 12.30
+            ATIS Batumi 131.5, INFO T, ACTIVE 12/30
         "#,
         );
 
@@ -419,7 +419,7 @@ mod test {
                     traffic: None,
                     tts: None,
                     info_ltr_override: Some('T'),
-                    active_rwy_override: Some("12.30".to_string()),
+                    active_rwy_override: Some("12/30".to_string()),
                     no_hpa: false,
                     no_qfe: false,
                 }
