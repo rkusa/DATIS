@@ -55,7 +55,7 @@ pub struct NewCloudLayer {
     coverage: f32,
 }
 
-#[derive(Debug, PartialEq, Clone, Default, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Deserialize)]
 pub struct OldClouds {
     #[serde(deserialize_with = "crate::de::from_meter")]
     pub base: Length,

@@ -6,7 +6,7 @@ pub mod win;
 use std::fmt;
 use std::str::FromStr;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum TextToSpeechProvider {
     GoogleCloud { voice: gcloud::VoiceKind },
     AmazonWebServices { voice: aws::VoiceKind },

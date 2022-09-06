@@ -9,7 +9,7 @@ use rusoto_polly::{Polly, PollyClient, SynthesizeSpeechInput};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum VoiceKind {
     // en-AU
     Nicole,

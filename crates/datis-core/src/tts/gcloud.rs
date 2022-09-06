@@ -48,7 +48,7 @@ struct TextToSpeechResponse {
     audio_content: String,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum VoiceKind {
     #[serde(rename = "en-AU-Standard-A")]
     EnAuStandardA,

@@ -187,6 +187,8 @@ fn to_lua_err(context: &str, err: impl std::error::Error + Send + Sync + 'static
 }
 
 fn pretty_print_value(val: Value<'_>, indent: usize) -> LuaResult<String> {
+    use std::fmt::Write;
+
     Ok(match val {
         Value::Nil => "nil".to_string(),
         Value::Boolean(v) => v.to_string(),
@@ -198,14 +200,16 @@ fn pretty_print_value(val: Value<'_>, indent: usize) -> LuaResult<String> {
             let mut s = "{\n".to_string();
             for pair in t.pairs::<Value<'_>, Value<'_>>() {
                 let (key, value) = pair?;
-                s += &format!(
-                    "{}{} = {},\n",
+                writeln!(
+                    s,
+                    "{}{} = {},",
                     "  ".repeat(indent + 1),
                     pretty_print_value(key, indent + 1)?,
                     pretty_print_value(value, indent + 1)?
-                );
+                )
+                .unwrap();
             }
-            s += &format!("{}}}", "  ".repeat(indent));
+            write!(s, "{}}}", "  ".repeat(indent)).unwrap();
             s
         }
         Value::Function(_) => "[function]".to_string(),

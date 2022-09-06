@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use crate::tts::TextToSpeechProvider;
 use crate::utils::{pronounce_number, round, round_hundreds};
 use crate::weather::WeatherInfo;
@@ -48,7 +50,7 @@ pub struct Airfield {
     pub no_qfe: bool,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Carrier {
     pub name: String,
     pub unit_id: u32,
@@ -137,7 +139,8 @@ fn weather_condition_report(weather: &WeatherInfo, alt: Length, spoken: bool) ->
     let ix_last = conditions.len();
     let mut result = String::new();
     for (i, c) in conditions.into_iter().enumerate() {
-        result += &format!(
+        write!(
+            result,
             "{}{}",
             if i == 0 {
                 ""
@@ -148,6 +151,7 @@ fn weather_condition_report(weather: &WeatherInfo, alt: Length, spoken: bool) ->
             },
             c
         )
+        .unwrap()
     }
 
     format!("{}. {}", result, break_(spoken))
@@ -169,7 +173,7 @@ fn visibility_report(weather: &WeatherInfo, alt: Length, spoken: bool) -> String
     String::new()
 }
 
-fn temperatur_report(weather: &WeatherInfo, spoken: bool) -> String {
+fn temperature_report(weather: &WeatherInfo, spoken: bool) -> String {
     format!(
         "Temperature {} celcius. {}",
         pronounce_number(
@@ -488,48 +492,54 @@ impl Airfield {
         };
         let information_letter = phonetic_alphabet::lookup(information_num);
 
-        report += &format!(
+        write!(
+            report,
             "This is {} information {}. {}",
             self.name,
             information_letter,
             break_(spoken)
-        );
+        )
+        .unwrap();
 
         if let Some(rwy) = self.get_active_runway(weather.wind_dir) {
             if let Some((arr, dep)) = rwy.split_once('/') {
                 let arr = pronounce_number(arr, spoken);
                 let dep = pronounce_number(dep, spoken);
-                report += &format!(
+                write!(
+                    report,
                     "Runway in use is {} for arrivals and {} for departures. {}",
                     arr,
                     dep,
                     break_(spoken)
-                );
+                )
+                .unwrap();
             } else {
                 let rwy = pronounce_number(rwy, spoken);
-                report += &format!("Runway in use is {}. {}", rwy, break_(spoken));
+                write!(report, "Runway in use is {}. {}", rwy, break_(spoken)).unwrap();
             }
         } else {
             log::error!("Could not find active runway for {}", self.name);
         }
 
         if let Some(traffic_freq) = self.traffic_freq {
-            report += &format!(
+            write!(
+                report,
                 "Traffic frequency {}. {}",
                 pronounce_number(round(traffic_freq as f64 / 1_000_000.0, 3), spoken),
                 break_(spoken)
-            );
+            )
+            .unwrap();
         }
 
         report += &wind_report(weather, spoken);
         report += &ceiling_report(weather, alt, spoken);
         report += &weather_condition_report(weather, alt, spoken);
         report += &visibility_report(weather, alt, spoken);
-        report += &temperatur_report(weather, spoken);
+        report += &temperature_report(weather, spoken);
         report += &altimeter_report(weather, alt, spoken);
 
         if !self.no_hpa || !self.no_qfe {
-            report += &format!("REMARKS. {}", break_(spoken));
+            write!(report, "REMARKS. {}", break_(spoken)).unwrap();
         }
 
         if !self.no_hpa {
@@ -540,7 +550,7 @@ impl Airfield {
             report += &qfe_report(weather, spoken);
         }
 
-        report += &format!("End information {}.", information_letter);
+        write!(report, "End information {}.", information_letter).unwrap();
 
         if spoken {
             report += "\n</speak>";
@@ -560,13 +570,14 @@ impl Carrier {
     ) -> Result<String, anyhow::Error> {
         let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
 
-        report += &format!("99, {}", break_(spoken));
+        write!(report, "99, {}", break_(spoken)).unwrap();
 
         let wind_dir = format!(
             "{:0>3}",
             weather.wind_dir.get::<degree>().round().to_string()
         );
-        report += &format!(
+        write!(
+            report,
             r#"{}'s {} {} at {} knots, {}"#,
             self.name,
             if spoken {
@@ -577,7 +588,8 @@ impl Carrier {
             pronounce_number(wind_dir, spoken),
             pronounce_number((weather.wind_speed.get::<knot>()).round(), spoken),
             break_(spoken),
-        );
+        )
+        .unwrap();
 
         let alt = Length::new::<foot>(70); // carrier deck alt
         report += &altimeter_report(weather, alt, spoken);
@@ -606,7 +618,7 @@ impl Carrier {
             case = 3;
         }
 
-        report += &format!("CASE {}, {}", case, break_(spoken),);
+        write!(report, "CASE {}, {}", case, break_(spoken)).unwrap();
 
         let brc = heading;
         let mut fh = heading - 9; // 9 -> 9deg angled deck
@@ -615,14 +627,22 @@ impl Carrier {
         }
 
         let brc = format!("{:0>3}", brc);
-        report += &format!("BRC {}, {}", pronounce_number(brc, spoken), break_(spoken));
+        write!(
+            report,
+            "BRC {}, {}",
+            pronounce_number(brc, spoken),
+            break_(spoken)
+        )
+        .unwrap();
 
         let fh = format!("{:0>3}", fh);
-        report += &format!(
+        write!(
+            report,
             "expected final heading {}, {}",
             pronounce_number(fh, spoken),
             break_(spoken),
-        );
+        )
+        .unwrap();
 
         report += "report initial.";
 
@@ -650,25 +670,27 @@ impl WeatherTransmitter {
         let information_letter = phonetic_alphabet::lookup(information_num);
         let mut report = if spoken { SPEAK_START_TAG } else { "" }.to_string();
 
-        report += &format!(
+        write!(
+            report,
             "This is weather station {} information {}. {}",
             self.name,
             information_letter,
             break_(spoken)
-        );
+        )
+        .unwrap();
 
         report += &wind_report(weather, spoken);
         report += &ceiling_report(weather, alt, spoken);
         report += &weather_condition_report(weather, alt, spoken);
         report += &visibility_report(weather, alt, spoken);
-        report += &temperatur_report(weather, spoken);
+        report += &temperature_report(weather, spoken);
         report += &altimeter_report(weather, alt, spoken);
 
-        report += &format!("REMARKS. {}", break_(spoken),);
+        write!(report, "REMARKS. {}", break_(spoken)).unwrap();
         report += &hectopascal_report(weather, alt, spoken);
         report += &qfe_report(weather, spoken);
 
-        report += &format!("End information {}.", information_letter);
+        write!(report, "End information {}.", information_letter).unwrap();
 
         if spoken {
             report += "\n</speak>";

@@ -13,7 +13,7 @@ pub struct AzureCognitiveServicesConfig {
     pub region: String,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum VoiceKind {
     #[serde(rename = "en-US-BenjaminRUS")]
     Benjamin,

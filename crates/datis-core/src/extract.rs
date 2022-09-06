@@ -4,7 +4,7 @@ use std::str::FromStr;
 use crate::tts::TextToSpeechProvider;
 use regex::{Regex, RegexBuilder};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct StationConfig {
     pub name: String,
     pub atis: u64,
@@ -23,11 +23,10 @@ pub fn extract_station_config_from_mission_description(
     let re = Regex::new(r"(ATIS .*)").unwrap();
     let mut stations: HashMap<String, StationConfig> = re
         .captures_iter(situation)
-        .map(|caps| {
+        .filter_map(|caps| {
             let atis_line = caps.get(1).unwrap().as_str();
             extract_atis_station_config(atis_line)
         })
-        .flatten()
         .map(|station| (station.name.clone(), station))
         .collect();
 
@@ -179,7 +178,7 @@ pub fn extract_carrier_station_config(config: &str) -> Option<StationConfig> {
     Some(result)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct BroadcastConfig {
     pub freq: u64,
     pub message: String,
@@ -202,8 +201,7 @@ pub fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> 
     if let Some(options) = options {
         for token in options.as_str().split(',').skip(1) {
             let token = token.trim();
-            let (option_key, option_value) =
-                token.split_at(token.find(' ').unwrap_or_else(|| token.len()));
+            let (option_key, option_value) = token.split_at(token.find(' ').unwrap_or(token.len()));
             let option_key = option_key.trim();
             let option_value = option_value.trim();
 
@@ -227,7 +225,7 @@ pub fn extract_custom_broadcast_config(config: &str) -> Option<BroadcastConfig> 
     Some(result)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct WetherStationConfig {
     pub name: String,
     pub freq: u64,
@@ -249,8 +247,7 @@ pub fn extract_weather_station_config(config: &str) -> Option<WetherStationConfi
 
     for token in config.split(',').skip(1) {
         let token = token.trim();
-        let (option_key, option_value) =
-            token.split_at(token.find(' ').unwrap_or_else(|| token.len()));
+        let (option_key, option_value) = token.split_at(token.find(' ').unwrap_or(token.len()));
         let option_key = option_key.trim();
         let option_value = option_value.trim();
 
