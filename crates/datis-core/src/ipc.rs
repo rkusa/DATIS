@@ -164,7 +164,7 @@ impl MissionRpc {
 impl Default for MissionRpc {
     fn default() -> Self {
         MissionRpc(Arc::new(MissionRpcInner {
-            ipc: dcs_module_ipc::IPC::new(),
+            ipc: dcs_module_ipc::IPC::default(),
             clouds: Mutex::new(None),
         }))
     }
