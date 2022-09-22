@@ -15,4 +15,4 @@ log = "0.4"
 ogg = "0.8"
 ogg_metadata = "0.4"
 srs = { path = "../srs" }
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "time", "sync"] }
+tokio = { version = "1.13", features = ["rt-multi-thread", "macros", "time", "sync"] }
