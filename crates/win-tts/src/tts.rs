@@ -1,7 +1,8 @@
-use crate::bindings::Windows::Media::SpeechSynthesis::SpeechSynthesizer;
-use crate::bindings::Windows::Storage::Streams::DataReader;
 use thiserror::Error;
 use tokio::task;
+use windows::{
+    core::HSTRING, Media::SpeechSynthesis::SpeechSynthesizer, Storage::Streams::DataReader,
+};
 
 pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>, Error> {
     let ssml = ssml.into();
@@ -92,14 +93,16 @@ async fn tts_local(mut ssml: String, voice: Option<String>) -> Result<Vec<u8>, E
     if let Some(info) = voice_info {
         let lang = info.Language()?.to_string();
         ssml = ssml.replacen("xml:lang=\"en\"", &format!("xml:lang=\"{}\"", lang), 1);
-        synth.SetVoice(info)?;
+        synth.SetVoice(&info)?;
     }
 
     // the DataReader is !Send, which is why we have to process it in a local set
-    let stream = synth.SynthesizeSsmlToStreamAsync(ssml)?.await?;
+    let stream = synth
+        .SynthesizeSsmlToStreamAsync(&HSTRING::from(&ssml))?
+        .await?;
     let size = stream.Size()?;
 
-    let rd = DataReader::CreateDataReader(stream.GetInputStreamAt(0)?)?;
+    let rd = DataReader::CreateDataReader(&stream.GetInputStreamAt(0)?)?;
     rd.LoadAsync(size as u32)?.await?;
 
     let mut buf = vec![0u8; size as usize];
@@ -111,13 +114,13 @@ async fn tts_local(mut ssml: String, voice: Option<String>) -> Result<Vec<u8>, E
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Calling WinRT API failed with error code {0}: {1}")]
-    Win(u32, String),
+    Win(i32, String),
     #[error("Runtime error")]
     Io(#[from] std::io::Error),
 }
 
-impl From<windows::Error> for Error {
-    fn from(err: windows::Error) -> Self {
-        Error::Win(err.code().0, err.message())
+impl From<windows::core::Error> for Error {
+    fn from(err: windows::core::Error) -> Self {
+        Error::Win(err.code().0, err.message().to_string())
     }
 }
