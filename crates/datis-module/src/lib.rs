@@ -182,7 +182,7 @@ pub enum Error {
 }
 
 fn to_lua_err(context: &str, err: impl std::error::Error + Send + Sync + 'static) -> mlua::Error {
-    log::error!("Error {}: {}", context, err.to_string());
+    log::error!("Error {}: {}", context, err);
     mlua::Error::ExternalError(Arc::new(err))
 }
 

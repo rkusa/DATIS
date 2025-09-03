@@ -38,7 +38,8 @@ pub async fn text_to_speech(
     ssml: &str,
     config: &WindowsConfig,
 ) -> Result<Vec<Vec<u8>>, anyhow::Error> {
-    use audiopus::{coder::Encoder, Application, Channels, SampleRate};
+    use audiopus::coder::Encoder;
+    use audiopus::{Application, Channels, SampleRate};
     use tokio::task;
 
     let wav = win_tts::tts(ssml, config.voice.as_deref()).await?;

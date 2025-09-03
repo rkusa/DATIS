@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use clap::{App, Arg};
+use datis_core::Datis;
 use datis_core::config::{AwsConfig, AzureConfig, Config, GcloudConfig};
 use datis_core::station::{Airfield, MissionInterface, Position, Station, Transmitter};
 use datis_core::tts::TextToSpeechProvider;
-use datis_core::Datis;
 use dotenv::dotenv;
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {

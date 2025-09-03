@@ -1,5 +1,6 @@
-use crate::tts::TextToSpeechProvider;
 use serde::{Deserialize, Serialize};
+
+use crate::tts::TextToSpeechProvider;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {

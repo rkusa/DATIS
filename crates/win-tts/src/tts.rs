@@ -1,8 +1,8 @@
 use thiserror::Error;
 use tokio::task;
-use windows::{
-    core::HSTRING, Media::SpeechSynthesis::SpeechSynthesizer, Storage::Streams::DataReader,
-};
+use windows::Media::SpeechSynthesis::SpeechSynthesizer;
+use windows::Storage::Streams::DataReader;
+use windows::core::HSTRING;
 
 pub async fn tts(ssml: impl Into<String>, voice: Option<&str>) -> Result<Vec<u8>, Error> {
     let ssml = ssml.into();
@@ -76,7 +76,9 @@ async fn tts_local(mut ssml: String, voice: Option<String>) -> Result<Vec<u8>, E
     if voice_info.is_none() {
         let all_voices = SpeechSynthesizer::AllVoices()?;
         let len = all_voices.Size()? as usize;
-        log::info!("Available WIN voices are (you don't have to include the `Microsoft` prefix in the name):");
+        log::info!(
+            "Available WIN voices are (you don't have to include the `Microsoft` prefix in the name):"
+        );
         for i in 0..len {
             let v = all_voices.GetAt(i as u32)?;
             let lang = v.Language()?.to_string();

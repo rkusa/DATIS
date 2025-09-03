@@ -1,4 +1,3 @@
-use crate::station::Position;
 use serde::Deserialize;
 use uom::num::Zero;
 use uom::num_traits::Pow;
@@ -6,6 +5,8 @@ use uom::si::f64::{Angle, Pressure, ThermodynamicTemperature as Temperature, Vel
 use uom::si::i32::Length;
 use uom::si::length::{foot, meter};
 use uom::si::pressure::{millibar, pascal};
+
+use crate::station::Position;
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct WeatherInfo {

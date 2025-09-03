@@ -1,12 +1,12 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crate::message::{create_sguid, Coalition, GameMessage, LatLngPosition};
-use crate::voice_stream::{VoiceStream, VoiceStreamError};
-
 use futures::channel::mpsc;
-use tokio::sync::oneshot::Receiver;
 use tokio::sync::RwLock;
+use tokio::sync::oneshot::Receiver;
+
+use crate::message::{Coalition, GameMessage, LatLngPosition, create_sguid};
+use crate::voice_stream::{VoiceStream, VoiceStreamError};
 
 #[derive(Debug, Clone)]
 pub struct UnitInfo {

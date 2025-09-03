@@ -2,17 +2,11 @@ use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use crate::client::Client;
-use crate::message::{
-    Client as MsgClient, GameMessage, Message, MsgType, Radio, RadioInfo, RadioSwitchControls,
-};
-use crate::messages_codec::{self, MessagesCodec};
-use crate::voice_codec::*;
 use futures::channel::mpsc;
 use futures::future::FutureExt;
 use futures::select;
@@ -24,6 +18,13 @@ use tokio::sync::oneshot::Receiver;
 use tokio::time;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio_util::udp::UdpFramed;
+
+use crate::client::Client;
+use crate::message::{
+    Client as MsgClient, GameMessage, Message, MsgType, Radio, RadioInfo, RadioSwitchControls,
+};
+use crate::messages_codec::{self, MessagesCodec};
+use crate::voice_codec::*;
 
 const SRS_VERSION: &str = "1.9.0.0";
 

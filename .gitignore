@@ -3,6 +3,7 @@
 !.gitkeep
 !.github
 !.cargo
+!.rustfmt.toml
 target
 **/*.rs.bk
 /mod/Mods/services/DATIS/bin/datis.dll

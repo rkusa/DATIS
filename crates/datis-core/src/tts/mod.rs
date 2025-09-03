@@ -60,19 +60,19 @@ impl FromStr for TextToSpeechProvider {
                     return Ok(TextToSpeechProvider::GoogleCloud {
                         voice: gcloud::VoiceKind::from_str(voice)
                             .map_err(TextToSpeechProviderError::Voice)?,
-                    })
+                    });
                 }
                 "AWS" | "aws" => {
                     return Ok(TextToSpeechProvider::AmazonWebServices {
                         voice: aws::VoiceKind::from_str(voice)
                             .map_err(TextToSpeechProviderError::Voice)?,
-                    })
+                    });
                 }
                 "AZURE" | "azure" => {
                     return Ok(TextToSpeechProvider::AzureCognitiveServices {
                         voice: azure::VoiceKind::from_str(voice)
                             .map_err(TextToSpeechProviderError::Voice)?,
-                    })
+                    });
                 }
                 "WIN" | "win" => {
                     return Ok(TextToSpeechProvider::Windows {
@@ -80,7 +80,7 @@ impl FromStr for TextToSpeechProvider {
                             win::VoiceKind::from_str(voice)
                                 .map_err(TextToSpeechProviderError::Voice)?,
                         ),
-                    })
+                    });
                 }
                 _ => {}
             },
@@ -150,7 +150,7 @@ mod test {
     mod tts_provider_from_str {
         use std::str::FromStr;
 
-        use crate::tts::{aws, azure, gcloud, TextToSpeechProvider};
+        use crate::tts::{TextToSpeechProvider, aws, azure, gcloud};
 
         #[test]
         fn err_when_invalid() {

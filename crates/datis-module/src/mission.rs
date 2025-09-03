@@ -23,7 +23,7 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
     };
 
     // Create a random generator for creating the information letter offset.
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // collect all airfields on the current loaded terrain
     let mut airfields = {
@@ -62,7 +62,7 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                     position: Position { x, y, alt: 0.0 },
                     runways,
                     traffic_freq: None,
-                    info_ltr_offset: rng.gen_range(0..25),
+                    info_ltr_offset: rng.random_range(0..25),
                     info_ltr_override: None,
                     active_rwy_override: None,
                     no_hpa: false,
@@ -321,7 +321,7 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
                     name: config.name,
                     unit_id: mission_unit.id,
                     unit_name: mission_unit.name.clone(),
-                    info_ltr_offset: rng.gen_range(0..25),
+                    info_ltr_offset: rng.random_range(0..25),
                     info_ltr_override: None,
                 }),
                 ipc: MissionInterface::Ipc(ipc.clone()),

@@ -1,10 +1,11 @@
+use std::fmt::Display;
+use std::io::Cursor;
+use std::str::FromStr;
+
 use ogg::reading::PacketReader;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::fmt::Display;
-use std::io::Cursor;
-use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct AzureCognitiveServicesConfig {

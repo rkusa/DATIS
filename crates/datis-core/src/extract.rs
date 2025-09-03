@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use crate::tts::TextToSpeechProvider;
 use regex::{Regex, RegexBuilder};
+
+use crate::tts::TextToSpeechProvider;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct StationConfig {
@@ -277,7 +278,7 @@ pub fn extract_weather_station_config(config: &str) -> Option<WetherStationConfi
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::tts::{aws, gcloud, TextToSpeechProvider};
+    use crate::tts::{TextToSpeechProvider, aws, gcloud};
 
     #[test]
     fn test_mission_descriptiopn_extraction() {

@@ -19,24 +19,24 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use crate::export::ReportExporter;
-use crate::station::{LatLngPosition, Station, Transmitter};
-use crate::tts::{
-    aws::{self, AmazonWebServicesConfig},
-    azure::{self, AzureCognitiveServicesConfig},
-    gcloud::{self, GoogleCloudConfig},
-    win::{self, WindowsConfig},
-    TextToSpeechConfig, TextToSpeechProvider,
-};
 use config::{AwsConfig, AzureConfig, Config};
 use futures::future::FutureExt;
 use futures::select;
 use futures::sink::SinkExt;
 use futures::stream::{SplitSink, StreamExt};
-use srs::{message::Coalition, Client, VoiceStream};
+use srs::message::Coalition;
+use srs::{Client, VoiceStream};
 use tokio::runtime::{self, Runtime};
-use tokio::sync::{oneshot, RwLock};
+use tokio::sync::{RwLock, oneshot};
 use tokio::time::sleep;
+
+use crate::export::ReportExporter;
+use crate::station::{LatLngPosition, Station, Transmitter};
+use crate::tts::aws::{self, AmazonWebServicesConfig};
+use crate::tts::azure::{self, AzureCognitiveServicesConfig};
+use crate::tts::gcloud::{self, GoogleCloudConfig};
+use crate::tts::win::{self, WindowsConfig};
+use crate::tts::{TextToSpeechConfig, TextToSpeechProvider};
 
 pub struct Datis {
     stations: Vec<Station>,
@@ -83,7 +83,8 @@ impl Datis {
                     } else {
                         log::error!(
                             "Cannot start {} with TTS provider {:?} due to missing Google Cloud key",
-                            station.name, station.tts
+                            station.name,
+                            station.tts
                         );
                         continue;
                     }

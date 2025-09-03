@@ -1,8 +1,6 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::station::{LatLngPosition, Position};
-use crate::weather::{Clouds, WeatherInfo};
 use dcs_module_ipc::Error;
 use serde::Deserialize;
 use serde_json::json;
@@ -10,6 +8,9 @@ use tokio::sync::Mutex;
 use uom::si::angle::degree;
 use uom::si::f64::{Angle, Pressure, ThermodynamicTemperature as Temperature, Velocity};
 use uom::si::i32::Length;
+
+use crate::station::{LatLngPosition, Position};
+use crate::weather::{Clouds, WeatherInfo};
 
 pub struct MissionRpcInner {
     ipc: dcs_module_ipc::IPC<()>,
