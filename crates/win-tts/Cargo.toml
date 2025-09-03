@@ -1,23 +1,27 @@
 [package]
 name = "win-tts"
-version = "3.1.2"
-authors = ["Markus Ast <m@rkusa.st>"]
-edition = "2021"
-rust-version = "1.56"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 futures = "0.3"
 log = "0.4"
-thiserror = "1.0"
+thiserror = "2.0"
 tokio = { version = "1.0", features = ["rt-multi-thread"] }
 
 [target.'cfg(target_os = "windows")'.dependencies.windows]
-version = "0.40"
+version = "0.61"
 features = [
-  "Foundation",
-  "Foundation_Collections",
-  "Storage_Streams",
-  "Media_SpeechSynthesis",
+    "Foundation",
+    "Foundation_Collections",
+    "Storage_Streams",
+    "Media_Core",
+    "Media_SpeechSynthesis",
 ]
+
+[target.'cfg(target_os = "windows")'.dependencies.windows-future]
+version = "0.2"

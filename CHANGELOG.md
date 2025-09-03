@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 - Fixed stations for missions that were saved before DCS had the neutral coalition
+- Fixed crash (by upgrading dependencies) with latest DCS (tested to work with 2.9.19.13478)
 
 ## [3.1.2] - 2021-07-01
 

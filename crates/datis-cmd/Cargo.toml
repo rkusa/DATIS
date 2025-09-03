@@ -1,14 +1,14 @@
 [package]
 name = "datis-cmd"
-version = "3.1.2"
-authors = ["Markus Ast <m@rkusa.st>"]
-edition = "2021"
-rust-version = "1.56"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+edition.workspace = true
 
 [dependencies]
 clap = "2.32"
 ctrlc = "3.1"
 datis-core = { path = "../datis-core" }
 dotenv = "0.15"
-env_logger = "0.9"
+env_logger = "0.11"
 log = "0.4"

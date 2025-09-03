@@ -6,9 +6,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
 use config::read_config;
+use datis_core::Datis;
 use datis_core::config::Config;
 use datis_core::ipc::MissionRpc;
-use datis_core::Datis;
 use mlua::prelude::*;
 use mlua::{Function, Value};
 use once_cell::sync::Lazy;
@@ -23,7 +23,7 @@ pub fn init(lua: &Lua) -> Result<(Config, PathBuf), mlua::Error> {
     use log4rs::config::{Appender, Config, Logger, Root};
 
     let write_dir: String = {
-        let lfs: LuaTable<'_> = lua.globals().get("lfs")?;
+        let lfs: LuaTable = lua.globals().get("lfs")?;
         lfs.call_method("writedir", ())?
     };
     let write_dir = PathBuf::from(write_dir);
@@ -116,7 +116,7 @@ fn resume(_: &Lua, _: ()) -> LuaResult<()> {
     Ok(())
 }
 
-fn try_next(lua: &Lua, callback: Function<'_>) -> LuaResult<bool> {
+fn try_next(lua: &Lua, callback: Function) -> LuaResult<bool> {
     if let Some((_, ref ipc)) = *DATIS.read().unwrap() {
         if let Some(mut next) = ipc.try_next() {
             let method = next.method().to_string();
@@ -124,7 +124,7 @@ fn try_next(lua: &Lua, callback: Function<'_>) -> LuaResult<bool> {
                 .params(lua)
                 .map_err(|err| mlua::Error::ExternalError(Arc::new(Error::SerializeParams(err))))?;
 
-            let result: LuaTable<'_> = callback.call((method.as_str(), params))?;
+            let result: LuaTable = callback.call((method.as_str(), params))?;
             let error: Option<String> = result.get("error")?;
 
             if let Some(error) = error {
@@ -132,7 +132,7 @@ fn try_next(lua: &Lua, callback: Function<'_>) -> LuaResult<bool> {
                 return Ok(true);
             }
 
-            let res = match result.get::<_, Value<'_>>("result") {
+            let res = match result.get::<Value>("result") {
                 Ok(res) => res,
                 Err(_) => {
                     next.error("received empty IPC response".to_string(), None);
@@ -163,7 +163,7 @@ fn try_next(lua: &Lua, callback: Function<'_>) -> LuaResult<bool> {
 }
 
 #[mlua::lua_module]
-pub fn datis(lua: &Lua) -> LuaResult<LuaTable<'_>> {
+pub fn datis(lua: &Lua) -> LuaResult<LuaTable> {
     let exports = lua.create_table()?;
     exports.set("start", lua.create_function(start)?)?;
     exports.set("stop", lua.create_function(stop)?)?;
@@ -186,7 +186,7 @@ fn to_lua_err(context: &str, err: impl std::error::Error + Send + Sync + 'static
     mlua::Error::ExternalError(Arc::new(err))
 }
 
-fn pretty_print_value(val: Value<'_>, indent: usize) -> LuaResult<String> {
+fn pretty_print_value(val: Value, indent: usize) -> LuaResult<String> {
     use std::fmt::Write;
 
     Ok(match val {
@@ -198,7 +198,7 @@ fn pretty_print_value(val: Value<'_>, indent: usize) -> LuaResult<String> {
         Value::String(v) => format!("\"{}\"", v.to_str()?),
         Value::Table(t) => {
             let mut s = "{\n".to_string();
-            for pair in t.pairs::<Value<'_>, Value<'_>>() {
+            for pair in t.pairs::<Value, Value>() {
                 let (key, value) = pair?;
                 writeln!(
                     s,
@@ -216,5 +216,6 @@ fn pretty_print_value(val: Value<'_>, indent: usize) -> LuaResult<String> {
         Value::Thread(_) => String::new(),
         Value::UserData(_) => String::new(),
         Value::Error(err) => err.to_string(),
+        Value::Other(_) => "(unknown type)".to_string(),
     })
 }

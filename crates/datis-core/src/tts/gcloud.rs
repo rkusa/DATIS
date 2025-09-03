@@ -5,7 +5,7 @@ use std::str::FromStr;
 use ogg::reading::PacketReader;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Clone)]
 pub struct GoogleCloudConfig {
@@ -144,6 +144,9 @@ pub async fn text_to_speech(
     text: &str,
     config: &GoogleCloudConfig,
 ) -> Result<Vec<Vec<u8>>, anyhow::Error> {
+    use base64::Engine;
+    use base64::prelude::BASE64_STANDARD;
+
     let payload = TextToSpeechRequest {
         audio_config: AudioConfig {
             audio_encoding: "OGG_OPUS",
@@ -169,7 +172,7 @@ pub async fn text_to_speech(
     }
 
     let data: TextToSpeechResponse = res.json().await?;
-    let data = base64::decode(&data.audio_content)?;
+    let data = BASE64_STANDARD.decode(&data.audio_content)?;
     let data = Cursor::new(data);
 
     let mut frames = Vec::new();

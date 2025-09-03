@@ -8,3 +8,10 @@ members = [
     "crates/srs",
     "crates/win-tts",
 ]
+resolver = "2"
+
+[workspace.package]
+version = "3.1.2"
+authors = ["Markus Ast <m@rkusa.st>"]
+rust-version = "1.85"
+edition = "2024"

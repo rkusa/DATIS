@@ -4,7 +4,8 @@ use datis_core::extract::*;
 use datis_core::ipc::*;
 use datis_core::station::*;
 use datis_core::tts::TextToSpeechProvider;
-use mlua::prelude::{Lua, LuaTable, LuaTableExt};
+use mlua::ObjectLike as _;
+use mlua::prelude::{Lua, LuaTable};
 use rand::Rng;
 
 pub struct Info {
@@ -16,7 +17,7 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
     // extract frequencies from mission briefing, which is retrieved from
     // `DCS.getMissionDescription()`
     let station_configs_from_description = {
-        let dcs: LuaTable<'_> = lua.globals().get("DCS")?;
+        let dcs: LuaTable = lua.globals().get("DCS")?;
         let mission_description: String = dcs.call_function("getMissionDescription", ())?;
         extract_station_config_from_mission_description(&mission_description)
     };
@@ -29,23 +30,23 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
         let mut airfields = HashMap::new();
 
         // read `Terrain.GetTerrainConfig('Airdromes')`
-        let terrain: LuaTable<'_> = lua.globals().get("Terrain")?;
-        let airdromes: LuaTable<'_> = terrain.call_function("GetTerrainConfig", "Airdromes")?;
+        let terrain: LuaTable = lua.globals().get("Terrain")?;
+        let airdromes: LuaTable = terrain.call_function("GetTerrainConfig", "Airdromes")?;
 
-        for pair in airdromes.pairs::<usize, LuaTable<'_>>() {
+        for pair in airdromes.pairs::<usize, LuaTable>() {
             let (_, airdrome) = pair?;
             let display_name: String = airdrome.get("display_name")?;
 
             let (x, y) = {
-                let reference_point: LuaTable<'_> = airdrome.get("reference_point")?;
+                let reference_point: LuaTable = airdrome.get("reference_point")?;
                 let x: f64 = reference_point.get("x")?;
                 let y: f64 = reference_point.get("y")?;
                 (x, y)
             };
 
             let mut runways: Vec<String> = Vec::new();
-            if let Some(rwys) = airdrome.get::<_, Option<LuaTable<'_>>>("runways")? {
-                for pair in rwys.pairs::<usize, LuaTable<'_>>() {
+            if let Some(rwys) = airdrome.get::<Option<LuaTable>>("runways")? {
+                for pair in rwys.pairs::<usize, LuaTable>() {
                     let (_, rwy) = pair?;
                     let start: String = rwy.get("start")?;
                     let end: String = rwy.get("end")?;
@@ -75,32 +76,30 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
 
     // extract all mission statics and ship units to later look for ATIS configs in their names
     let mut mission_units = {
-        let current_mission: LuaTable<'_> = lua.globals().get("_current_mission")?;
-        let mission: LuaTable<'_> = current_mission.get("mission")?;
-        let coalitions: LuaTable<'_> = mission.get("coalition")?;
+        let current_mission: LuaTable = lua.globals().get("_current_mission")?;
+        let mission: LuaTable = current_mission.get("mission")?;
+        let coalitions: LuaTable = mission.get("coalition")?;
 
         let mut mission_units = Vec::new();
 
         for key in &["blue", "red", "neutrals"] {
-            let coalition = match coalitions.get::<_, Option<LuaTable<'_>>>(*key)? {
+            let coalition = match coalitions.get::<Option<LuaTable>>(*key)? {
                 Some(coalition) => coalition,
                 None => continue,
             };
-            let countries: LuaTable<'_> = coalition.get("country")?;
+            let countries: LuaTable = coalition.get("country")?;
 
-            for country in countries.sequence_values::<LuaTable<'_>>() {
+            for country in countries.sequence_values::<LuaTable>() {
                 // `_current_mission.mission.coalition.{blue,red,neutrals}.country[i].{static|plane|helicopter|vehicle|ship}.group[j]
                 let country = country?;
                 let keys = vec!["static", "plane", "helicopter", "vehicle", "ship"];
                 for key in keys {
-                    if let Some(assets) = country.get::<_, Option<LuaTable<'_>>>(key)? {
-                        if let Some(groups) = assets.get::<_, Option<LuaTable<'_>>>("group")? {
-                            for group in groups.sequence_values::<LuaTable<'_>>() {
+                    if let Some(assets) = country.get::<Option<LuaTable>>(key)? {
+                        if let Some(groups) = assets.get::<Option<LuaTable>>("group")? {
+                            for group in groups.sequence_values::<LuaTable>() {
                                 let group = group?;
-                                if let Some(units) =
-                                    group.get::<_, Option<LuaTable<'_>>>("units")?
-                                {
-                                    for unit in units.sequence_values::<LuaTable<'_>>() {
+                                if let Some(units) = group.get::<Option<LuaTable>>("units")? {
+                                    for unit in units.sequence_values::<LuaTable>() {
                                         let unit = unit?;
                                         let x: f64 = unit.get("x")?;
                                         let y: f64 = unit.get("y")?;
@@ -130,8 +129,8 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
     // extract the names for all units
     {
         // read `DCS.getUnitProperty`
-        let dcs: LuaTable<'_> = lua.globals().get("DCS")?;
-        for mut unit in &mut mission_units {
+        let dcs: LuaTable = lua.globals().get("DCS")?;
+        for unit in &mut mission_units {
             // 3 = DCS.UNIT_NAME
             unit.name = dcs.call_function("getUnitProperty", (unit.id, 3))?;
         }
@@ -140,14 +139,14 @@ pub fn extract(lua: &Lua, default_voice: &TextToSpeechProvider) -> Result<Info, 
     // read the terrain height for all airdromes and units
     {
         // read `Terrain.GetHeight`
-        let terrain: LuaTable<'_> = lua.globals().get("Terrain")?;
+        let terrain: LuaTable = lua.globals().get("Terrain")?;
 
-        for mut airfield in airfields.values_mut() {
+        for airfield in airfields.values_mut() {
             airfield.position.alt =
                 terrain.call_function("GetHeight", (airfield.position.x, airfield.position.y))?;
         }
 
-        for mut unit in &mut mission_units {
+        for unit in &mut mission_units {
             if unit.alt == 0.0 {
                 unit.alt = terrain.call_function("GetHeight", (unit.x, unit.y))?;
             }

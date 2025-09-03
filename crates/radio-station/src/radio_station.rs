@@ -121,7 +121,7 @@ async fn radio_broadcast<P: AsRef<Path>>(
     }
 
     loop {
-        for OpusFile { ref path, .. } in &audio_files {
+        for OpusFile { path, .. } in &audio_files {
             log::debug!("Playing {}", path.to_string_lossy());
 
             let mut file = File::open(&path).await?;

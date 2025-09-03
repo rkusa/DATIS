@@ -1,18 +1,23 @@
 [package]
 name = "dcs-radio-station"
-version = "3.1.2"
-authors = ["Markus Ast <m@rkusa.st>"]
-edition = "2021"
-rust-version = "1.56"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+edition.workspace = true
 
 [dependencies]
 anyhow = "1.0"
 async-std = "1.0"
 clap = "2.32"
-env_logger = "0.9"
+env_logger = "0.11"
 futures = "0.3"
 log = "0.4"
 ogg = "0.9"
 ogg_metadata = "0.4"
 srs = { path = "../srs" }
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "time", "sync"] }
+tokio = { version = "1.0", features = [
+    "rt-multi-thread",
+    "macros",
+    "time",
+    "sync",
+] }
